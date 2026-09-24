@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projeto Elétrico Agroindustrial</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="js/vendor/pdf-lib.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">UFPel · Engenharia Agrícola · Energização Rural</div>
+      <h1>Projeto Elétrico Agroindustrial</h1>
+      <p class="lead">Roteiro de preenchimento na ordem de elaboração vista em aula: dados, previsão de cargas, dimensionamento pela NBR 5410, desenhos anexados e, ao final, o projeto completo em PDF.</p>
+      <div class="actions">
+        <button class="btn small primary" id="btnSave" type="button">Exportar projeto (.json)</button>
+        <button class="btn small" id="btnOpen" type="button">Importar projeto (.json)</button>
+        <button class="btn small ghost" id="btnTxt" type="button" aria-expanded="false" aria-controls="jsonPanel">JSON como texto</button>
+        <button class="btn small ghost" id="btnSample" type="button">Carregar exemplo (mini-indústria)</button>
+        <button class="btn small ghost" id="btnNew" type="button">Projeto em branco</button>
+        <button class="btn small ghost" id="btnSrv" type="button" aria-expanded="false" aria-controls="serverPanel">Projetos salvos no computador</button>
+        <input type="file" id="fileOpen" accept=".json,application/json">
+      </div>
+    </div>
+    <div class="stamp" id="stamp"></div>
+  </header>
+  <section class="jsonpanel" id="serverPanel" hidden aria-label="Projetos salvos na pasta projetos/">
+    <div>
+      <h3>Salvar na pasta do servidor local</h3>
+      <p class="note" id="srvStatus">Verificando o servidor PHP...</p>
+      <label class="f" for="srvNome">Nome do arquivo<input id="srvNome" type="text" placeholder="ex.: mini-industria-turma-a"></label>
+      <label class="chk"><input type="checkbox" id="srvAnexos" checked> Incluir anexos (desenhos) no arquivo</label>
+      <div><button class="btn small primary" type="button" id="btnSrvSalvar">Salvar em projetos/</button></div>
+    </div>
+    <div>
+      <h3>Projetos em projetos/</h3>
+      <div class="tbl"><table><thead><tr><th>Arquivo</th><th>Obra</th><th>Atualizado</th><th></th></tr></thead><tbody id="srvLista"><tr><td colspan="4">—</td></tr></tbody></table></div>
+      <div><button class="btn small ghost" type="button" id="btnSrvAtualizar">Atualizar lista</button></div>
+    </div>
+  </section>
+  <section class="jsonpanel" id="jsonPanel" hidden aria-label="Importar e exportar JSON como texto">
+    <div>
+      <h3>Exportar</h3>
+      <p class="note">Copie o texto e salve num arquivo .json, ou envie direto para um colega.</p>
+      <label class="chk"><input type="checkbox" id="jsonAnexos"> Incluir anexos (desenhos em base64; o texto fica grande)</label>
+      <textarea id="jsonOut" readonly aria-label="JSON do projeto atual"></textarea>
+      <div><button class="btn small" type="button" id="btnCopy">Copiar JSON</button></div>
+    </div>
+    <div>
+      <h3>Importar</h3>
+      <p class="note">Cole o conteúdo de um .json exportado por esta ferramenta. O projeto atual será substituído.</p>
+      <textarea id="jsonIn" aria-label="Colar JSON para importar" placeholder='{"formato":"projeto-eletrico-agro", ...}'></textarea>
+      <div><button class="btn small primary" type="button" id="btnImpTxt">Importar texto colado</button></div>
+    </div>
+  </section>
+
+  <div class="layout">
+    <nav class="steps" aria-label="Etapas do projeto"><ol id="stepList"></ol></nav>
+    <main class="sheet" id="sheet"></main>
+    <aside class="summary" id="summary"></aside>
+  </div>
+
+  <p class="foot">Tabelas utilizadas: NBR 5410:2004 — Tab. 33 (métodos de referência A1 a G), Tab. 36 e 38 (capacidade de condução, cobre/PVC 70 °C), Tab. 40 (temperatura), Tab. 42 (agrupamento), Tab. 47 (seção mínima), Tab. 48 (neutro), Tab. 58 (PE), 6.2.7 (queda de tensão), 5.3.4 (coordenação), 6.2.11.1.6 (ocupação de eletrodutos). Diâmetros externos de cabos e internos de eletrodutos/eletrocalhas são valores típicos de catálogo: confira com o fabricante escolhido. Classes, subgrupos e modalidades conforme REN ANEEL nº 1.000/2021. Ferramenta didática: não substitui a verificação do responsável técnico. Estrutura documental inspirada em projeto real gentilmente cedido pela equipe Bysol. PDF gerado com pdf-lib (licença MIT, js/vendor).</p>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script src="js/tabelas.js"></script>
+<script src="js/app.js"></script>
+<script src="js/servidor.js"></script>
+</body>
+</html>

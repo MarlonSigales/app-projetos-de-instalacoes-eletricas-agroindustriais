@@ -1,0 +1,43 @@
+PROJETO ELÉTRICO AGROINDUSTRIAL — versão local
+UFPel · Engenharia Agrícola · Energização Rural
+=================================================
+
+Roteiro passo a passo de projeto de instalações elétricas agroindustriais:
+previsão de cargas, dimensionamento pela NBR 5410 (condutores, disjuntores,
+eletrodutos e canaletas), demanda, anexos de desenhos e geração do projeto
+completo em PDF. Funciona sem internet.
+
+CONTEÚDO
+  index.html            página principal
+  css/style.css         estilos
+  js/tabelas.js         tabelas da NBR 5410 (Tab. 33, 36, 38, 40, 42, 47, 48, 58), sistemas
+                        de fornecimento e classes de consumo (REN ANEEL 1.000/2021)
+  js/app.js             roteiro, cálculos (condutores, proteção e partida de motores),
+                        importação/exportação JSON e PDF
+  js/servidor.js        integração com o api.php
+  js/vendor/            pdf-lib 1.17.1 (licença MIT) — geração do PDF
+  api.php               salva/abre/lista/exclui projetos na pasta projetos/
+  projetos/             projetos salvos (.json); já vem com o exemplo da mini-indústria
+
+COMO RODAR (recomendado — com PHP)
+  1. Instale o PHP 7.4 ou superior (https://www.php.net/downloads) ou use XAMPP/Laragon.
+  2. Abra um terminal nesta pasta e rode:
+         php -S localhost:8000
+  3. Acesse no navegador:  http://localhost:8000
+  4. Para encerrar, pressione Ctrl+C no terminal.
+
+  Com XAMPP/Apache: copie a pasta para htdocs/ e acesse
+  http://localhost/projeto-eletrico-agro/
+
+SEM PHP
+  Dá para abrir o index.html direto no navegador (duplo clique). Tudo funciona,
+  exceto o painel “Projetos salvos no computador”: use “Exportar projeto (.json)”
+  e “Importar projeto (.json)” para guardar e reabrir o trabalho.
+
+OBSERVAÇÕES
+  - O navegador guarda o rascunho automaticamente (sem os anexos). Para guardar
+    os desenhos anexados, salve em projetos/ ou exporte o .json.
+  - Diâmetros de cabos/eletrodutos/eletrocalhas são valores típicos de catálogo:
+    confira com o fabricante. As tabelas da NBR 5410 (36, 38, 40, 42, 46, 47, 48, 58)
+    foram conferidas com o texto da ABNT NBR 5410:2004.
+  - Ferramenta didática: não substitui a verificação do responsável técnico.
