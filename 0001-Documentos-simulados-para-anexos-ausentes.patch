@@ -1,0 +1,312 @@
+From 11e1339ced9c3bcf21e755399ba8587146b5ffff Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 24 Sep 2026 15:38:03 -0300
+Subject: [PATCH] Documentos simulados para anexos ausentes
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Gera ART (modelo didático), planta de situação, planta baixa
+esquemática, unifilar, força e comando, detalhes e convenções com os
+dados do projeto quando o anexo não é enviado, marcados em vermelho
+para correção. Opção para desativar na etapa de desenhos.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01MT541TkxDg51usQjM2h2Qn
+---
+ js/app.js                            | 218 +++++++++++++++++++++++++--
+ projetos/mini-industria-exemplo.json |   3 +-
+ 2 files changed, 211 insertions(+), 10 deletions(-)
+
+diff --git a/js/app.js b/js/app.js
+index ff22c94..7d3dbb0 100644
+--- a/js/app.js
++++ b/js/app.js
+@@ -18,7 +18,7 @@ function blank(){
+     v:1,
+     id:{cliente:"",obra:"",atividade:"",local:"",municipio:"",uc:"",distribuidora:"",rt:"",crea:"",art:"",projetista:"",data:new Date().toISOString().slice(0,10)},
+     forn:{sistema:"380/220",atend:"BT",classe:"rural",subclasse:"Agroindustrial",tensaoPrim:13.8,subterraneo:false,modalidade:"",trafo:false,trafoKVA:"",rede:"",distRede:"",Lent:15,metEnt:"D",aterr:"TN-S",aerea:true,aq:"AQ2",spda:false,ra:30,ul:50,obs:""},
+-    par:{temp:30,tempSolo:20,metDist:"B1",metBaix:"B1",agrDist:"feixe",arrF:"trifolio",arrG:"horizontal",ipin:7,dvPartida:10,softLim:3,invLim:1.5,bobina:"220 Vca",icc:6,dpsSempre:false,dvTerm:4,dvTotal:5,dvEnt:1,rho:0.0206,curva:"C",curvaMotor:"D",reserva:20,sobra:10,neutroRed:false,ocupCan:40},
++    par:{temp:30,tempSolo:20,metDist:"B1",metBaix:"B1",agrDist:"feixe",arrF:"trifolio",arrG:"horizontal",ipin:7,dvPartida:10,simular:true,softLim:3,invLim:1.5,bobina:"220 Vca",icc:6,dpsSempre:false,dvTerm:4,dvTotal:5,dvEnt:1,rho:0.0206,curva:"C",curvaMotor:"D",reserva:20,sobra:10,neutroRed:false,ocupCan:40},
+     quadros:[{nome:"QGBT",L:0,met:"B1"}],
+     circ:[],
+     canaletas:{},
+@@ -478,6 +478,7 @@ ${sys.fases===1?`<p class="note">Sistema monofásico: toda a carga fica na fase
+ V.des=()=>`${head(7)}
+ <p class="intro">Desenhos das plantas (item D), quadros e diagramas (item F) e detalhes construtivos (item G). Anexe as pranchas produzidas em CAD. Elas entram no PDF final na ordem da documentação do projeto.</p>
+ <div style="display:flex;flex-direction:column;gap:10px">${["arquitetonico","unifilar","multifilar","detalhes","convencoes"].map(attBlock).join("")}</div>
++<label class="chk" style="margin-top:12px"><input type="checkbox" data-bind="par.simular" ${S.par.simular!==false?"checked":""}> Gerar documentos simulados para os anexos ausentes (ART modelo, planta de situação, planta baixa esquemática, unifilar, força e comando, detalhes e convenções), marcados em vermelho para correção</label>
+ <p class="note" style="margin-top:12px">Confira nas pranchas: pontos de utilização e quadros (NBR 5444), rotas das canaletas com a identificação usada aqui (${Object.keys(R.cans).join(", ")||"—"}), baixadas com o diâmetro calculado e o unifilar com as mesmas bitolas e disjuntores da etapa 05.</p>${nav()}`;
+ 
+ /* ---------- memorial descritivo (texto gerado) ---------- */
+@@ -767,6 +768,205 @@ async function gerarPDF(){
+   y=yy-30;kv([["Cliente",id.cliente||"—"],["Local",`${id.local||"—"} — ${id.municipio||""}`],["Unidade consumidora",id.uc||"—"],["Distribuidora",id.distribuidora||"—"],["Classificação",`${R.cls.classeT} / ${R.cls.subclasse} — Grupo ${R.cls.grupo}, subgrupo ${R.cls.sub}, ${R.cls.modalidade}`],["Alimentação",sys.nome],["Carga instalada",`${fmt(R.inst,2)} kW`],["Demanda (c/ reserva)",`${fmt(R.ent.S,2)} kVA`],["Responsável técnico",`${id.rt||"—"} — CREA ${id.crea||"—"}`],["ART",id.art||"—"],["Data",id.data||"—"]]);
+   const sumIndex=1; // sumário será inserido aqui depois
+ 
++  // ===== DOCUMENTOS SIMULADOS (quando o anexo não foi enviado) =====
++  const simOn=S.par.simular!==false;
++  const RED=rgb(0.82,0.08,0.08),RSOFT=rgb(0.99,0.9,0.9),GR=rgb(0.45,0.5,0.48),LG=rgb(0.93,0.95,0.94);
++  const A3L=[1190.55,841.89];
++  const T=(pp,str,x,y,size=8,font=F,color=INK)=>pp.drawText(pt(str),{x,y,size,font,color});
++  const TC=(pp,str,cx,y,size=8,font=F,color=INK)=>{const t=pt(str);pp.drawText(t,{x:cx-font.widthOfTextAtSize(t,size)/2,y,size,font,color});};
++  const Ln=(pp,x1,y1,x2,y2,th=1,color=INK,dash)=>pp.drawLine({start:{x:x1,y:y1},end:{x:x2,y:y2},thickness:th,color,dashArray:dash});
++  const Bx=(pp,x,y,w,h,o={})=>pp.drawRectangle({x,y,width:w,height:h,borderColor:o.bc||INK,borderWidth:o.bw??1,color:o.fill});
++  const Ci=(pp,x,y,r,o={})=>pp.drawCircle({x,y,size:r,borderColor:o.bc||INK,borderWidth:o.bw??1,color:o.fill});
++  const redU=(pp,x,y,w)=>Ln(pp,x,y-2,x+w,y-2,1.2,RED);
++  const TW=(pp,str,x,y,maxW,size=7,font=F,color=INK,lead=1.25)=>{wrap(str,font,size,maxW).forEach((l,i)=>pp.drawText(l,{x,y:y-i*size*lead,size,font,color}));return wrap(str,font,size,maxW).length;};
++  function simPage(size,titulo){
++    const pp=doc.addPage(size);const [w,h]=size;
++    pp.drawText("SIMULADO",{x:w*0.2,y:h*0.25,size:Math.min(w,h)*0.22,font:FB,color:RED,opacity:0.06,rotate:PDFLib.degrees(30)});
++    Bx(pp,14,14,w-28,h-28,{bc:RED,bw:2.4});
++    pp.drawRectangle({x:14,y:h-40,width:w-28,height:26,color:RED});
++    T(pp,w<700?"DOCUMENTO SIMULADO — gerado com os dados do projeto. Corrigir e substituir.":"DOCUMENTO SIMULADO — gerado automaticamente com os dados do projeto. Revisar, corrigir e substituir pelo documento definitivo.",24,h-31,9,FB,rgb(1,1,1));
++    T(pp,titulo.toUpperCase(),24,h-62,14,FB,INK);
++    return {pp,w,h};
++  }
++  function carimbo(pp,w,titulo,prancha){
++    const bw=330,bh=108,x=w-14-bw,y=14;Bx(pp,x,y,bw,bh,{bw:1.2,fill:rgb(1,1,1)});
++    const rows=[["Obra",id.obra||"—"],["Cliente",id.cliente||"—"],["Resp. técnico",`${id.rt||"—"} · CREA ${id.crea||"—"}`],["Conteúdo",titulo],["Escala / data","Sem escala (croqui) · "+(id.data||"")]];
++    rows.forEach(([k,v],i)=>{const yy=y+bh-16-i*18;T(pp,k,x+6,yy,6.5,F,MUT);T(pp,String(v).slice(0,62),x+72,yy,7.5,i===3?FB:F,INK);Ln(pp,x,yy-5,x+bw,yy-5,0.4,LN);});
++    T(pp,"PRANCHA",x+6,y+8,6,F,MUT);T(pp,prancha,x+50,y+6,10,FB,INK);T(pp,"SIMULADA — corrigir",x+bw-110,y+7,8,FB,RED);
++  }
++  const reg=(t)=>toc.length; // placeholder
++  // ---- ART simulada
++  function simART(){
++    const {pp,w,h}=simPage(A4,"Modelo didático de ART — sem validade");
++    let y=h-90;
++    T(pp,"Este modelo reproduz os campos típicos de uma ART de projeto para fins de aula. A ART oficial deve ser emitida no sistema do CREA.",40,y,8.5,F,MUT);y-=24;
++    const sec2=(tit,campos)=>{pp.drawRectangle({x:40,y:y-4,width:w-80,height:16,color:LG});T(pp,tit,46,y,9,FB,INK);y-=22;
++      campos.forEach(([k,v,red])=>{T(pp,k,46,y,8,F,MUT);const vv=v||"A PREENCHER";T(pp,vv,190,y,9,red||!v?FB:F,red||!v?RED:INK);if(red||!v)redU(pp,190,y,Math.min(F.widthOfTextAtSize(pt(vv),9)+6,w-240));y-=17;});y-=6;};
++    sec2("1. Contratado",[["Profissional",id.rt],["Registro CREA",id.crea],["Título profissional","A PREENCHER",true],["Empresa contratada","A PREENCHER",true]]);
++    sec2("2. Contratante",[["Nome / razão social",id.cliente],["CPF / CNPJ","A PREENCHER",true],["Endereço",[id.local,id.municipio].filter(Boolean).join(" — ")]]);
++    sec2("3. Identificação da obra/serviço",[["Proprietário",id.cliente],["Endereço da obra",[id.local,id.municipio].filter(Boolean).join(" — ")],["Unidade consumidora",id.uc],["Finalidade",id.atividade||id.obra]]);
++    sec2("4. Atividade técnica",[["Atividade","Projeto de instalações elétricas de baixa tensão"],["Descrição",id.obra],["Quantidade",`${fmt(R.inst,2)} kW de carga instalada`],["Demanda com reserva",`${fmt(R.ent.S,2)} kVA`]]);
++    sec2("5. Dados da ART",[["Número da ART",id.art],["Tipo","Prestação de serviço — obra/serviço",true],["Valor do contrato / honorários","A PREENCHER",true],["Data de início / previsão de término","A PREENCHER",true]]);
++    y-=30;Ln(pp,60,y,260,y,0.8);Ln(pp,w-260,y,w-60,y,0.8);TC(pp,id.rt||"Profissional",160,y-12,8);TC(pp,id.cliente||"Contratante",w-160,y-12,8);
++    T(pp,"Campos sublinhados em vermelho foram preenchidos por suposição ou estão em branco: corrigir antes de emitir.",40,50,8,FB,RED);
++  }
++  // ---- Planta de situação
++  function simSituacao(){
++    const {pp,w,h}=simPage(A3L,"Planta de situação (croqui)");
++    const f=S.forn;
++    // via e rede
++    pp.drawRectangle({x:60,y:120,width:w-440,height:46,color:rgb(0.88,0.88,0.86)});T(pp,`Via de acesso — ${id.local||"endereço a preencher"}`,80,138,10,FB,GR);
++    Ln(pp,60,190,w-380,190,1.4,ACC,[6,4]);T(pp,`Rede da distribuidora (${f.rede||"tipo a informar"}) — ${id.distribuidora||""}`,80,196,8,F,ACC);
++    for(let x=90;x<w-380;x+=150){Ci(pp,x,190,5,{fill:rgb(1,1,1),bc:ACC,bw:1.4});}
++    const px=390;Ci(pp,px,190,7,{fill:RSOFT,bc:RED,bw:1.6});T(pp,"Poste de derivação (ponto de entrega)",px-60,176,7.5,FB,RED);
++    // lote e edificação
++    Bx(pp,120,230,w-560,480,{bc:GR,bw:1.2});T(pp,"Limite do terreno",130,700,8,F,GR);
++    Bx(pp,300,380,w-860,240,{bw:2,fill:LG});TC(pp,id.obra||"Edificação",300+(w-860)/2,500,11,FB);TC(pp,id.atividade||"",300+(w-860)/2,484,8,F,MUT);
++    // padrão e alimentador
++    Bx(pp,px-18,236,36,30,{bw:1.4,fill:rgb(1,1,1)});TC(pp,"PE",px,247,8,FB);T(pp,"Padrão de entrada / medição",px+24,246,7.5);
++    Ln(pp,px,197,px,236,1.2,INK,[3,2]);T(pp,`Ramal de ligação — ${f.distRede||"distância a confirmar"}`,px+8,212,7.5,FB,RED);redU(pp,px+8,212,190);
++    const qx=320,qy=400;Bx(pp,qx,qy,26,18,{fill:INK});T(pp,"QGBT",qx,qy+24,8,FB);
++    Ln(pp,px,266,px,qy+9,1.6);Ln(pp,px,qy+9,qx+26,qy+9,1.6);
++    T(pp,`Alimentador de entrada: ${R.ent.s?R.ent.txt+" mm²":"—"}, ${R.ent.ed?R.ent.ed.nome:""}, ${f.Lent} m, método ${f.metEnt}`,px+8,330,7.5,F,INK);
++    S.quadros.slice(1).forEach((q,i)=>{const x=560+i*140,y=560;Bx(pp,x,y,26,18,{fill:INK});T(pp,q.nome,x,y+24,8,FB);Ln(pp,qx+13,qy+18,qx+13,y+9,0.8,INK,[4,3]);Ln(pp,qx+13,y+9,x,y+9,0.8,INK,[4,3]);T(pp,`${q.L} m`,x-40,y+13,7,F,MUT);});
++    // norte
++    const nx=w-420,ny=640;Ln(pp,nx,ny,nx,ny+50,1.4);pp.drawSvgPath(`M ${nx} ${-(ny+60)} L ${nx-7} ${-(ny+44)} L ${nx+7} ${-(ny+44)} Z`,{color:INK});TC(pp,"N",nx,ny+64,10,FB);
++    T(pp,"Orientação, distâncias e posição da rede são supostas: conferir em levantamento de campo.",60,90,9,FB,RED);
++    carimbo(pp,w,"Planta de situação","SIT-01");
++  }
++  // ---- Planta baixa esquemática
++  function simPlanta(){
++    const {pp,w,h}=simPage(A3L,"Planta baixa esquemática — pontos, quadros e rotas");
++    const X0=60,Y0=140,BW=w-460,BH=h-230;Bx(pp,X0,Y0,BW,BH,{bw:2.2});T(pp,id.obra||"Edificação",X0+8,Y0+BH-14,9,FB,GR);
++    const qpos={};S.quadros.forEach((q,i)=>{const y=Y0+BH-60-i*((BH-80)/Math.max(S.quadros.length,1));qpos[q.nome]={x:X0+6,y};pp.drawRectangle({x:X0+2,y:y-10,width:16,height:26,color:INK});T(pp,q.nome,X0+22,y+4,8,FB);});
++    const cans=Object.keys(R.cans);const rowH=(BH-60)/Math.max(cans.length+1,2);
++    cans.forEach((k,ci)=>{const g=R.cans[k];const y=Y0+BH-40-(ci+1)*rowH;const x1=X0+90,x2=X0+BW-30;
++      Ln(pp,x1,y,x2,y,3,ACC);T(pp,`${k} — eletrocalha ${g.dim}`,x1,y+8,8,FB,ACC);
++      const cs=R.out.filter(o=>o.c.can===k&&+o.c.ld>0);
++      const q0=cs[0]?qpos[cs[0].c.q]:null;if(q0){Ln(pp,q0.x+14,q0.y,x1,q0.y,1,ACC,[4,3]);Ln(pp,x1,q0.y,x1,y,1,ACC,[4,3]);}
++      const slots=[];cs.forEach(o=>{const n=Math.min(+o.c.qtd||1,10);for(let j=0;j<n;j++)slots.push(o);});
++      const step=(x2-x1-20)/Math.max(slots.length,1);
++      slots.forEach((o,j)=>{const x=x1+14+j*step+step/2,yb=y-34;Ln(pp,x,y,x,yb+8,0.8,INK,[2,2]);
++        if(o.c.tipo==="ilum"){Ci(pp,x,yb,6);Ln(pp,x-4,yb-4,x+4,yb+4,0.8);Ln(pp,x-4,yb+4,x+4,yb-4,0.8);}
++        else if(o.c.tipo==="motor"){Ci(pp,x,yb,8,{fill:rgb(1,1,1)});TC(pp,"M",x,yb-3,8,FB);}
++        else{Bx(pp,x-5,yb-5,10,10,{fill:o.c.tipo==="tue"?INK:rgb(1,1,1)});}
++        TC(pp,String(o.i+1),x,yb-18,7,FB,RED);});
++    });
++    // legenda
++    const lx=X0+BW+30;let ly=h-110;T(pp,"Legenda",lx,ly,10,FB);ly-=20;
++    [["ilum","Ponto de iluminação"],["tug","Tomada de uso geral"],["tue","Tomada de uso específico"],["motor","Motor"]].forEach(([t,l])=>{if(t==="ilum"){Ci(pp,lx+6,ly+3,6);Ln(pp,lx+2,ly-1,lx+10,ly+7,0.8);Ln(pp,lx+2,ly+7,lx+10,ly-1,0.8);}else if(t==="motor"){Ci(pp,lx+6,ly+3,7);TC(pp,"M",lx+6,ly,7,FB);}else Bx(pp,lx+1,ly-2,10,10,{fill:t==="tue"?INK:rgb(1,1,1)});T(pp,l,lx+22,ly,8);ly-=20;});
++    Ln(pp,lx,ly+3,lx+14,ly+3,3,ACC);T(pp,"Eletrocalha / canaleta",lx+22,ly,8);ly-=18;Ln(pp,lx,ly+3,lx+14,ly+3,0.8,INK,[2,2]);T(pp,"Baixada em eletroduto",lx+22,ly,8);ly-=18;T(pp,"Número vermelho = circuito",lx,ly,8,FB,RED);ly-=26;
++    T(pp,"Circuitos",lx,ly,10,FB);ly-=16;R.out.forEach(o=>{if(ly<150)return;T(pp,`${o.i+1} — ${o.c.nome}`.slice(0,48),lx,ly,7);ly-=11;});
++    T(pp,"Posição dos pontos distribuída ao longo das canaletas: substituir pela planta arquitetônica com cotas reais.",60,90,9,FB,RED);
++    carimbo(pp,w,"Planta baixa esquemática","PB-01");
++  }
++  // ---- Unifilar
++  const brkSym=(pp,x,y)=>{Bx(pp,x-6,y-22,12,22,{fill:rgb(1,1,1)});Ln(pp,x-6,y-22,x+6,y,0.8);};
++  const carga=(pp,x,y,o)=>{const t=o.c.tipo;if(t==="motor"){Ci(pp,x,y,10,{fill:rgb(1,1,1)});TC(pp,"M",x,y-3,9,FB);}else if(t==="ilum"){Ci(pp,x,y,8);Ln(pp,x-6,y-6,x+6,y+6,0.8);Ln(pp,x-6,y+6,x+6,y-6,0.8);}else{Bx(pp,x-8,y-8,16,16,{fill:t==="tue"?INK:rgb(1,1,1)});}};
++  function simUnifilar(){
++    // geral
++    let {pp,w,h}=simPage(A3L,"Diagrama unifilar geral");
++    const y0=h-150,f=S.forn,e=R.ent;
++    Ci(pp,80,y0,14);TC(pp,"~",80,y0-4,12,FB);TC(pp,`Rede ${id.distribuidora||""}`,80,y0-30,8,FB);TC(pp,R.sys.nome,80,y0-41,7,F,MUT);
++    Ln(pp,94,y0,170,y0,1.4);Bx(pp,170,y0-14,40,28,{fill:rgb(1,1,1)});TC(pp,"kWh",190,y0-4,9,FB);TC(pp,"Medição",190,y0-28,7,F,MUT);
++    Ln(pp,210,y0,260,y0,1.4);Bx(pp,260,y0-12,34,24,{fill:rgb(1,1,1)});Ln(pp,260,y0-12,294,y0+12,0.8);TC(pp,e.inom?`DG ${e.polos}P ${e.inom} A`:"DG",277,y0+18,8,FB);
++    Ln(pp,294,y0,400,y0,2);T(pp,e.s?`${e.txt} mm² — ${e.ed.nome}`:"—",300,y0+6,7.5);T(pp,`${f.Lent} m`,300,y0-12,7,F,MUT);
++    const bx=400,by1=y0+40,by2=Math.max(140,y0-90-S.quadros.length*80);pp.drawRectangle({x:bx-3,y:by2,width:6,height:by1-by2,color:INK});TC(pp,"QGBT",bx,by1+8,10,FB);
++    // DPS
++    if(R.dps.incl){const yd=y0-50;Ln(pp,bx,yd,bx-80,yd,1);Bx(pp,bx-110,yd-12,30,24,{fill:rgb(1,1,1)});TC(pp,"DPS",bx-95,yd-4,8,FB);Ln(pp,bx-95,yd-12,bx-95,yd-34,1);[0,1,2].forEach(k=>Ln(pp,bx-103+k*2,yd-34-k*4,bx-87-k*2,yd-34-k*4,1));T(pp,`${R.dps.itens.map(it=>it.n+"x "+it.mod).join(" + ")}; Up <= ${fmt(R.dps.up,1)} kV`,bx-170,yd-50,7);}
++    // alimentadores
++    R.quadros.forEach((q,i)=>{if(!q.f)return;const y=y0-90-i*80;Ln(pp,bx,y,bx+60,y,1.2);brkSym(pp,bx+72,y+11);Ln(pp,bx+78,y,bx+300,y,1.4);
++      T(pp,`${q.f.polos}P ${q.f.inom||"—"} A`,bx+60,y+16,7.5,FB);T(pp,q.f.s?`${q.f.txt} mm² — ${q.f.ed.nome} — ${q.q.L} m`:"sem solução",bx+100,y+5,7.5);
++      Bx(pp,bx+300,y-16,90,32,{bw:1.6,fill:LG});TC(pp,q.q.nome,bx+345,y-4,10,FB);TC(pp,`${fmt(q.S,2)} kVA`,bx+345,y-26,7,F,MUT);});
++    const q0=R.quadros[0];if(q0&&q0.cs.length){const y=by2+10;T(pp,`${q0.cs.length} circuito(s) alimentados diretamente pelo ${q0.q.nome}: ver prancha do quadro.`,bx+20,y,8,F,MUT);}
++    T(pp,"Aterramento: "+ATERR[f.aterr],60,70,8);carimbo(pp,w,"Unifilar geral","UNI-01");
++    // por quadro
++    let pr=2;
++    R.quadros.forEach(q=>{if(!q.cs.length)return;const per=14;for(let k=0;k<q.cs.length;k+=per){const cs=q.cs.slice(k,k+per);
++      ({pp,w,h}=simPage(A3L,`Diagrama unifilar — ${q.q.nome}${q.cs.length>per?` (${k/per+1})`:""}`));
++      const yb=h-130,x1=90,x2=w-90,sp=(x2-x1)/cs.length;
++      pp.drawRectangle({x:x1-10,y:yb-3,width:x2-x1+20,height:6,color:INK});T(pp,`Barramento ${q.q.nome} — ${R.sys.nome}${q.f&&q.f.s?` — alimentador ${q.f.txt} mm², ${q.f.polos}P ${q.f.inom} A`:""}`,x1-10,yb+12,9,FB);
++      cs.forEach((o,j)=>{const x=x1+sp*j+sp/2;Ln(pp,x,yb,x,yb-20,1);brkSym(pp,x,yb-20);let y=yb-42;
++        if(o.dr){Ln(pp,x,y,x,y-8,1);Bx(pp,x-9,y-26,18,18,{fill:rgb(1,1,1)});TC(pp,"DR",x,y-20,6.5,FB);y-=26;}
++        if(o.mp){Ln(pp,x,y,x,y-8,1);Bx(pp,x-9,y-26,18,18,{fill:LG});TC(pp,o.partida==="inv"?"INV":o.partida==="soft"?"SS":o.partida==="yd"?"Y-D":"K",x,y-20,6,FB);y-=26;}
++        Ln(pp,x,y,x,yb-190,1);carga(pp,x,yb-200,o);
++        let ty=yb-225;const mw=sp-8;
++        T(pp,`C${o.i+1}`,x-mw/2,ty,8,FB,RED);ty-=11;
++        ty-=TW(pp,o.c.nome,x-mw/2,ty,mw,6.5,FB)*8+2;
++        ty-=TW(pp,`${fmt(o.P/1000,2)} kW · ${o.fases} · Ib ${fmt(o.ib,1)} A`,x-mw/2,ty,mw,6)*7.5+2;
++        ty-=TW(pp,o.s?`F/N/PE ${sec(o.s)}/${o.sn?sec(o.sn):"-"}/${o.spe?sec(o.spe):"PEN"} mm² · ${o.ed.nome}`:"sem solução",x-mw/2,ty,mw,6)*7.5+2;
++        ty-=TW(pp,protTxt(o),x-mw/2,ty,mw,6,F,ACC)*7.5+2;
++        TW(pp,o.s?`dV ${fmt(o.dvTot,2)} %`:"",x-mw/2,ty,mw,6,F,MUT);});
++      T(pp,"Diagrama gerado dos cálculos: conferir numeração, bornes e identificação dos dispositivos.",60,70,8,FB,RED);carimbo(pp,w,`Unifilar ${q.q.nome}`,`UNI-${String(pr++).padStart(2,"0")}`);}});
++  }
++  // ---- Multifilar / força e comando
++  function simMultifilar(){
++    const ms=R.out.filter(o=>o.mp);
++    if(!ms.length){const {pp,w}=simPage(A4L,"Diagramas multifilares");T(pp,"Não há motores no projeto: diagramas de força e comando não se aplicam.",60,440,11);carimbo(pp,w,"Multifilar","MUL-01");return;}
++    ms.forEach((o,k)=>{const {pp,w,h}=simPage(A4L,`Força e comando — C${o.i+1} ${o.c.nome}`);const m=o.mp;
++      const xs=[90,120,150].slice(0,o.L.nf),top=h-100;T(pp,"FORÇA",60,top+6,9,FB);
++      xs.forEach((x,i)=>{TC(pp,["L1","L2","L3"][i],x,top-2,8,FB);Ln(pp,x,top-8,x,120,1);});
++      const x0=xs[0]-14,wd=xs[xs.length-1]-xs[0]+28;
++      const blk=(y,lab,sub,fill=rgb(1,1,1))=>{Bx(pp,x0,y,wd,26,{fill,bw:1.2});TC(pp,lab,x0+wd/2,y+10,8,FB);if(sub)T(pp,sub,x0+wd+10,y+9,7.5);};
++      let y=top-60;
++      blk(y,o.prot==="fus"?"F1-F3":o.prot==="djm"?"Q1":"Q1",o.prot==="fus"?m.fusTxt:o.prot==="djm"?m.djmTxt:`Disjuntor ${o.L.polos}P ${o.inom} A curva ${o.curva}`);y-=50;
++      if(o.dr){blk(y,"DR",`IDR ${o.dr.polos}P ${o.dr.In} A ${o.dr.idn} mA tipo ${o.dr.tipo}`);y-=50;}
++      if(o.partida==="direta"||o.partida==="yd"){blk(y,"K1",`K1 ${m.cont[0].std} A AC-3 (linha)`,LG);y-=50;}
++      if(m.rele&&m.rele.f){blk(y,"F7",m.releTxt);y-=50;}
++      if(o.partida==="soft"){blk(y,"SOFT",`Soft-starter ${m.soft.std} A`,LG);y-=50;}
++      if(o.partida==="inv"){blk(y,"INV",`Inversor ${m.inv.std} A`,LG);y-=50;}
++      const mx=xs[Math.floor(xs.length/2)];Ci(pp,mx,95,22,{fill:rgb(1,1,1),bw:1.4});TC(pp,"M",mx,97,11,FB);TC(pp,o.L.nf===3?"3~":"1~",mx,84,8);
++      T(pp,`${fmt(m.cv,m.cv%1?1:0)} cv / ${fmt(m.kW,2)} kW · ${o.vref} V · In ${fmt(m.In1,1)} A`,mx+30,92,8);
++      if(o.partida==="yd"){Bx(pp,300,y+10,70,24,{fill:LG});TC(pp,`K2 ${m.cont[1].std} A`,335,y+19,7.5,FB);Bx(pp,300,y-30,70,24,{fill:LG});TC(pp,`K3 ${m.cont[2].std} A`,335,y-21,7.5,FB);
++        Ln(pp,x0+wd,y+22,300,y+22,0.8,INK,[3,2]);Ln(pp,370,y+22,400,y+22,0.8);T(pp,"K2: triângulo (W2-U2-V2)",405,y+19,7.5);Ln(pp,370,y-18,400,y-18,0.8);T(pp,"K3: estrela (fecha U2-V2-W2)",405,y-21,7.5);}
++      // comando
++      const cx=w-300;T(pp,`COMANDO — ${S.par.bobina}`,cx-40,top+6,9,FB);Ln(pp,cx,top-8,cx,110,1);TC(pp,"L",cx,top-2,8,FB);TC(pp,"N",cx,100,8,FB);
++      const el=(y,lab,fill=rgb(1,1,1))=>{Bx(pp,cx-45,y,90,18,{fill,bw:1});TC(pp,lab,cx,y+6,7,FB);};
++      let yc=top-50;el(yc,"F0 fusível cmd.");yc-=34;
++      if(o.partida==="soft"||o.partida==="inv"){el(yc,"S0 emergência NF");yc-=34;el(yc,"S1 liga → DI1");yc-=34;el(yc,o.partida==="inv"?"Inversor (DI)":"Soft (DI)",LG);
++        TW(pp,"Liga/desliga e emergência pelas entradas digitais do equipamento; parametrizar corrente nominal, rampas e proteções conforme o manual do fabricante.",cx+60,top-220,180,7.5);}
++      else{if(m.rele&&m.rele.f){el(yc,"F7 95-96 NF");yc-=34;}el(yc,"S0 desliga NF");yc-=34;el(yc,"S1 liga NA");Bx(pp,cx+60,yc,70,18);TC(pp,"K1 13-14 selo",cx+95,yc+6,7,FB);Ln(pp,cx+45,yc+9,cx+60,yc+9,0.8);yc-=34;
++        if(o.partida==="yd"){el(yc,"KT temporizador",LG);yc-=34;el(yc,"K1 · K2 · K3 bobinas",LG);TW(pp,"Sequência: S1 energiza K1 e K3 (estrela) e KT; após o tempo, KT desliga K3 e liga K2 (triângulo). K2 e K3 com intertravamento elétrico (contatos NF).",cx+60,top-300,180,7.5);}
++        else el(yc,"K1 bobina A1-A2",LG);}
++      T(pp,"Diagrama esquemático gerado dos cálculos: conferir bornes, numeração e intertravamentos.",60,40,8,FB,RED);carimbo(pp,w,`Força e comando C${o.i+1}`,`MUL-${String(k+1).padStart(2,"0")}`);});
++  }
++  // ---- Detalhes
++  function simDetalhes(){
++    const {pp,w,h}=simPage(A3L,"Detalhes construtivos típicos");const e=R.ent;
++    const fr=(x,t)=>{Bx(pp,x,120,340,h-230,{bc:GR});T(pp,t,x+10,h-128,10,FB);};
++    // 1 padrão de entrada
++    fr(40,"1 — Padrão de entrada e medição");Ln(pp,120,160,120,h-150,5,GR);T(pp,"Poste / pontalete",130,h-160,7.5,F,MUT);
++    Bx(pp,160,420,110,140,{bw:1.4,fill:LG});TC(pp,"Caixa de medição",215,540,8,FB);Bx(pp,190,470,50,40,{fill:rgb(1,1,1)});TC(pp,"kWh",215,486,8,FB);Bx(pp,195,430,40,26,{fill:rgb(1,1,1)});TC(pp,e.inom?`DG ${e.inom} A`:"DG",215,440,7,FB);
++    Ln(pp,215,420,215,200,2);T(pp,`Eletroduto de descida ${e.ed?e.ed.nome:""}`,222,320,7.5);Ln(pp,60,200,360,200,1.2,GR);T(pp,"Nível do solo",64,188,7,F,MUT);
++    Ln(pp,300,200,300,150,3,RED);T(pp,"Haste de aterramento",306,170,7.5,FB,RED);redU(pp,306,170,80);Ln(pp,215,260,300,200,1,ACC);T(pp,`Condutor de aterramento ${e.spe?sec(e.spe):(e.sn?sec(e.sn):"—")} mm² Cu`,230,238,7);
++    T(pp,"Altura da caixa: 1,50 m (confirmar no RIC)",60,140,7.5,FB,RED);redU(pp,60,140,170);
++    // 2 baixada
++    const x2=410;fr(x2,"2 — Eletrocalha e baixada em eletroduto");const g=Object.values(R.cans)[0];
++    Bx(pp,x2+40,h-230,260,26,{fill:LG,bw:1.4});T(pp,`Eletrocalha ${g?g.dim:"—"} com tampa, aço galvanizado`,x2+44,h-240,7.5);
++    Ln(pp,x2+170,h-230,x2+170,330,2);T(pp,`Eletroduto ${(R.out.find(o=>o.s)||{ed:{nome:"—"}}).ed.nome}`,x2+178,500,7.5);
++    Bx(pp,x2+150,300,40,30,{fill:rgb(1,1,1)});TC(pp,"Caixa 4x2",x2+170,285,7.5);Ln(pp,x2+40,200,x2+300,200,1.2,GR);
++    Ln(pp,x2+220,200,x2+220,300,0.6,RED,[2,2]);T(pp,"1,10 m (tomada) — confirmar",x2+224,250,7.5,FB,RED);
++    T(pp,"Suportes da eletrocalha a cada 1,5 m (máx.)",x2+40,h-270,7.5);T(pp,"Aterramento contínuo da eletrocalha ao BEP",x2+40,h-282,7.5);
++    // 3 aterramento
++    const x3=780;fr(x3,"3 — Aterramento e BEP");Ln(pp,x3+20,420,x3+320,420,1.2,GR);T(pp,"Nível do solo",x3+24,408,7,F,MUT);
++    [0,1,2].forEach(k=>{const x=x3+70+k*100;Ln(pp,x,420,x,300,4,GR);Ci(pp,x,420,6,{fill:LG});});Ln(pp,x3+70,410,x3+270,410,1.4,ACC);
++    T(pp,"3 hastes cobreadas 5/8\" x 2,4 m, espaçamento >= 2,4 m",x3+30,280,7.5,FB,RED);redU(pp,x3+30,280,240);
++    Bx(pp,x3+120,560,100,26,{fill:LG});TC(pp,"BEP",x3+170,570,9,FB);Ln(pp,x3+170,560,x3+170,420,1.4,ACC);
++    T(pp,`Esquema ${S.forn.aterr}`,x3+30,620,8,FB);T(pp,"Ligar ao BEP: PE/PEN do QGBT, massas, eletrocalhas,",x3+30,605,7.5);T(pp,"estruturas metálicas, silos, secador e SPDA.",x3+30,594,7.5);
++    T(pp,"Resistência de aterramento e número de hastes a definir por medição/projeto.",x3+30,250,7.5,FB,RED);
++    T(pp,"Detalhes típicos: dimensões e alturas supostas; ajustar ao RIC da distribuidora e ao projeto executivo.",60,90,9,FB,RED);
++    carimbo(pp,w,"Detalhes construtivos","DET-01");
++  }
++  // ---- Convenções
++  function simConv(){
++    const {pp,w,h}=simPage(A4,"Convenções e simbologia");let y=h-100;
++    const it=[["QD","Quadro de distribuição",(x,y)=>pp.drawRectangle({x:x-8,y:y-6,width:16,height:14,color:INK})],["ilum","Ponto de iluminação",(x,y)=>{Ci(pp,x,y,6);Ln(pp,x-4,y-4,x+4,y+4,0.8);Ln(pp,x-4,y+4,x+4,y-4,0.8);}],["tug","Tomada de uso geral",(x,y)=>Bx(pp,x-5,y-5,10,10)],["tue","Tomada de uso específico",(x,y)=>Bx(pp,x-5,y-5,10,10,{fill:INK})],["M","Motor",(x,y)=>{Ci(pp,x,y,8);TC(pp,"M",x,y-3,8,FB);}],
++      ["dj","Disjuntor termomagnético",(x,y)=>{Bx(pp,x-5,y-9,10,18,{fill:rgb(1,1,1)});Ln(pp,x-5,y-9,x+5,y+9,0.8);}],["dr","Interruptor diferencial-residual (DR)",(x,y)=>{Bx(pp,x-9,y-9,18,18);TC(pp,"DR",x,y-3,6.5,FB);}],["dps","Dispositivo de proteção contra surtos (DPS)",(x,y)=>{Bx(pp,x-9,y-7,18,14);TC(pp,"DPS",x,y-3,5.5,FB);}],
++      ["k","Contator / chave de partida",(x,y)=>{Bx(pp,x-9,y-7,18,14,{fill:LG});TC(pp,"K",x,y-3,7,FB);}],["f7","Relé térmico de sobrecarga",(x,y)=>{Bx(pp,x-9,y-7,18,14);TC(pp,"F7",x,y-3,6.5,FB);}],["kwh","Medidor de energia",(x,y)=>{Bx(pp,x-10,y-7,20,14);TC(pp,"kWh",x,y-3,5.5,FB);}],
++      ["can","Eletrocalha / canaleta",(x,y)=>Ln(pp,x-12,y,x+12,y,3,ACC)],["ed","Eletroduto (baixada)",(x,y)=>Ln(pp,x-12,y,x+12,y,0.8,INK,[2,2])],["gnd","Aterramento",(x,y)=>{Ln(pp,x,y+8,x,y,1);[0,1,2].forEach(k=>Ln(pp,x-8+k*3,y-k*3,x+8-k*3,y-k*3,1));}]];
++    it.forEach(([,l,fn])=>{fn(80,y+3);T(pp,l,110,y,10);Ln(pp,50,y-10,w-50,y-10,0.3,LN);y-=30;});
++    T(pp,"Simbologia simplificada inspirada na NBR 5444: substituir pela legenda padronizada do escritório.",50,60,8.5,FB,RED);
++  }
+   // ===== SEPARADORES (fluxo da Aula 2, slide 7) =====
+   const CO=await doc.embedFont(StandardFonts.Courier);
+   const SBG=rgb(0.059,0.239,0.18),SAMB=rgb(0.949,0.698,0.2),SCR=rgb(0.957,0.937,0.886),SSOFT=rgb(0.624,0.769,0.702),SDIM=rgb(0.114,0.353,0.271);
+@@ -788,7 +988,7 @@ async function gerarPDF(){
+     FLUXO.forEach((l,k)=>{const cx=x+k*gw;page.drawRectangle({x:cx,y:fy+10,width:gw-3,height:6,color:k===fi?SAMB:(k<fi?SSOFT:SDIM)});page.drawText(pt(l),{x:cx,y:fy-2,size:6.3,font:k===fi?FB:F,color:k===fi?SCR:SSOFT});});
+     page.drawText(pt(`${S.id.obra||"Projeto elétrico"}  ·  ${S.id.cliente||""}`).slice(0,100),{x,y:40,size:8,font:F,color:SSOFT});
+   }
+-  const arqs=k=>S.anexos[k].length?S.anexos[k].map(f=>"Arquivo anexado: "+f.name):["Pendente: nenhum arquivo anexado"];
++  const arqs=k=>S.anexos[k].length?S.anexos[k].map(f=>"Arquivo anexado: "+f.name):[simOn?"Documento SIMULADO gerado com os dados do projeto — corrigir e substituir":"Pendente: nenhum arquivo anexado"];
+ 
+   // 1 · ART
+   setP(0.1);
+@@ -801,7 +1001,7 @@ async function gerarPDF(){
+       }catch(err){pendencia(titulo,`Não foi possível ler "${f.name}" (arquivo protegido ou corrompido).`);}
+     }return true;};
+   separador("Anotação de Responsabilidade Técnica","Item L","Documento registrado no CREA que vincula o responsável técnico ao projeto. É o primeiro documento entregue à distribuidora.",[`Responsável técnico: ${id.rt||"—"} — CREA ${id.crea||"—"}`,`ART nº ${id.art||"não informado"}`,...arqs("art")],0);
+-  if(!(await anexar("art","ART — Anotação de Responsabilidade Técnica")))pendencia("ART — Anotação de Responsabilidade Técnica","Anexe a ART de projeto registrada no CREA na etapa 10.");
++  if(!(await anexar("art","ART — Anotação de Responsabilidade Técnica"))){if(simOn)simART();else pendencia("ART — Anotação de Responsabilidade Técnica","Anexe a ART de projeto registrada no CREA na etapa 10.");};
+ 
+   // 2 · SOLICITAÇÃO
+   setP(0.2);
+@@ -857,8 +1057,8 @@ async function gerarPDF(){
+   // 5 · PLANTAS
+   setP(0.45,"Incluindo plantas e diagramas...");
+   separador("Plantas","Item D","Planta de situação e plantas baixas com pontos de utilização, quadros, rotas de canaletas e baixadas.",[...arqs("situacao").map(x=>"Situação — "+x),...arqs("arquitetonico").map(x=>"Plantas baixas — "+x)],4);
+-  if(!(await anexar("situacao","Planta de situação")))pendencia("Planta de situação","Anexe a planta de situação na etapa 02.");
+-  if(!(await anexar("arquitetonico","Plantas baixas com pontos")))pendencia("Plantas baixas com pontos","Anexe as plantas com pontos, quadros e rotas na etapa 08.");
++  if(!(await anexar("situacao","Planta de situação")))simOn?simSituacao():pendencia("Planta de situação","Anexe a planta de situação na etapa 02.");
++  if(!(await anexar("arquitetonico","Plantas baixas com pontos")))simOn?simPlanta():pendencia("Plantas baixas com pontos","Anexe as plantas com pontos, quadros e rotas na etapa 08.");
+ 
+   // 6 · QUADROS DE DISTRIBUIÇÃO DE CARGAS
+   separador("Quadros de distribuição de cargas","Item F","Tabelas de cada quadro com a distribuição dos circuitos pelas fases, seções, disjuntores e eletrodutos.",R.quadros.filter(q=>q.cs.length).map(q=>`${q.q.nome}: ${q.cs.length} circuito(s), ${fmt(q.S,2)} kVA com reserva`),5);
+@@ -871,14 +1071,14 @@ async function gerarPDF(){
+   // 7 · UNIFILAR
+   setP(0.6);
+   separador("Diagrama unifilar","Item F","Representa a instalação em uma linha por circuito, do ponto de entrega aos quadros terminais, com manobra e proteção.",arqs("unifilar"),6);
+-  if(!(await anexar("unifilar","Diagrama unifilar geral")))pendencia("Diagrama unifilar geral","Anexe o diagrama unifilar na etapa 08.");
++  if(!(await anexar("unifilar","Diagrama unifilar geral")))simOn?simUnifilar():pendencia("Diagrama unifilar geral","Anexe o diagrama unifilar na etapa 08.");
+   // 8 · MULTIFILAR
+   separador("Diagramas multifilares","Item F","Cada condutor desenhado: quadros de força, partidas de motores e intertravamentos. É o documento usado na montagem.",arqs("multifilar"),7);
+-  if(!(await anexar("multifilar","Diagramas multifilares / força e comando")))pendencia("Diagramas multifilares / força e comando","Anexe os diagramas dos quadros e motores na etapa 08.");
++  if(!(await anexar("multifilar","Diagramas multifilares / força e comando")))simOn?simMultifilar():pendencia("Diagramas multifilares / força e comando","Anexe os diagramas dos quadros e motores na etapa 08.");
+   // 9 · DETALHES E CONVENÇÕES
+   separador("Detalhes construtivos e convenções","Item G","Detalhes de entrada de serviço, medição, caixas de passagem, aterramento e SPDA, e a legenda de símbolos (NBR 5444).",[...arqs("detalhes").map(x=>"Detalhes — "+x),...(S.anexos.convencoes.length?arqs("convencoes").map(x=>"Convenções — "+x):["Convenções: incluídas nas pranchas"])],8);
+-  if(!(await anexar("detalhes","Detalhes construtivos")))pendencia("Detalhes construtivos","Anexe os detalhes de entrada, medição e aterramento na etapa 08.");
+-  await anexar("convencoes","Convenções");
++  if(!(await anexar("detalhes","Detalhes construtivos")))simOn?simDetalhes():pendencia("Detalhes construtivos","Anexe os detalhes de entrada, medição e aterramento na etapa 08.");
++  if(!(await anexar("convencoes","Convenções"))&&simOn)simConv();
+ 
+   // 10 · ESPECIFICAÇÕES
+   setP(0.8,"Especificações e lista de materiais...");
+diff --git a/projetos/mini-industria-exemplo.json b/projetos/mini-industria-exemplo.json
+index e20d756..57034ba 100644
+--- a/projetos/mini-industria-exemplo.json
++++ b/projetos/mini-industria-exemplo.json
+@@ -60,7 +60,8 @@
+     "invLim": 1.5,
+     "bobina": "220 Vca",
+     "icc": 6,
+-    "dpsSempre": false
++    "dpsSempre": false,
++    "simular": true
+   },
+   "quadros": [
+     {
+-- 
+2.43.0
+

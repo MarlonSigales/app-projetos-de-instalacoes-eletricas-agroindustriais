@@ -60,7 +60,8 @@
     "invLim": 1.5,
     "bobina": "220 Vca",
     "icc": 6,
-    "dpsSempre": false
+    "dpsSempre": false,
+    "simular": true
   },
   "quadros": [
     {
