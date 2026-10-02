@@ -20,6 +20,7 @@ CONTEÚDO
   js/app.js             roteiro, cálculos (condutores, proteção e partida de motores),
                         importação/exportação JSON e PDF
   js/servidor.js        integração com o api.php
+  testes/testar.py      testes automáticos (motor V8 via mini-racer, sem navegador)
   js/vendor/            pdf-lib 1.17.1 (licença MIT) — geração do PDF
   js/logos.js           logotipos da contracapa do PDF, em base64 (gerado)
   img/logos/            logotipos originais (lia, ea, ceng, ufpel .png) e o script
@@ -48,8 +49,23 @@ OBSERVAÇÕES
   - Quadros: cada quadro informa o quadro de origem ("Alimentado por") e o
     comprimento do trecho desde ele. O alimentador de um quadro intermediário
     soma a demanda dos sub-quadros, e a queda de tensão se acumula na cadeia.
-  - SPDA: o nível de proteção adotado deve vir da análise de risco completa
-    da NBR 5419-2; a ferramenta calcula AD, ND e a geometria da NBR 5419-3.
+  - SPDA: análise de risco R1 (NBR 5419-2, componentes RA, RB, RU e RV) e
+    geometria da NBR 5419-3. RC, RM, RW e RZ não são calculadas.
+  - Verificações incluídas: curto-circuito em cada quadro (Icn dos dispositivos),
+    seccionamento automático (5.1.2.2.4, comprimento máximo dos circuitos),
+    k²S² (5.3.5.5.2), seletividade (alimentadores com In >= 1,6 × jusante),
+    queda de tensão com reatância, aterramento (hastes/anel, Dwight) e
+    equipotencialização, correção do fator de potência, influências externas
+    (IP por ambiente/quadro), áreas com poeira combustível (Ex), iluminação de
+    emergência (NBR 10898) e subestação (NBR 14039, valores típicos).
+  - Orçamento: lista de materiais completa (pontos, acessórios, quadros,
+    suportes) e horas estimadas por produtividade (tabela PROD em js/tabelas.js).
+  - Planta em escala real: posições X/Y dos ambientes e quadros; exportação DXF.
+
+TESTES AUTOMÁTICOS
+  pip install mini-racer
+  python testes/testar.py          verificações de cálculo, telas, JSON e DXF
+  python testes/testar.py --pdf    também gera testes/saida/exemplo.pdf
   - Diâmetros de cabos/eletrodutos/eletrocalhas são valores típicos de catálogo:
     confira com o fabricante. As tabelas da NBR 5410 (36, 38, 40, 41, 42, 45, 46, 47, 48, 58)
     foram conferidas com o texto da ABNT NBR 5410:2004.

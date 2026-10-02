@@ -69,32 +69,55 @@
     "reserva": 20,
     "sobra": 10,
     "neutroRed": false,
-    "ocupCan": 40
+    "ocupCan": 40,
+    "espSupCan": 1.5,
+    "baixAparente": true,
+    "xCabo": 0.08,
+    "rTerra": 10,
+    "nEquip": 6,
+    "lEquip": 10,
+    "corrFP": true,
+    "fpAlvo": 0.92,
+    "emerg": true,
+    "zTrafo": 4.5,
+    "tipoSub": "poste"
   },
   "quadros": [
     {
       "nome": "QGBT",
       "L": 0,
       "met": "B1",
-      "pai": ""
+      "pai": "",
+      "infl": "seco",
+      "x": 27,
+      "y": 12
     },
     {
       "nome": "QF-PROD",
       "L": 25,
       "met": "D",
-      "pai": "QGBT"
+      "pai": "QGBT",
+      "infl": "poeira",
+      "x": 22,
+      "y": 6
     },
     {
       "nome": "QL-ADM",
       "L": 18,
       "met": "D",
-      "pai": "QGBT"
+      "pai": "QGBT",
+      "infl": "seco",
+      "x": 29,
+      "y": 9
     },
     {
       "nome": "QD-SECADOR",
       "L": 15,
       "met": "B1",
-      "pai": "QF-PROD"
+      "pai": "QF-PROD",
+      "infl": "poeiraAlta",
+      "x": 4,
+      "y": 2
     }
   ],
   "ambientes": [
@@ -110,7 +133,12 @@
       "uf": 0.65,
       "mf": 0.8,
       "espTomadas": 5,
-      "espLum": 1.5
+      "espLum": 1.5,
+      "infl": "poeiraAlta",
+      "zona": "22",
+      "saidas": 2,
+      "x": 0,
+      "y": 0
     },
     {
       "id": "moagem",
@@ -124,7 +152,12 @@
       "uf": 0.6,
       "mf": 0.8,
       "espTomadas": 5,
-      "espLum": 1.5
+      "espLum": 1.5,
+      "infl": "poeiraAlta",
+      "zona": "22",
+      "saidas": 1,
+      "x": 24,
+      "y": 0
     },
     {
       "id": "escritorio",
@@ -138,7 +171,12 @@
       "uf": 0.65,
       "mf": 0.8,
       "espTomadas": 5,
-      "espLum": 1.5
+      "espLum": 1.5,
+      "infl": "seco",
+      "zona": "",
+      "saidas": 1,
+      "x": 24,
+      "y": 8
     }
   ],
   "circ": [
@@ -355,19 +393,19 @@
       {
         "cat": "eng",
         "d": "Engenharia — projeto, memoriais e ART",
-        "h": 40,
+        "h": 50,
         "vh": 180
       },
       {
         "cat": "serv",
         "d": "Serviço — execução e montagem da instalação",
-        "h": 160,
+        "h": 250,
         "vh": 75
       },
       {
         "cat": "impl",
         "d": "Implantação — testes, comissionamento e partida assistida",
-        "h": 16,
+        "h": 20,
         "vh": 150
       }
     ],
@@ -379,14 +417,34 @@
   },
   "estrutura": {
     "L": 36,
-    "W": 12,
+    "W": 13,
     "H": 7,
     "ng": 5,
     "cd": 0.5,
-    "np": "III"
+    "np": "III",
+    "rt": "1e-2",
+    "rp": "0.5",
+    "rf": "0.001",
+    "hz": "1",
+    "LF": "0.02",
+    "horas": 10,
+    "LL": 300,
+    "CI": "aerea",
+    "CE": "rural",
+    "CT": "bt",
+    "PTA": "0.1",
+    "PTU": "0.1"
   },
+  "revisoes": [
+    {
+      "rev": "00",
+      "data": "2026-10-02",
+      "desc": "Emissão inicial (exemplo)",
+      "autor": "Turma 2026.2"
+    }
+  ],
   "chk": {},
   "exemplo": true,
   "formato": "projeto-eletrico-agro",
-  "exportadoEm": "2026-10-02T14:58:12.342Z"
+  "exportadoEm": "2026-10-02T19:04:07.315Z"
 }

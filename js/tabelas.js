@@ -232,3 +232,68 @@ const LIG={
 const TIPOS={ilum:"Iluminação",tug:"Tomadas de uso geral (TUG)",tue:"Tomada/uso específico (TUE)",motor:"Motor"};
 const TIPO_CURTO={ilum:"Ilum.",tug:"TUG",tue:"TUE",motor:"Motor"};
 
+
+/* ============================================================
+   INFLUÊNCIAS EXTERNAS (NBR 5410, Tab. 32) → grau de proteção mínimo
+   ============================================================ */
+const INFL={
+  seco:{t:"Interno seco (AD1, AE1)",ip:"IP20",ipQ:"IP40",cod:"AD1 · AE1",obs:"Ambiente interno seco, sem poeira significativa."},
+  poeira:{t:"Poeira leve/média (AE4–AE5)",ip:"IP54",ipQ:"IP54",cod:"AE4 · AE5",obs:"Deposição de poeira (galpões, beneficiamento): invólucros com proteção contra poeira."},
+  poeiraAlta:{t:"Poeira intensa (AE6)",ip:"IP65",ipQ:"IP65",cod:"AE6",obs:"Poeira intensa (moagem, secadores, silos): invólucros totalmente protegidos contra poeira."},
+  umido:{t:"Úmido / respingos (AD3–AD4)",ip:"IP44",ipQ:"IP54",cod:"AD3 · AD4",obs:"Respingos e condensação: tomadas e luminárias com tampa e vedação."},
+  lavado:{t:"Lavado com jatos (AD5–AD6)",ip:"IP65",ipQ:"IP66",cod:"AD5 · AD6",obs:"Lavagem com jatos d'água (salas de ordenha, abatedouros, laticínios)."},
+  corrosivo:{t:"Corrosivo (AF2–AF3: amônia, aviários, pocilgas)",ip:"IP65",ipQ:"IP65",cod:"AF2 · AF3",obs:"Agentes corrosivos: invólucros em poliéster/policarbonato ou aço inox, ferragens inoxidáveis."},
+  externo:{t:"Externo (AD4, AN2, AQ2)",ip:"IP65",ipQ:"IP65",cod:"AD4 · AN2 · AQ2",obs:"Exposto à chuva e radiação solar: materiais resistentes a UV."},
+  animais:{t:"Presença de animais (BA, AL)",ip:"IP55",ipQ:"IP55",cod:"AL2 · BA5",obs:"Instalações para animais (5.1.3.2.2 e Seção 9): DR 30 mA, equipotencialização suplementar do piso."}
+};
+// Áreas com poeira combustível (NBR IEC 60079-10-2): grãos, farelos, rações, açúcar
+const ZONAS={"":{t:"Não classificada",epl:"",rf:null},
+  "22":{t:"Zona 22 — poeira só em operação anormal",epl:"EPL Dc (ou Db/Da), IP5X/IP6X",rf:1e-3},
+  "21":{t:"Zona 21 — poeira ocasional em operação normal",epl:"EPL Db (ou Da), IP6X",rf:1e-1},
+  "20":{t:"Zona 20 — nuvem de poeira contínua/frequente",epl:"EPL Da, IP6X",rf:1}};
+
+/* ============================================================
+   CURTO-CIRCUITO, SELETIVIDADE, ATERRAMENTO
+   ============================================================ */
+const ICN_STD=[3,4.5,6,10,15,20,25,36,50,65,85,100];          // capacidades de interrupção padronizadas (kA)
+const IM_CURVA={B:5,C:10,D:20};                                 // múltiplo de In para disparo magnético garantido (NBR NM 60898)
+const RHO20=0.0178;                                             // cobre a 20 °C (Ω·mm²/m) — curto máximo
+// Tab. 52 — seção mínima do condutor de aterramento enterrado (mm², cobre)
+const TERRA_MIN={protegido:16,naoProtegido:25};
+
+/* ============================================================
+   CORREÇÃO DO FATOR DE POTÊNCIA (REN ANEEL 1.000/2021: FP de referência 0,92)
+   ============================================================ */
+const CAP_STD=[2.5,5,7.5,10,12.5,15,20,25,30,40,50,60,75,100,125,150,200,250,300]; // kvar
+
+/* ============================================================
+   SUBESTAÇÃO (NBR 14039) — valores típicos, confirmar com o RIC
+   ============================================================ */
+const TRAFO_STD=[15,30,45,75,112.5,150,225,300,500,750,1000,1500,2000,2500];       // kVA
+const ELO_STD=[["1H",1],["2H",2],["3H",3],["5H",5],["6K",6],["8K",8],["10K",10],["12K",12],["15K",15],["20K",20],["25K",25],["30K",30],["40K",40],["50K",50],["65K",65],["80K",80],["100K",100]];
+function paraRaiosUr(kV){return kV<=15?12:kV<=25?21:kV<=36?30:Math.ceil(kV*0.8);}    // Ur típica dos para-raios de distribuição (kV)
+
+/* ============================================================
+   NBR 5419-2:2015 — análise de risco R1 (perda de vida humana), tabelas dos Anexos A, B e C
+   ============================================================ */
+const R5419={
+  PB:{nenhum:1,IV:0.2,III:0.1,II:0.05,I:0.02},                         // Tab. B.2
+  PEB:{nenhum:1,IV:0.05,III:0.05,II:0.02,I:0.01},                       // Tab. B.7 (DPS classe I coordenados com o NP)
+  PTA:{"1":"1 — nenhuma medida","0.1":"0,1 — avisos de alerta","0.01":"0,01 — isolação elétrica ou equipotencialização do solo","0":"0 — barreiras ou estrutura usada como descida"},
+  rt:{"1e-2":"10⁻² — terra agrícola, concreto","1e-3":"10⁻³ — mármore, cerâmica","1e-4":"10⁻⁴ — cascalho, carpete","1e-5":"10⁻⁵ — asfalto, madeira, linóleo"},
+  rp:{"1":"1 — nenhuma providência","0.5":"0,5 — extintores, hidrantes, alarme manual, rota de fuga","0.2":"0,2 — extinção automática ou alarme automático"},
+  rf:{"1":"1 — explosão: zonas 0/20 ou explosivos","0.1":"10⁻¹ — explosão zonas 1/21 · incêndio alto","0.01":"10⁻² — risco de incêndio normal","0.001":"10⁻³ — zonas 2/22 · incêndio baixo","0":"0 — sem risco de incêndio"},
+  hz:{"1":"1 — sem perigo especial","2":"2 — baixo pânico (até 2 pavimentos, < 100 pessoas)","5":"5 — pânico médio ou evacuação difícil","10":"10 — alto nível de pânico"},
+  LF:{"0.1":"10⁻¹ — risco de explosão, hospital, hotel, escola","0.05":"5×10⁻² — entretenimento público, igreja, museu","0.02":"2×10⁻² — industrial, comercial","0.01":"10⁻² — outros (rural, depósitos)"},
+  CI:{aerea:["Aérea",1],enterrada:["Enterrada",0.5],malha:["Enterrada em malha de aterramento",0.01]},
+  CE:{rural:["Rural",1],suburbano:["Suburbano",0.5],urbano:["Urbano",0.1],urbanoAlto:["Urbano, edifícios > 20 m",0.01]},
+  CT:{bt:["Linha BT",1],at:["Linha AT com transformador AT/BT",0.2]},
+  LT:1e-2,RT:1e-5
+};
+
+/* ============================================================
+   PRODUTIVIDADE DE MÃO DE OBRA (h por unidade) — referências típicas de orçamento, ajustar à equipe
+   ============================================================ */
+const PROD={caboFino:0.04,caboMedio:0.08,caboGrosso:0.15,eletrodutoAparente:0.30,eletrodutoEmbutido:0.40,eletrodutoEnterrado:0.20,
+  eletrocalha:0.50,ponto:0.60,disjuntor:0.30,dr:0.40,quadroBase:4,quadroCirc:0.40,motorDireta:3,motorEspecial:6,spdaCabo:0.15,haste:1.0,
+  capacitor:6,emergencia:0.5,teste:0.5,engBase:16,engCirc:0.6,engQuadro:2,engLum:8,engSpda:12,engMT:16,implBase:8,implMotor:1.5};
