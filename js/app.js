@@ -79,6 +79,14 @@ function sample(){
   s.forn.rhoEletrica=350;
   return s;
 }
+// créditos do software (contracapa do PDF, rodapé da página e LICENCA.txt)
+const CREDITOS={
+  software:"Software de Apoio a Projetos de Instalações Elétricas Agroindustriais",
+  lab:"Laboratório de Instrumentação Agrícola",
+  resp:["Marlon Soares Sigales","Ádamo de Souza Araújo","Ricardo Scherer Pohndorf"],
+  repo:"https://github.com/MarlonSigales/app-projetos-de-instalacoes-eletricas-agroindustriais",
+  licenca:"Uso livre e gratuito, por conta e risco do utilizador. O software é fornecido no estado em que se encontra, sem garantia de qualquer natureza; os autores e a UFPel não se responsabilizam por danos ou prejuízos decorrentes do seu uso. Os resultados são de apoio ao projeto e devem ser verificados por profissional legalmente habilitado, que responde tecnicamente pelo projeto. Não são permitidas modificações, redistribuição de versões modificadas ou obras derivadas fora do repositório original (github.com/MarlonSigales/app-projetos-de-instalacoes-eletricas-agroindustriais); sugestões e contribuições devem ser feitas no repositório oficial."
+};
 let S;
 const LSKEY="projeto-agro-eletrico-v2";
 function load(){
@@ -1119,17 +1127,47 @@ async function gerarPDF(){
   function pendencia(titulo,desc){newPage(false,titulo);pg.drawText(pt(titulo),{x:M,y:y-18,size:18,font:FB,color:INK});y-=40;pg.drawRectangle({x:M,y:y-70,width:W-2*M,height:70,borderColor:rgb(0.6,0.36,0),borderWidth:1.2,color:rgb(0.97,0.92,0.84)});pg.drawText(pt("DOCUMENTO PENDENTE"),{x:M+14,y:y-26,size:12,font:FB,color:rgb(0.6,0.36,0)});pg.drawText(pt(desc),{x:M+14,y:y-46,size:9.5,font:F,color:INK});}
   const id=S.id,sys=R.sys,p=S.par;
 
-  // CAPA
-  newPage(false,"Capa");
-  const capaVerde=rgb(0.059,0.239,0.18),capaOuro=rgb(0.949,0.698,0.2),capaClaro=rgb(0.957,0.937,0.886);
-  pg.drawRectangle({x:0,y:0,width:W,height:H,color:capaVerde});pg.drawRectangle({x:0,y:0,width:31,height:H,color:capaOuro});
-  pg.drawText(pt("PROJETO AGROINDUSTRIAL  /  INSTALAÇÕES"),{x:M,y:H-M-24,size:9,font:FB,color:capaOuro});
-  let yy=H-M-82;for(const l of wrap(id.obra||"Obra",FB,25,W-2*M)){pg.drawText(l,{x:M,y:yy,size:25,font:FB,color:capaClaro});yy-=30;}
-  for(const l of wrap(id.atividade||"",F,11,W-2*M)){pg.drawText(l,{x:M,y:yy,size:11,font:F,color:rgb(0.75,0.86,0.8)});yy-=15;}
-  const escopo=[S.projetos.eletrico&&"Instalações elétricas",S.projetos.luminotecnico&&"Luminotécnico",S.projetos.spda&&"SPDA / análise de risco"].filter(Boolean).join("  ·  ")||"Escopo não selecionado";
-  const alturaCartao=Math.min(490,yy-180);pg.drawRectangle({x:M-8,y:yy-24-alturaCartao,width:W-2*M+16,height:alturaCartao,color:capaClaro});
-  y=yy-26;kv([["Cliente / proprietário",id.cliente||"—"],["Local",`${id.local||"—"} — ${id.municipio||""}`],["Atividade",id.atividade||"—"],["Unidade consumidora",id.uc||"—"],["Distribuidora",id.distribuidora||"—"],["Classificação",`${R.cls.classeT} / ${R.cls.subclasse} — Grupo ${R.cls.grupo}, subgrupo ${R.cls.sub}`],["Alimentação",sys.nome],["Escopo",escopo],["Carga instalada / demanda",`${fmt(R.inst,2)} kW / ${fmt(R.ent.S,2)} kVA c/ reserva`],["Quadros / circuitos",`${S.quadros.length} quadros${R.quadros.filter(q=>q.nivel>1).length?` (${R.quadros.filter(q=>q.nivel>1).length} sub-quadro(s))`:""} / ${R.out.length} circuitos`],["Ambientes cadastrados",`${S.ambientes.length} (${fmt0(S.ambientes.reduce((a,x)=>a+calcularAmbiente(x).area,0))} m²)`],["Responsável técnico",`${id.rt||"—"} — CREA ${id.crea||"—"}`],["ART",id.art||"—"],["Data",id.data||"—"]]);
-  pg.drawText(pt("DOCUMENTO TÉCNICO  ·  CONFERIR PREMISSAS, PRANCHAS E DADOS DE CAMPO"),{x:M,y:78,size:7.5,font:FB,color:capaOuro});
+  // CAPA — mesmas cores das capas de seção: verde, faixa âmbar e creme
+  const CO=await doc.embedFont(StandardFonts.Courier);
+  const CV=rgb(0.059,0.239,0.18),CA=rgb(0.949,0.698,0.2),CC=rgb(0.957,0.937,0.886),CS=rgb(0.624,0.769,0.702),CD=rgb(0.114,0.353,0.271);
+  const dT=(pp,s,x,y,size,font,color)=>pp.drawText(pt(s),{x,y,size,font,color});
+  const dTC=(pp,s,cx,y,size,font,color)=>{const t=pt(s);pp.drawText(t,{x:cx-font.widthOfTextAtSize(t,size)/2,y,size,font,color});};
+  const dTR=(pp,s,xr,y,size,font,color)=>{const t=pt(s);pp.drawText(t,{x:xr-font.widthOfTextAtSize(t,size),y,size,font,color});};
+  const aneis=(pp,cx,cy,rs)=>rs.forEach(r=>pp.drawCircle({x:cx,y:cy,size:r,borderColor:CD,borderWidth:0.8}));
+  const dataLonga=new Date((id.data||new Date().toISOString().slice(0,10))+"T12:00:00").toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"});
+  {newPage(false,"Capa");const X=58,XR=W-40;
+    pg.drawRectangle({x:0,y:0,width:W,height:H,color:CV});aneis(pg,W-20,H-250,[110,150,190,230]);
+    // cabeçalho
+    dT(pg,"PROJETO DE INSTALAÇÕES ELÉTRICAS",X,H-52,9,CO,CA);dTR(pg,`REV. 00  ·  ${id.data||""}`,XR,H-52,8,CO,CS);
+    pg.drawLine({start:{x:X,y:H-64},end:{x:XR,y:H-64},thickness:0.6,color:CD});
+    // título
+    let yy=H-128;let fs=30,ls=wrap(id.obra||"Obra",FB,fs,XR-X-60);while(ls.length>3&&fs>20){fs-=2;ls=wrap(id.obra||"Obra",FB,fs,XR-X-60);}
+    ls.forEach(l=>{pg.drawText(l,{x:X,y:yy,size:fs,font:FB,color:CC});yy-=fs*1.12;});
+    pg.drawRectangle({x:X,y:yy+fs*0.35,width:70,height:4,color:CA});yy-=16;
+    wrap(id.atividade||"",F,12,XR-X-60).slice(0,2).forEach(l=>{pg.drawText(l,{x:X,y:yy,size:12,font:F,color:CS});yy-=16;});
+    // escopo
+    yy-=14;let cx=X;[["INSTALAÇÕES ELÉTRICAS","NBR 5410"],S.projetos.luminotecnico&&["LUMINOTÉCNICO","NBR ISO/CIE 8995-1"],S.projetos.spda&&["SPDA","NBR 5419"]].filter(Boolean).forEach(([a,n])=>{
+      const t=pt(a),w1=FB.widthOfTextAtSize(t,8),w2=CO.widthOfTextAtSize(pt(n),7),cw=w1+w2+26;
+      pg.drawRectangle({x:cx,y:yy-7,width:cw,height:20,borderColor:CA,borderWidth:0.9});pg.drawText(t,{x:cx+8,y:yy,size:8,font:FB,color:CC});pg.drawText(pt(n),{x:cx+18+w1,y:yy,size:7,font:CO,color:CA});cx+=cw+8;});
+    // números-chave
+    yy-=40;const fh=66,cw=(XR-X)/4,nSub=R.quadros.filter(q=>q.nivel>1).length;
+    pg.drawLine({start:{x:X,y:yy},end:{x:XR,y:yy},thickness:0.6,color:CD});pg.drawLine({start:{x:X,y:yy-fh},end:{x:XR,y:yy-fh},thickness:0.6,color:CD});
+    [[fmt(R.inst,2),"kW","CARGA INSTALADA"],[fmt(R.ent.S,2),"kVA","DEMANDA C/ RESERVA"],[String(S.quadros.length),nSub?`(${nSub} sub)`:"","QUADROS"],[String(R.out.length),"","CIRCUITOS"]].forEach(([v,u,l],k)=>{
+      const x0=X+k*cw+(k?14:0);if(k)pg.drawLine({start:{x:X+k*cw,y:yy-10},end:{x:X+k*cw,y:yy-fh+10},thickness:0.6,color:CD});
+      pg.drawText(pt(v),{x:x0,y:yy-36,size:22,font:FB,color:CC});if(u)pg.drawText(pt(u),{x:x0+FB.widthOfTextAtSize(pt(v),22)+4,y:yy-36,size:9,font:F,color:CS});
+      pg.drawText(pt(l),{x:x0,y:yy-54,size:7,font:CO,color:CA});});
+    // dados do projeto em duas colunas
+    yy-=fh+22;const gw=(XR-X-24)/2;
+    const col=(x,rows)=>{let y2=yy;rows.forEach(([l,v])=>{pg.drawText(pt(l),{x,y:y2,size:6.5,font:CO,color:CS});const vl=wrap(v||"—",F,9.5,gw).slice(0,2);vl.forEach((t,j)=>pg.drawText(t,{x,y:y2-13-j*12,size:9.5,font:F,color:CC}));y2-=13+vl.length*12+7;pg.drawLine({start:{x,y:y2+4},end:{x:x+gw,y:y2+4},thickness:0.4,color:CD});y2-=6;});};
+    col(X,[["CLIENTE / PROPRIETÁRIO",id.cliente],["LOCALIZAÇÃO",[id.local,id.municipio].filter(Boolean).join(" — ")],["UNIDADE CONSUMIDORA",id.uc],["DISTRIBUIDORA",id.distribuidora],["CLASSIFICAÇÃO (REN ANEEL 1.000/2021)",`${R.cls.classeT} / ${R.cls.subclasse} — Grupo ${R.cls.grupo}, subgrupo ${R.cls.sub}`]]);
+    col(X+gw+24,[["ALIMENTAÇÃO",sys.nome],["ATENDIMENTO",S.forn.atend==="MT"?`Tensão primária ${fmt(+S.forn.tensaoPrim,1)} kV — ${R.cls.modalidade}`:`Tensão secundária — ${R.cls.modalidade}`],["ESQUEMA DE ATERRAMENTO",ATERR[S.forn.aterr]],["AMBIENTES",`${S.ambientes.length} ambiente(s), ${fmt0(S.ambientes.reduce((a,x)=>a+calcularAmbiente(x).area,0))} m²`],["ART",id.art||"a emitir"]]);
+    // rodapé creme: responsabilidade técnica
+    const fb=128,rw=(XR-X)/3;pg.drawRectangle({x:0,y:0,width:W,height:fb,color:CC});
+    [["RESPONSÁVEL TÉCNICO",id.rt||"—",`CREA ${id.crea||"—"}`],["PROJETISTA",id.projetista||id.rt||"—",""],["EMISSÃO",dataLonga,"Revisão 00"]].forEach(([l,v,s2],k)=>{const x=X+k*rw;
+      pg.drawText(pt(l),{x,y:fb-32,size:6.5,font:CO,color:CD});wrap(v,FB,10.5,rw-14).slice(0,2).forEach((t,j)=>pg.drawText(t,{x,y:fb-48-j*13,size:10.5,font:FB,color:CV}));if(s2)pg.drawText(pt(s2),{x,y:fb-78,size:8.5,font:F,color:CD});});
+    pg.drawLine({start:{x:X,y:30},end:{x:XR,y:30},thickness:0.5,color:CS});
+    dT(pg,"DOCUMENTO TÉCNICO  ·  CONFERIR PREMISSAS, PRANCHAS E DADOS DE CAMPO",X,16,7,CO,CD);
+    pg.drawRectangle({x:0,y:0,width:22,height:H,color:CA});}
   const sumIndex=1; // sumário será inserido aqui depois
 
   // ===== DOCUMENTOS SIMULADOS (quando o anexo não foi enviado) =====
@@ -1401,7 +1439,6 @@ async function gerarPDF(){
     T(pp,"Simbologia simplificada inspirada na NBR 5444: substituir pela legenda padronizada do escritório.",50,60,8.5,FB,RED);
   }
   // ===== SEPARADORES (fluxo da Aula 2, slide 7) =====
-  const CO=await doc.embedFont(StandardFonts.Courier);
   const SBG=rgb(0.059,0.239,0.18),SAMB=rgb(0.949,0.698,0.2),SCR=rgb(0.957,0.937,0.886),SSOFT=rgb(0.624,0.769,0.702),SDIM=rgb(0.114,0.353,0.271);
   const FLUXO=["ART","Solicitação","Mem. descr.","Mem. cálc.","Plantas",...(S.projetos.luminotecnico?["Luminot."]:[]),...(S.projetos.spda?["SPDA"]:[]),"Quadros","Unifilar","Multifilar","Detalhes","Especif.","Materiais",...(S.orc.pdf?["Orçamento"]:[]),...(S.anexos.outros.length?["Outros"]:[])];
   const FLUXO_TITULO={"Anotação de Responsabilidade Técnica":"ART","Solicitação à distribuidora":"Solicitação","Memorial descritivo":"Mem. descr.","Memorial de cálculo":"Mem. cálc.","Plantas":"Plantas","Projeto luminotécnico":"Luminot.","Análise de risco e projeto de SPDA":"SPDA","Quadros de distribuição de cargas":"Quadros","Diagrama unifilar":"Unifilar","Diagramas multifilares":"Multifilar","Detalhes construtivos e convenções":"Detalhes","Especificações técnicas":"Especif.","Lista de materiais":"Materiais","Orçamento":"Orçamento","Outros anexos":"Outros"};
@@ -1554,6 +1591,35 @@ async function gerarPDF(){
   // 13 · OUTROS
   if(S.anexos.outros.length){separador("Outros anexos","Complementares","Catálogos, laudos, estudos e demais documentos de apoio.",arqs("outros"),10);await anexar("outros","Outros anexos");}
 
+  // CONTRACAPA — créditos do software, licença e logotipos
+  {const pp=doc.addPage(A4),[w,h]=A4,cx=(w-22)/2,X=48,XR=w-62;
+    pp.drawRectangle({x:0,y:0,width:w,height:h,color:CV});pp.drawRectangle({x:w-22,y:0,width:22,height:h,color:CA});
+    const L=typeof LOGOS!=="undefined"?LOGOS:{};const img=async k=>{try{return L[k]?await doc.embedPng(b64ToBytes(L[k])):null;}catch(e){return null;}};
+    const emblema=(x,y,r,sig,nome)=>{pp.drawCircle({x,y,size:r,color:CC,borderColor:CA,borderWidth:1.5});dTC(pp,sig,x,y-r*0.12,r*0.5,FB,CV);const fz=Math.min(r*0.13,1.6*r/CO.widthOfTextAtSize(pt(nome),1));dTC(pp,nome,x,y-r*0.5,fz,CO,CD);};
+    dT(pp,"SOFTWARE DE APOIO A PROJETOS",X,h-52,9,CO,CA);dTR(pp,"UFPEL  ·  ENGENHARIA AGRÍCOLA",XR,h-52,8,CO,CS);
+    pp.drawLine({start:{x:X,y:h-64},end:{x:XR,y:h-64},thickness:0.6,color:CD});
+    // destaque: Laboratório de Instrumentação Agrícola
+    const ly=h-262,lr=118;aneis(pp,cx,ly,[lr+22,lr+52,lr+82]);
+    const lia=await img("lia");if(lia){pp.drawCircle({x:cx,y:ly,size:lr+5,color:rgb(1,1,1),borderColor:CA,borderWidth:3});pp.drawImage(lia,{x:cx-lr,y:ly-lr,width:2*lr,height:2*lr});}else emblema(cx,ly,lr,"LIA","INSTRUMENTAÇÃO AGRÍCOLA");
+    let yy=ly-lr-48;dTC(pp,CREDITOS.lab,cx,yy,15,FB,CC);yy-=16;dTC(pp,"Engenharia Agrícola  ·  Centro de Engenharias  ·  Universidade Federal de Pelotas",cx,yy,9,F,CS);
+    yy-=22;pp.drawRectangle({x:cx-35,y:yy,width:70,height:4,color:CA});
+    yy-=30;dTC(pp,"Desenvolvido utilizando o",cx,yy,11,F,CS);yy-=22;
+    wrap(CREDITOS.software,FB,16,XR-X-40).forEach(l=>{dTC(pp,l,cx,yy,16,FB,CC);yy-=20;});
+    yy-=14;dTC(pp,"RESPONSÁVEIS",cx,yy,7.5,CO,CA);yy-=17;dTC(pp,CREDITOS.resp.join("   ·   "),cx,yy,10.5,F,CC);
+    // licença
+    yy-=26;const lt=wrap(CREDITOS.licenca,F,7.8,XR-X-28),bh=lt.length*10.4+30;
+    pp.drawRectangle({x:X,y:yy-bh,width:XR-X,height:bh,borderColor:CD,borderWidth:0.8});
+    dT(pp,"LICENÇA DE USO",X+14,yy-16,7.5,CO,CA);lt.forEach((l,j)=>pp.drawText(l,{x:X+14,y:yy-30-j*10.4,size:7.8,font:F,color:CS}));
+    // faixa creme com os logotipos institucionais
+    const fb=118;pp.drawRectangle({x:0,y:0,width:w-22,height:fb,color:CC});
+    const slots=[["ufpel","UFPel","UNIVERSIDADE FEDERAL DE PELOTAS"],["ceng","CEng","CENTRO DE ENGENHARIAS"],["ea","EA","ENGENHARIA AGRÍCOLA"]],sw=(XR-X)/3,lh=58;
+    for(let k=0;k<slots.length;k++){const [key,sig,nome]=slots[k],sx=X+sw*k+sw/2,sy=fb-24-lh;const im=await img(key);
+      if(im){const sc=Math.min(lh/im.height,(sw-24)/im.width);pp.drawImage(im,{x:sx-im.width*sc/2,y:sy+(lh-im.height*sc)/2,width:im.width*sc,height:im.height*sc});}
+      else emblema(sx,sy+lh/2,lh/2,sig,nome);
+      if(k)pp.drawLine({start:{x:X+sw*k,y:sy+4},end:{x:X+sw*k,y:sy+lh-4},thickness:0.5,color:CS});}
+    pp.drawLine({start:{x:X,y:30},end:{x:XR,y:30},thickness:0.5,color:CS});
+    dT(pp,CREDITOS.repo.replace(/^https:\/\//,""),X,16,7,CO,CD);dTR(pp,`Gerado em ${new Date().toLocaleDateString("pt-BR")}`,XR,16,7,CO,CD);}
+
   // SUMÁRIO (inserido na posição 1)
   setP(0.92,"Numerando folhas...");
   const sp=doc.insertPage(sumIndex,A4);
@@ -1565,7 +1631,7 @@ async function gerarPDF(){
   const N=doc.getPageCount();
   doc.getPages().forEach((pp,i)=>{const {width:w}=pp.getSize();const lab=pt(`Folha ${i+1}/${N}`);
     if(genS.has(i)){pp.drawLine({start:{x:M,y:M-4},end:{x:w-M,y:M-4},thickness:0.6,color:LN});pp.drawText(pt(`${S.id.obra||"Projeto elétrico"} — ${S.id.cliente||""}`).slice(0,110),{x:M,y:M-16,size:7.5,font:F,color:MUT});pp.drawText(pt(`RT: ${S.id.rt||"—"} · CREA ${S.id.crea||"—"}`),{x:M,y:M-26,size:7.5,font:F,color:MUT});}
-    pp.drawText(lab,{x:w-M-F.widthOfTextAtSize(lab,7.5),y:genS.has(i)?M-16:12,size:7.5,font:F,color:MUT});});
+    if(i>0&&i<N-1)pp.drawText(lab,{x:w-M-F.widthOfTextAtSize(lab,7.5),y:genS.has(i)?M-16:12,size:7.5,font:F,color:MUT});}); // capa e contracapa sem número
   const bytes=await doc.save();
   setP(1,`PDF pronto: ${N} folhas, ${fmt(bytes.length/1048576,1)} MB.`);
   await oferecer(`Projeto_eletrico_${slug(S.id.obra)}.pdf`,new Blob([bytes],{type:"application/pdf"}));

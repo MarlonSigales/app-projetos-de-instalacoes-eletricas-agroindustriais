@@ -21,6 +21,9 @@ CONTEÚDO
                         importação/exportação JSON e PDF
   js/servidor.js        integração com o api.php
   js/vendor/            pdf-lib 1.17.1 (licença MIT) — geração do PDF
+  js/logos.js           logotipos da contracapa do PDF, em base64 (gerado)
+  img/logos/            logotipos originais (lia, ea, ceng, ufpel .png) e o script
+                        gerar_logos_js.py, que regenera js/logos.js após trocar um PNG
   api.php               salva/abre/lista/exclui projetos na pasta projetos/
   projetos/             projetos salvos (.json); já vem com o exemplo da mini-indústria
 
@@ -51,3 +54,11 @@ OBSERVAÇÕES
     confira com o fabricante. As tabelas da NBR 5410 (36, 38, 40, 41, 42, 45, 46, 47, 48, 58)
     foram conferidas com o texto da ABNT NBR 5410:2004.
   - Ferramenta didática: não substitui a verificação do responsável técnico.
+
+CRÉDITOS E LICENÇA
+  Software de Apoio a Projetos de Instalações Elétricas Agroindustriais
+  Laboratório de Instrumentação Agrícola — Engenharia Agrícola — CEng — UFPel
+  Responsáveis: Marlon Soares Sigales, Ádamo de Souza Araújo e Ricardo Scherer Pohndorf
+  Uso livre, por conta e risco do utilizador; modificações não permitidas fora do
+  repositório original. Termos completos no arquivo LICENSE.
+  Repositório: https://github.com/MarlonSigales/app-projetos-de-instalacoes-eletricas-agroindustriais

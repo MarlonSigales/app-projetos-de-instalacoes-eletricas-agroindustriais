@@ -1,0 +1,49 @@
+LICENÇA DE USO — Software de Apoio a Projetos de Instalações Elétricas Agroindustriais
+
+Copyright (c) 2026 Marlon Soares Sigales, Ádamo de Souza Araújo e Ricardo Scherer Pohndorf
+Laboratório de Instrumentação Agrícola — Engenharia Agrícola — Centro de Engenharias
+Universidade Federal de Pelotas (UFPel)
+
+Repositório original:
+https://github.com/MarlonSigales/app-projetos-de-instalacoes-eletricas-agroindustriais
+
+1. USO LIVRE
+   É permitido, gratuitamente, a qualquer pessoa física ou jurídica, usar este
+   software, inclusive para fins profissionais, de ensino e de pesquisa, e
+   distribuir cópias INALTERADAS dele, desde que mantidos esta licença, os
+   créditos dos autores e a indicação do repositório original.
+
+2. USO POR CONTA E RISCO DO UTILIZADOR
+   O software é fornecido "no estado em que se encontra", sem garantia de
+   qualquer natureza, expressa ou implícita, inclusive de adequação a um fim
+   específico, de exatidão dos cálculos ou de conformidade normativa. O uso é
+   feito por conta e risco exclusivos do utilizador. Os autores e a UFPel não
+   se responsabilizam por danos, prejuízos, perdas ou reclamações de qualquer
+   tipo decorrentes do uso do software ou dos documentos por ele gerados.
+
+3. RESPONSABILIDADE TÉCNICA
+   O software é ferramenta de apoio. Os resultados, desenhos, memoriais,
+   listas de materiais e orçamentos gerados devem ser verificados por
+   profissional legalmente habilitado, que responde tecnicamente pelo projeto
+   (ART) e pelo atendimento às normas aplicáveis (ABNT NBR 5410, NBR 5419,
+   regulamentos da distribuidora e demais).
+
+4. MODIFICAÇÕES NÃO PERMITIDAS FORA DO REPOSITÓRIO ORIGINAL
+   Não são permitidas modificações, adaptações, traduções, obras derivadas ou
+   a redistribuição de versões modificadas fora do repositório original.
+   Sugestões, correções e contribuições devem ser feitas no próprio
+   repositório oficial (issues ou pull requests), sujeitas à aprovação dos
+   autores.
+
+5. MARCAS E LOGOTIPOS
+   Os nomes e logotipos da UFPel, do Centro de Engenharias (CEng), do curso de
+   Engenharia Agrícola e do Laboratório de Instrumentação Agrícola pertencem às
+   respectivas instituições e não são licenciados por este documento. Eles
+   identificam a origem do software e não podem ser usados para indicar
+   endosso de projetos elaborados com ele.
+
+6. COMPONENTES DE TERCEIROS
+   A biblioteca pdf-lib (js/vendor) é distribuída sob a licença MIT; ver
+   js/vendor/pdf-lib-LICENSE.md.
+
+O uso do software implica a aceitação integral destes termos.
