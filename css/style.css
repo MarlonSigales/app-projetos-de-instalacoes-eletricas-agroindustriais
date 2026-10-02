@@ -150,6 +150,11 @@ details{border:1px solid var(--line);background:var(--sheet-2);padding:8px 12px}
 details summary{cursor:pointer;font-weight:600}
 details[open] summary{margin-bottom:8px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);background:var(--ink);color:var(--sheet);padding:10px 16px;border-radius:3px;font-size:13.5px;max-width:min(560px,calc(100% - 32px));z-index:10}
+/* balões de ajuda */
+.tipq{display:inline-grid;place-items:center;width:14px;height:14px;margin-left:5px;border-radius:50%;border:1px solid var(--line);font-family:var(--mono);font-size:9.5px;line-height:1;color:var(--muted);vertical-align:1px;cursor:help}
+[data-tip]:hover>span>.tipq,[data-tip]:focus-within>span>.tipq{border-color:var(--accent);color:var(--accent)}
+th[data-tip]{cursor:help;text-decoration:underline dotted;text-underline-offset:3px}
+.tipbox{position:fixed;z-index:20;max-width:min(340px,calc(100vw - 16px));background:var(--ink);color:var(--sheet);font-size:12.5px;line-height:1.45;padding:8px 11px;border-radius:4px;box-shadow:0 4px 14px rgb(0 0 0/.18);pointer-events:none;white-space:normal;text-transform:none;letter-spacing:0;font-family:var(--body);font-weight:400}
 .progress{height:6px;background:var(--sheet-2);border:1px solid var(--line);margin-top:10px}
 .progress>div{height:100%;background:var(--accent);width:0}
 .foot{margin-top:26px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}

@@ -1,5 +1,5 @@
 "use strict";
-/* Tabelas NBR 5410 (conferidas com a ABNT NBR 5410:2004), aterramento, DR, DPS, dispositivos de motores, sistemas de fornecimento e classes de consumo (REN ANEEL 1.000/2021) */
+/* Tabelas NBR 5410 (conferidas com a ABNT NBR 5410:2004), NBR 5419:2015, aterramento, DR, DPS, dispositivos de motores, sistemas de fornecimento e classes de consumo (REN ANEEL 1.000/2021) */
 /* ============================================================
    TABELAS NBR 5410:2004 (condutor de cobre, isolação PVC 70 °C)
    ============================================================ */
@@ -52,7 +52,19 @@ const SMIN={ilum:1.5,tug:2.5,tue:2.5,motor:2.5};
 // Tabela 48 — neutro reduzido (só se permitido: circuito trifásico equilibrado, THD 3ª harm. ≤ 15 %)
 const T48={35:25,50:25,70:35,95:50,120:70,150:70,185:95,240:120,300:150};
 // Tabela 58 — condutor de proteção
-function sPE(s){if(s<=16)return s;if(s<=35)return 16;const h=s/2;return SEC.reduce((b,x)=>Math.abs(x-h)<Math.abs(b-h)||(Math.abs(x-h)===Math.abs(b-h)&&x>b)?x:b,SEC[0]);} // Tab. 58: S/2 na seção padronizada mais próxima
+function sPE(s){if(s<=16)return s;if(s<=35)return 16;const h=s/2;return SEC.find(x=>x>=h-1e-9)||SEC.at(-1);} // Tab. 58: S/2 é seção mínima → seção padronizada imediatamente superior (150 → 95, 185 → 95)
+// Tabela 41 — fatores de correção para linhas subterrâneas com resistividade térmica do solo ≠ 2,5 K·m/W (método D)
+// 0,5 e 0,7 K·m/W: extensão da IEC 60364-5-52, Tab. B.52.16 (dutos enterrados)
+const T41=[[0.5,1.28],[0.7,1.20],[1,1.18],[1.5,1.10],[2,1.05],[2.5,1],[3,0.96]];
+// Tabela 45 — agrupamento de linhas em eletrodutos enterrados (um cabo multipolar por eletroduto), por distância entre eletrodutos
+const T45={nula:{t:"Nula (eletrodutos encostados)",v:[1,0.85,0.75,0.70,0.65,0.60]},"0.25":{t:"0,25 m",v:[1,0.90,0.85,0.80,0.80,0.80]},"0.5":{t:"0,5 m",v:[1,0.95,0.90,0.85,0.85,0.80]},"1.0":{t:"1,0 m",v:[1,0.95,0.95,0.90,0.90,0.90]}};
+function fca45(n,esp="nula"){n=Math.max(1,n|0);const r=(T45[esp]||T45.nula).v;return n<=6?r[n-1]:Math.min(r[5],fca(n,"feixe"));} // acima de 6 circuitos: adota o menor entre a última linha e a Tab. 42 (a favor da segurança)
+// Condutores isolados só em condutos fechados (6.2.11.1.1); demais métodos exigem cabos uni/multipolares
+const MET_ISOLADO=["A1","B1"];
+// NBR 5419-3:2015 — parâmetros por nível de proteção (Tab. 2: esfera rolante e malha; Tab. 4: espaçamento das descidas)
+const NP5419={I:{r:20,m:5,d:10},II:{r:30,m:10,d:10},III:{r:45,m:15,d:15},IV:{r:60,m:20,d:20}};
+// NBR 5419-2:2015, Anexo A — fator de localização Cd
+const CD5419={0.25:"0,25 — cercada por objetos mais altos",0.5:"0,5 — cercada por objetos de mesma altura ou mais baixos",1:"1 — isolada, sem objetos nas vizinhanças",2:"2 — isolada no topo de colina ou monte"};
 // Disjuntores padronizados
 const BRK=[6,10,13,16,20,25,32,40,50,63,70,80,100,125,160,200,225,250,320,400,500,630,800];
 // Proteção e partida de motores

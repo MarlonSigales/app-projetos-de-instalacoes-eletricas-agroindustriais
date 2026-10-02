@@ -12,11 +12,21 @@
     "crea": "RS000000",
     "art": "",
     "projetista": "Turma 2026.2",
-    "data": "2026-09-24"
+    "data": "2026-10-02"
+  },
+  "projetos": {
+    "eletrico": true,
+    "luminotecnico": true,
+    "spda": true
   },
   "forn": {
     "sistema": "380/220",
     "atend": "BT",
+    "classe": "rural",
+    "subclasse": "Agroindustrial",
+    "tensaoPrim": 13.8,
+    "subterraneo": false,
+    "modalidade": "Convencional monômia",
     "trafo": false,
     "trafoKVA": "",
     "rede": "Rede secundária trifásica 380/220 V da distribuidora",
@@ -24,23 +34,32 @@
     "Lent": 12,
     "metEnt": "D",
     "aterr": "TN-S",
-    "obs": "Padrão de entrada trifásico com medição direta, conforme categoria do RIC da distribuidora.",
-    "classe": "rural",
-    "subclasse": "Agroindustrial",
-    "tensaoPrim": 13.8,
-    "subterraneo": false,
-    "modalidade": "Convencional monômia",
     "aerea": true,
     "aq": "AQ2",
-    "spda": false,
+    "spda": true,
+    "rhoEletrica": 350,
     "ra": 30,
-    "ul": 50
+    "ul": 50,
+    "obs": "Padrão de entrada trifásico com medição direta, conforme categoria do RIC da distribuidora."
   },
   "par": {
     "temp": 30,
     "tempSolo": 20,
+    "rhoSolo": 2.5,
     "metDist": "B1",
     "metBaix": "B1",
+    "agrDist": "feixe",
+    "espEnt": "nula",
+    "arrF": "trifolio",
+    "arrG": "horizontal",
+    "ipin": 7,
+    "dvPartida": 10,
+    "simular": true,
+    "softLim": 3,
+    "invLim": 1.5,
+    "bobina": "220 Vca",
+    "icc": 6,
+    "dpsSempre": false,
     "dvTerm": 4,
     "dvTotal": 5,
     "dvEnt": 1,
@@ -50,39 +69,81 @@
     "reserva": 20,
     "sobra": 10,
     "neutroRed": false,
-    "ocupCan": 40,
-    "agrDist": "feixe",
-    "arrF": "trifolio",
-    "arrG": "horizontal",
-    "ipin": 7,
-    "dvPartida": 10,
-    "softLim": 3,
-    "invLim": 1.5,
-    "bobina": "220 Vca",
-    "icc": 6,
-    "dpsSempre": false,
-    "simular": true
+    "ocupCan": 40
   },
   "quadros": [
     {
       "nome": "QGBT",
       "L": 0,
-      "met": "B1"
+      "met": "B1",
+      "pai": ""
     },
     {
       "nome": "QF-PROD",
       "L": 25,
-      "met": "D"
+      "met": "D",
+      "pai": "QGBT"
     },
     {
       "nome": "QL-ADM",
       "L": 18,
-      "met": "D"
+      "met": "D",
+      "pai": "QGBT"
+    },
+    {
+      "nome": "QD-SECADOR",
+      "L": 15,
+      "met": "B1",
+      "pai": "QF-PROD"
+    }
+  ],
+  "ambientes": [
+    {
+      "id": "secagem",
+      "nome": "Galpão de secagem",
+      "comprimento": 24,
+      "largura": 12,
+      "altura": 6,
+      "lux": 200,
+      "lm": 4000,
+      "w": 40,
+      "uf": 0.65,
+      "mf": 0.8,
+      "espTomadas": 5,
+      "espLum": 1.5
+    },
+    {
+      "id": "moagem",
+      "nome": "Sala de moagem",
+      "comprimento": 12,
+      "largura": 8,
+      "altura": 4,
+      "lux": 300,
+      "lm": 4000,
+      "w": 40,
+      "uf": 0.6,
+      "mf": 0.8,
+      "espTomadas": 5,
+      "espLum": 1.5
+    },
+    {
+      "id": "escritorio",
+      "nome": "Escritório",
+      "comprimento": 6,
+      "largura": 5,
+      "altura": 3,
+      "lux": 500,
+      "lm": 3600,
+      "w": 36,
+      "uf": 0.65,
+      "mf": 0.8,
+      "espTomadas": 5,
+      "espLum": 1.5
     }
   ],
   "circ": [
     {
-      "q": "QF-PROD",
+      "q": "QD-SECADOR",
       "nome": "Secador — ventilador",
       "tipo": "motor",
       "lig": "3F",
@@ -91,17 +152,35 @@
       "unid": "cv",
       "fp": 0.85,
       "eta": 0.895,
+      "fs": 1.25,
       "fu": 0.87,
       "fd": 1,
-      "can": "CN-1",
-      "ld": 20,
+      "can": "CN-3",
+      "ld": 8,
       "lb": 4,
-      "fs": 1.25,
-      "fusTipo": "gG",
-      "partida": "yd",
       "prot": "fus",
-      "local": "seco",
-      "dr": "auto"
+      "partida": "yd",
+      "fusTipo": "gG"
+    },
+    {
+      "q": "QD-SECADOR",
+      "nome": "Secador — rosca de descarga",
+      "tipo": "motor",
+      "lig": "3F",
+      "qtd": 1,
+      "pot": 3,
+      "unid": "cv",
+      "fp": 0.82,
+      "eta": 0.86,
+      "fs": 1.25,
+      "fu": 0.87,
+      "fd": 1,
+      "can": "CN-3",
+      "ld": 10,
+      "lb": 3,
+      "prot": "dj",
+      "partida": "direta",
+      "fusTipo": "gG"
     },
     {
       "q": "QF-PROD",
@@ -113,17 +192,15 @@
       "unid": "cv",
       "fp": 0.83,
       "eta": 0.895,
+      "fs": 1.25,
       "fu": 0.87,
       "fd": 1,
       "can": "CN-1",
       "ld": 14,
       "lb": 3,
-      "fs": 1.25,
-      "fusTipo": "gG",
-      "partida": "direta",
       "prot": "dj",
-      "local": "seco",
-      "dr": "auto"
+      "partida": "direta",
+      "fusTipo": "gG"
     },
     {
       "q": "QF-PROD",
@@ -135,17 +212,15 @@
       "unid": "cv",
       "fp": 0.85,
       "eta": 0.91,
+      "fs": 1.25,
       "fu": 0.87,
       "fd": 1,
       "can": "CN-1",
       "ld": 10,
       "lb": 3,
-      "fs": 1.25,
-      "fusTipo": "gG",
-      "partida": "soft",
       "prot": "dj",
-      "local": "seco",
-      "dr": "auto"
+      "partida": "soft",
+      "fusTipo": "gG"
     },
     {
       "q": "QF-PROD",
@@ -157,25 +232,23 @@
       "unid": "cv",
       "fp": 0.8,
       "eta": 0.83,
+      "fs": 1.25,
       "fu": 0.87,
       "fd": 0.8,
       "can": "CN-1",
       "ld": 8,
       "lb": 2.5,
-      "fs": 1.25,
-      "fusTipo": "gG",
-      "partida": "direta",
       "prot": "djm",
-      "local": "seco",
-      "dr": "auto"
+      "partida": "direta",
+      "fusTipo": "gG"
     },
     {
       "q": "QF-PROD",
-      "nome": "Iluminação do galpão (LED 100 W)",
+      "nome": "Iluminação do galpão (LED)",
       "tipo": "ilum",
       "lig": "F+N",
       "qtd": 12,
-      "pot": 100,
+      "pot": 40,
       "unid": "W",
       "fp": 0.95,
       "eta": 1,
@@ -184,9 +257,7 @@
       "can": "CN-1",
       "ld": 25,
       "lb": 4,
-      "fs": 1,
-      "local": "seco",
-      "dr": "auto"
+      "ambiente": "secagem"
     },
     {
       "q": "QF-PROD",
@@ -200,20 +271,18 @@
       "eta": 1,
       "fu": 1,
       "fd": 0.5,
-      "can": "CN-1",
+      "can": "CN-1, CN-2",
       "ld": 15,
       "lb": 1.5,
-      "fs": 1,
-      "local": "molhado",
-      "dr": "auto"
+      "local": "molhado"
     },
     {
       "q": "QL-ADM",
-      "nome": "Iluminação escritório (LED 40 W)",
+      "nome": "Iluminação escritório (LED)",
       "tipo": "ilum",
       "lig": "F+N",
       "qtd": 6,
-      "pot": 40,
+      "pot": 36,
       "unid": "W",
       "fp": 0.95,
       "eta": 1,
@@ -222,9 +291,7 @@
       "can": "CN-2",
       "ld": 8,
       "lb": 3,
-      "fs": 1,
-      "local": "seco",
-      "dr": "auto"
+      "ambiente": "escritorio"
     },
     {
       "q": "QL-ADM",
@@ -241,26 +308,85 @@
       "can": "CN-2",
       "ld": 10,
       "lb": 1.5,
-      "fs": 1,
-      "local": "seco",
-      "dr": "auto"
+      "ambiente": "escritorio"
     }
   ],
-  "canaletas": [],
+  "canaletas": {},
   "anexos": {
     "art": [],
     "situacao": [],
     "arquitetonico": [],
+    "luminotecnico": [],
+    "spda": [],
     "unifilar": [],
     "multifilar": [],
     "detalhes": [],
     "convencoes": [],
     "outros": []
   },
-  "memo": [],
-  "chk": [],
+  "memo": {},
+  "precos": {},
+  "extras": [
+    {
+      "g": "cond",
+      "d": "Caixa de passagem em alumínio 200 × 200 × 100 mm com tampa",
+      "un": "pç",
+      "q": 6,
+      "pu": 85
+    },
+    {
+      "g": "qd",
+      "d": "Botoeira de emergência tipo cogumelo com trava, 1NF (NR-12)",
+      "un": "pç",
+      "q": 5,
+      "pu": 120
+    },
+    {
+      "g": "extra",
+      "d": "Placas de identificação de quadros e circuitos (acrílico gravado)",
+      "un": "cj",
+      "q": 1,
+      "pu": 350
+    }
+  ],
+  "orc": {
+    "pdf": true,
+    "servicos": [
+      {
+        "cat": "eng",
+        "d": "Engenharia — projeto, memoriais e ART",
+        "h": 40,
+        "vh": 180
+      },
+      {
+        "cat": "serv",
+        "d": "Serviço — execução e montagem da instalação",
+        "h": 160,
+        "vh": 75
+      },
+      {
+        "cat": "impl",
+        "d": "Implantação — testes, comissionamento e partida assistida",
+        "h": 16,
+        "vh": 150
+      }
+    ],
+    "despesas": 1500,
+    "lucro": 20,
+    "impostos": 8,
+    "validade": 30,
+    "obs": "Valores de exemplo, fictícios. Preços de materiais a confirmar por cotação."
+  },
+  "estrutura": {
+    "L": 36,
+    "W": 12,
+    "H": 7,
+    "ng": 5,
+    "cd": 0.5,
+    "np": "III"
+  },
+  "chk": {},
   "exemplo": true,
   "formato": "projeto-eletrico-agro",
-  "exportadoEm": "2026-09-24T04:21:32.193Z",
-  "precos": {}
+  "exportadoEm": "2026-10-02T14:58:12.342Z"
 }

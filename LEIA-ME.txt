@@ -4,13 +4,18 @@ UFPel · Engenharia Agrícola · Energização Rural
 
 Roteiro passo a passo de projeto de instalações elétricas agroindustriais:
 previsão de cargas, dimensionamento pela NBR 5410 (condutores, disjuntores,
-eletrodutos e canaletas), demanda, anexos de desenhos e geração do projeto
-completo em PDF. Funciona sem internet.
+eletrodutos e canaletas), demanda, quadros e sub-quadros, projeto
+luminotécnico, pré-dimensionamento de SPDA (NBR 5419), lista de materiais com
+itens adicionais, orçamento (horas de engenharia, serviço e implantação,
+despesas, lucro e impostos), anexos de desenhos e geração do projeto completo
+em PDF. Funciona sem internet. Passe o mouse sobre os campos para ver os
+balões de ajuda de preenchimento.
 
 CONTEÚDO
   index.html            página principal
   css/style.css         estilos
-  js/tabelas.js         tabelas da NBR 5410 (Tab. 33, 36, 38, 40, 42, 47, 48, 58), sistemas
+  js/tabelas.js         tabelas da NBR 5410 (Tab. 33, 36, 38, 40, 41, 42, 45, 47, 48, 58),
+                        parâmetros da NBR 5419-3 (Tab. 2 e 4), sistemas
                         de fornecimento e classes de consumo (REN ANEEL 1.000/2021)
   js/app.js             roteiro, cálculos (condutores, proteção e partida de motores),
                         importação/exportação JSON e PDF
@@ -37,7 +42,12 @@ SEM PHP
 OBSERVAÇÕES
   - O navegador guarda o rascunho automaticamente (sem os anexos). Para guardar
     os desenhos anexados, salve em projetos/ ou exporte o .json.
+  - Quadros: cada quadro informa o quadro de origem ("Alimentado por") e o
+    comprimento do trecho desde ele. O alimentador de um quadro intermediário
+    soma a demanda dos sub-quadros, e a queda de tensão se acumula na cadeia.
+  - SPDA: o nível de proteção adotado deve vir da análise de risco completa
+    da NBR 5419-2; a ferramenta calcula AD, ND e a geometria da NBR 5419-3.
   - Diâmetros de cabos/eletrodutos/eletrocalhas são valores típicos de catálogo:
-    confira com o fabricante. As tabelas da NBR 5410 (36, 38, 40, 42, 46, 47, 48, 58)
+    confira com o fabricante. As tabelas da NBR 5410 (36, 38, 40, 41, 42, 45, 46, 47, 48, 58)
     foram conferidas com o texto da ABNT NBR 5410:2004.
   - Ferramenta didática: não substitui a verificação do responsável técnico.
