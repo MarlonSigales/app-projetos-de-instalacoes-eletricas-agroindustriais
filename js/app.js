@@ -20,7 +20,7 @@ function blank(){
     v:1,
     id:{cliente:"",obra:"",atividade:"",local:"",municipio:"",uc:"",distribuidora:"",rt:"",crea:"",art:"",projetista:"",data:new Date().toISOString().slice(0,10)},
     projetos:{eletrico:true,luminotecnico:false,spda:false},
-    forn:{sistema:"380/220",atend:"BT",classe:"rural",subclasse:"Agroindustrial",tensaoPrim:13.8,subterraneo:false,modalidade:"",trafo:false,trafoKVA:"",rede:"",distRede:"",Lent:15,metEnt:"D",aterr:"TN-S",aerea:true,aq:"AQ2",spda:false,rhoEletrica:"",ra:30,ul:50,obs:""},
+    forn:{sistema:"380/220",atend:"BT",classe:"rural",subclasse:"Agroindustrial",tensaoPrim:13.8,subterraneo:false,modalidade:"",iccMT:"",Lmt:30,trafo:false,trafoKVA:"",rede:"",distRede:"",Lent:15,metEnt:"D",aterr:"TN-S",aerea:true,aq:"AQ2",spda:false,rhoEletrica:"",ra:30,ul:50,obs:""},
     par:{temp:30,tempSolo:20,rhoSolo:2.5,metDist:"B1",metBaix:"B1",agrDist:"feixe",espEnt:"nula",arrF:"trifolio",arrG:"horizontal",ipin:7,dvPartida:10,simular:true,softLim:3,invLim:1.5,bobina:"220 Vca",icc:6,dpsSempre:false,dvTerm:4,dvTotal:5,dvEnt:1,rho:0.0206,curva:"C",curvaMotor:"D",reserva:20,sobra:10,neutroRed:false,ocupCan:40,espSupCan:1.5,baixAparente:true,xCabo:0.08,rTerra:10,nEquip:6,lEquip:10,corrFP:true,fpAlvo:0.92,emerg:true,zTrafo:4.5,tipoSub:"poste"},
     quadros:[{nome:"QGBT",L:0,met:"B1",pai:"",infl:"seco",x:"",y:""}],
     ambientes:[],
@@ -30,8 +30,8 @@ function blank(){
     memo:{},
     precos:{},
     extras:[],
-    orc:{pdf:false,servicos:SERVICOS_PADRAO.map(s=>Object.assign({},s)),despesas:0,lucro:20,impostos:0,validade:30,obs:""},
-    estrutura:{L:0,W:0,H:0,ng:"",cd:0.5,np:"III",rt:"1e-2",rp:"0.5",rf:"0.01",hz:"1",LF:"0.01",horas:8,LL:1000,CI:"aerea",CE:"rural",CT:"bt",PTA:"1",PTU:"1"},
+    orc:{pdf:false,usarRef:true,servicos:SERVICOS_PADRAO.map(s=>Object.assign({},s)),despesas:0,lucro:REF_ORC.lucro,impostos:0,trib:Object.assign({},REF_ORC.trib),cub:REF_ORC.cub,cubFrac:REF_ORC.cubFrac,salTec:REF_ORC.salTec,encTec:REF_ORC.encTec,hMes:REF_ORC.hMes,validade:30,obs:""},
+    estrutura:{L:0,W:0,H:0,ng:"",cd:0.5,np:"III",rt:"1e-2",rp:"0.5",rf:"0.01",hz:"1",LF:"0.01",horas:8,LL:1000,CI:"aerea",CE:"rural",CT:"bt",PTA:"1",PTU:"1",cob:"nao_metalica",desc:"convencional",km:"1",passo:"brita"},
     revisoes:[{rev:"00",data:"",desc:"Emissão inicial",autor:""}],
     chk:{}
   };
@@ -72,11 +72,11 @@ function sample(){
     {g:"extra",d:"Placas de identificação de quadros e circuitos (acrílico gravado)",un:"cj",q:1,pu:350}
   ];
   s.orc={pdf:true,servicos:[
-    {cat:"eng",d:"Engenharia — projeto, memoriais e ART",h:50,vh:180},
-    {cat:"serv",d:"Serviço — execução e montagem da instalação",h:250,vh:75},
-    {cat:"impl",d:"Implantação — testes, comissionamento e partida assistida",h:20,vh:150}
-  ],despesas:1500,lucro:20,impostos:8,validade:30,obs:"Valores de exemplo, fictícios. Preços de materiais a confirmar por cotação."};
-  s.estrutura={L:36,W:13,H:7,ng:5,cd:0.5,np:"III",rt:"1e-2",rp:"0.5",rf:"0.001",hz:"1",LF:"0.02",horas:10,LL:300,CI:"aerea",CE:"rural",CT:"bt",PTA:"0.1",PTU:"0.1"};
+    {cat:"eng",d:"Engenharia — projeto, memoriais e ART",h:50,vh:0},
+    {cat:"serv",d:"Serviço — execução e montagem da instalação",h:250,vh:0},
+    {cat:"impl",d:"Implantação — testes, comissionamento e partida assistida",h:20,vh:0}
+  ],usarRef:true,despesas:1500,lucro:REF_ORC.lucro,impostos:0,trib:Object.assign({},REF_ORC.trib),cub:REF_ORC.cub,cubFrac:REF_ORC.cubFrac,salTec:REF_ORC.salTec,encTec:REF_ORC.encTec,hMes:REF_ORC.hMes,validade:30,obs:"Valores de exemplo, fictícios. Preços de materiais a confirmar por cotação."};
+  s.estrutura={L:36,W:13,H:7,ng:5,cd:0.5,np:"III",rt:"1e-2",rp:"0.5",rf:"0.001",hz:"1",LF:"0.02",horas:10,LL:300,CI:"aerea",CE:"rural",CT:"bt",PTA:"0.1",PTU:"0.1",cob:"metalica",desc:"convencional",km:"1",passo:"brita"};
   s.revisoes=[{rev:"00",data:s.id.data,desc:"Emissão inicial (exemplo)",autor:"Turma 2026.2"}];
   s.forn.rhoEletrica=350;
   return s;
@@ -343,29 +343,60 @@ function calc(){
   if(terra.R1==null)issues.push("Resistividade elétrica do solo não informada (etapa 02): o eletrodo de aterramento foi pré-dimensionado com 3 hastes. Meça a resistividade (método de Wenner) para calcular a resistência.");
   else if(!terra.ok)issues.push(`Aterramento: com ρ = ${fmt0(terra.rho)} Ω·m, a resistência estimada (${fmt(terra.Rfinal,1)} Ω) não atinge o valor de referência de ${fmt(terra.alvo,1)} Ω com até 10 hastes alinhadas. Considere malha, hastes profundas ou tratamento do solo.`);
   if(fp.need&&!p.corrFP)issues.push(`Fator de potência ${fmt(fpG,2)} abaixo de ${fmt(fp.alvo,2)}: a REN ANEEL 1.000/2021 prevê cobrança de excedente reativo. Ative a correção do fator de potência na etapa 03.`);
-  const dps=dpsCalc(sys);
+  const dps=dpsCalc(sys,spda);
+  if(mt){if(!mt.nomOk)issues.push(`Tensão primária de ${fmt(mt.kV,1)} kV fora das tensões nominais da NBR 14039 (4.2.5.2: 3; 4,16; 6; 13,8; 23,1 e 34,5 kV): confirme com a distribuidora.`);
+    if(S.par.tipoSub==="poste"&&mt.kva>300)issues.push(`Transformador de ${fmt(mt.kva,0)} kVA: acima de 300 kVA a proteção geral em MT deve ser feita exclusivamente por disjuntor com relés 50/51 de fase e neutro (NBR 14039, 5.3.1.2). A subestação foi tratada como abrigada.`);
+    if(mt.disj&&!mt.iccMT)issues.push("Informe a corrente de curto-circuito no ponto de entrega em MT (etapa 02) para verificar o cabo de MT e a capacidade de interrupção do disjuntor (NBR 14039, 4.2.4.1-d, 6.2.6 e 6.3.3.5).");}
+  if(S.projetos.spda&&spda.ok&&spda.zMax)issues.push(`SPDA em estrutura com zona ${spda.zMax} de poeira combustível (NBR 5419-3, Anexo D): condutores de captação e descida a pelo menos 1 m da zona (D.5.1), eletrodo em anel (D.3.3), equipotencialização onde a distância for menor que s = ${fmt(spda.sZona,2)} m, calculada com kc = 1 (D.3.4), e DPS fora da zona ou certificados para ela (D.5.1.1)${spda.zMax==="20"?"; silos e contêineres de aço com parede ≥ 5 mm nos pontos de impacto, ou captação própria (D.5.4)":""}.${spda.cobMetZona?" A cobertura metálica sobre a zona não serve de captor natural (exige 4 mm, Tab. 3): a malha de captação foi mantida.":""}`);
   if(cls.grupo==="B"&&inst>75)cls.avisos.push("Carga instalada acima de 75 kW: pela REN ANEEL nº 1.000/2021 (art. 23), o atendimento deve ser em tensão primária (Grupo A).");
   if(cls.grupo==="A"&&dem*res>2500&&(+S.forn.tensaoPrim||0)<69)cls.avisos.push("Demanda acima de 2.500 kW: a REN 1.000/2021 prevê conexão em tensão igual ou superior a 69 kV.");
   if(sys.fases<3&&out.some(o=>o.c.tipo==="motor"&&o.ok&&o.c.pot>=5))cls.avisos.push("Motores de 5 cv ou mais em sistema mono/bifásico: verifique o limite de potência por motor no RIC da distribuidora.");
   R={out,ph,PH,cans,inst,dem,demQ,demS,fpG,Ient,ent,quadros,res,orf,sys,cfg,cls,incompat,issues,dps,cc,spda,terra,fp,mt,selet,tmax,iccFonte};
   return R;
 }
-// SPDA — área de exposição e número de eventos perigosos (NBR 5419-2, Anexo A) e geometria pelo nível de proteção (NBR 5419-3)
+// SPDA — área de exposição e eventos perigosos (NBR 5419-2, Anexo A) e geometria pelo nível de proteção (NBR 5419-3)
 function spdaCalc(){
   const e=S.estrutura||{},L=Math.max(0,+e.L||0),W=Math.max(0,+e.W||0),H=Math.max(0,+e.H||0);
   const np=NP5419[e.np]?e.np:"III",g=NP5419[np];
   const Ad=L*W+2*3*H*(L+W)+Math.PI*(3*H)**2;
   const ng=+e.ng||0,cd=+e.cd||0.5,Nd=ng*Ad*cd*1e-6;
-  const per=2*(L+W),nDesc=per>0?Math.max(2,Math.ceil(per/g.d)):0;
-  const linhasL=W>0?Math.ceil(W/g.m)+1:0,linhasW=L>0?Math.ceil(L/g.m)+1:0;
-  const captacao=linhasL*L+linhasW*W,descidas=nDesc*H,anel=L>0&&W>0?2*(L+W+4):0; // anel a ~1 m das fundações
-  const re=L>0&&W>0?Math.sqrt((L+2)*(W+2)/Math.PI):0; // raio médio equivalente do anel (arranjo B)
-  const rho=+S.forn.rhoEletrica||0;
-  const l1=np==="III"||np==="IV"?5:null; // NP I e II: l1 depende de ρ (Fig. 3 da NBR 5419-3)
-  // 9) análise de risco R1 (NBR 5419-2), para estrutura sem SPDA e para cada nível de proteção
+  const zMax=["20","21","22"].find(z=>S.ambientes.some(a=>String(a.zona||"")===z))||"";
+  // 5.2.5 e Tab. 3: cobertura metálica (t' ≥ 0,5 mm) é captor natural; sobre zona de poeira a perfuração importa (t ≥ 4 mm) e a malha é mantida
+  const natural=e.desc==="natural",cobMetZona=e.cob==="metalica"&&!!zMax,cobMet=e.cob==="metalica"&&!zMax;
+  const per=2*(L+W);
+  // 5.3.3 e Tab. 4: no mínimo 2 descidas, espaçamento típico g.d e uma em cada canto saliente (4 numa planta retangular)
+  const nDesc=per>0?Math.max(4,Math.ceil(per/g.d)):0;
+  // 5.3.1: anéis horizontais de interligação a cada g.d m de altura (dispensados com descidas naturais, 5.3.5-c)
+  const nAneis=!natural&&H>g.d?Math.ceil(H/g.d)-1:0,aneisInt=nAneis*per;
+  const linhasL=W>0&&!cobMet?Math.ceil(W/g.m)+1:0,linhasW=L>0&&!cobMet?Math.ceil(L/g.m)+1:0;
+  const captacao=linhasL*L+linhasW*W,descidas=natural?0:nDesc*H,anel=L>0&&W>0?2*(L+W+4):0; // anel a ~1 m das fundações (5.4.3)
+  const re=L>0&&W>0?Math.sqrt((L+2)*(W+2)/Math.PI):0; // raio médio da área abrangida pelo anel
+  const rho=+S.forn.rhoEletrica||0,l1=l1_5419(np,rho);
+  // 5.4.2: se re < l1, eletrodos adicionais junto a cada descida — horizontal lr = l1 − re ou vertical lv = (l1 − re)/2
+  const falta=l1!=null&&re<l1?l1-re:0,lv=falta/2,hastesAd=falta>0?nDesc*Math.ceil(lv/2.4):0;
+  // 6.3: distância de segurança s = ki/km · kc · l, com l = altura da descida até a equipotencialização no solo; D.3.4-b: kc = 1 nas zonas de risco
+  const ki=KI5419[np],kc=kc5419(nDesc),km=+e.km===0.5?0.5:1,sSeg=natural?0:ki/km*kc*H,sZona=ki/km*H;
+  // 6.2.2.2-a: BEL adicionais, interligados ao BEP, em estruturas com mais de 20 m em qualquer direção
+  const nBEL=Math.max(0,Math.ceil(Math.max(L,W,H)/20)-1);
+  // 5.5.2: fixação a cada 1,0 m na horizontal e 1,5 m na vertical
+  const fixH=Math.ceil(captacao+aneisInt),fixV=Math.ceil(descidas/1.5);
+  // seção 8: medidas contra tensões de toque e passo, dispensadas com ≥ 10 descidas naturais (8.1.1-b)
+  const toque=natural&&nDesc>=10?"naturais":(e.passo||"brita");
+  // 7.3.1-e: inspeção periódica anual em atmosfera explosiva ou corrosiva, trienal nas demais
+  const insp=zMax==="20"||zMax==="21"||S.ambientes.some(a=>a.infl==="corrosivo")?1:3;
+  // análise de risco R1 (NBR 5419-2), sem SPDA e para cada nível de proteção
   const risco={};["nenhum","IV","III","II","I"].forEach(n=>risco[n]=riscoR1(e,Ad,ng,cd,n));
   const rec=["nenhum","IV","III","II","I"].find(n=>risco[n].ok)||null;
-  return {ok:L>0&&W>0&&H>0,L,W,H,np,g,Ad,ng,cd,Nd,per,nDesc,linhasL,linhasW,captacao,descidas,anel,re,rho,l1,anelOk:l1!=null?re>=l1:null,risco,rec};
+  return {ok:L>0&&W>0&&H>0,L,W,H,np,g,Ad,ng,cd,Nd,per,nDesc,nAneis,aneisInt,linhasL,linhasW,captacao,descidas,anel,re,rho,l1,anelOk:l1!=null?re>=l1:null,falta,lv,hastesAd,
+    natural,cobMet,cobMetZona,zMax,ki,kc,km,sSeg,sZona,nBEL,fixH,fixV,toque,insp,risco,rec};
+}
+// NBR 5419-3, 5.3.3: descidas uniformes no perímetro — uma em cada canto saliente e as demais repartidas pelos lados
+function descidasPos(L,W,n){
+  const pts=[[0,0],[L,0],[L,W],[0,W]].slice(0,Math.min(n,4)),rest=n-4;if(rest<=0)return pts;
+  const lados=[[[0,0],[L,0]],[[L,0],[L,W]],[[L,W],[0,W]],[[0,W],[0,0]]],comp=[L,W,L,W],k=comp.map(c=>Math.floor(rest*c/(2*(L+W))));
+  const ord=[0,1,2,3].sort((a,b)=>comp[b]-comp[a]);for(let i=0,t=k.reduce((a,b)=>a+b,0);t<rest;i++,t++)k[ord[i%4]]++;
+  lados.forEach(([a,b],j)=>{for(let m=1;m<=k[j];m++){const t=m/(k[j]+1);pts.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]);}});
+  return pts;
 }
 // R1 = RA + RB + RU + RV (perda de vida humana). RC, RM, RW e RZ só entram em R1 com risco de explosão ou em hospitais: desprezados aqui
 function riscoR1(e,Ad,ng,cd,np){
@@ -403,13 +434,25 @@ function fpCalc(P,fpG,sys){
   const Q0=P*Math.tan(Math.acos(Math.max(fpG,0.01)));
   return {alvo,need,Qc,std,I,Ip,dj,s,auto:std>15,on:!!S.par.corrFP&&need,fpNovo:P>0?P/Math.hypot(P,Math.max(Q0-std,0)):1};
 }
-// 14) subestação própria (NBR 14039): transformador, elo fusível, para-raios e Icc no secundário
+// 14) subestação própria (NBR 14039:2021): transformador, proteção geral (5.3.1), para-raios, ramal de MT, distâncias e contenção de óleo
 function mtCalc(Sdem,sys){
   const f=S.forn;if(f.atend!=="MT")return null;
   const kV=+f.tensaoPrim||13.8,kva=+f.trafoKVA>0?+f.trafoKVA:(TRAFO_STD.find(v=>v>=Sdem-1e-9)||TRAFO_STD.at(-1));
+  const cl=MT14039.find(x=>x.kV>=kV-0.05)||MT14039.at(-1),nomOk=MT14039.some(x=>Math.abs(x.kV-kV)<0.05);
   const z=Math.max(+S.par.zTrafo||4.5,1)/100,Vff=sys.vff||sys.vfn,Isec=kva*1000/(Math.sqrt(3)*Vff),Imt=kva/(Math.sqrt(3)*kV);
-  const elo=ELO_STD.find(([,a])=>a>=1.5*Imt-1e-9)||ELO_STD.at(-1),tipo=S.par.tipoSub==="abrigada"||kva>300?"abrigada":"poste";
-  return {kV,kva,auto:!(+f.trafoKVA>0),z,Isec,icc:Isec/z/1000,Imt,elo,tipo,ur:paraRaiosUr(kV),carreg:Sdem/kva,pickup:1.25*Imt};
+  // 5.3.1.1: até 300 kVA, chave seccionadora e fusível (com disjuntor geral na BT) ou disjuntor com relés 50/51; 5.3.1.2: acima, só disjuntor com 50/51 F e N
+  const tp=S.par.tipoSub,tipo=tp==="integrada"?"integrada":tp==="abrigada"||kva>300?"abrigada":"poste",disj=tipo!=="poste";
+  const elo=ELO_STD.find(([,a])=>a>=1.5*Imt-1e-9)||ELO_STD.at(-1);
+  const seco=tipo==="integrada"; // 9.4.3: subestação integrada à edificação industrial só com transformador a seco
+  const oleo=seco?0:(OLEO_TRAFO[kva]||Math.round(55+0.5*kva)),contencao=!seco&&tipo!=="poste"&&oleo>=100; // 5.8.1
+  // ramal subterrâneo de MT (6.2.3, 6.2.6, 6.2.11.4): cabo blindado de cobre XLPE/EPR, ampacidade Tab. 28 (F1) e curto-circuito 6.2.6.1 (t = 0,5 s)
+  const iccMT=+f.iccMT>0?+f.iccMT:null,tcc=0.5,Lmt=disj?Math.max(0,+(f.Lmt??0)||0):0;
+  const sCC=iccMT?iccMT*1000*Math.sqrt(tcc)/kccMT:0,sMT=Lmt>0?(SEC_MT.find(x=>x>=25&&x>=sCC&&IZ_MT.F1[x]>=Imt)||SEC_MT.at(-1)):null;
+  const isol=cl.cls<=15?"8,7/15 kV":cl.cls<=24.2?"12/20 kV":"20/35 kV";
+  const icc=Isec/z/1000;
+  return {kV,kva,auto:!(+f.trafoKVA>0),z,Isec,icc,Imt,elo,tipo,disj,ur:paraRaiosUr(kV),carreg:Sdem/kva,pickup:1.25*Imt,
+    cl,nomOk,seco,oleo,contencao,iccMT,tcc,Lmt,sCC,sMT,izMT:sMT?IZ_MT.F1[sMT]:0,isol,inrush:8*Imt,ansi:Imt/z,iccRef:icc*1000*Vff/(kV*1000),
+    esq:f.aterr==="TT"?"TTN":"TNR",D:cl.cls<=24.2?300:400};
 }
 // 9) iluminação de emergência (NBR 10898): espaçamento ≤ 4 × altura de instalação (máx. 15 m) e sinalização de cada saída
 function emergCalc(a){
@@ -532,7 +575,9 @@ const TIPS={
   "par.lEquip":"Comprimento médio do condutor de cada ligação de equipotencialização até o BEP.",
   "par.fpAlvo":"Fator de potência a atingir com o banco de capacitores.",
   "par.zTrafo":"Impedância de curto-circuito do transformador, em %. Define a Icc no secundário.",
-  "par.tipoSub":"Subestação aérea (chaves fusíveis) ou abrigada (disjuntor de média tensão com relé). Acima de ~300 kVA as distribuidoras exigem abrigada.",
+  "par.tipoSub":"Aérea em poste: chave fusível no primário e disjuntor geral na BT (NBR 14039, 5.3.1.1). Abrigada: disjuntor de MT com relés 50/51 de fase e neutro, obrigatório acima de 300 kVA (5.3.1.2). Integrada à edificação industrial: só transformador a seco (9.4.3).",
+  "forn.iccMT":"Corrente de curto-circuito trifásica no ponto de entrega em média tensão, informada pela distribuidora (NBR 14039, 4.2.4.1-d). Verifica o cabo de MT (6.2.6) e a capacidade de interrupção do disjuntor (6.3.3.5).",
+  "forn.Lmt":"Comprimento do ramal subterrâneo de média tensão entre o poste de derivação e a subestação abrigada. Zero se não houver.",
   "par.icc":"Corrente de curto-circuito presumida no ponto de entrega, informada pela distribuidora. A Icc de cada quadro é calculada a partir dela.",
   "estrutura.horas":"Horas por dia com pessoas na estrutura (tz). Entra nas perdas LA, LB, LU e LV.",
   "estrutura.rt":"Tipo de superfície do solo ou piso, que reduz a tensão de toque e de passo.",
@@ -553,8 +598,22 @@ const TIPS={
   "estrutura.ng":"Densidade de descargas atmosféricas para a terra (descargas/km²/ano), do mapa da NBR 5419-2 (Anexo F) ou do INPE para o município.",
   "estrutura.cd":"Fator de localização da estrutura em relação ao entorno (NBR 5419-2, Tab. A.1).",
   "estrutura.np":"Nível de proteção resultante da análise de risco (NBR 5419-2). Define malha, esfera rolante e espaçamento das descidas.",
+  "estrutura.cob":"Cobertura metálica contínua (aço ≥ 0,5 mm, telhas interligadas) pode ser o próprio captor (NBR 5419-3, 5.2.5 e Tab. 3). Sobre zona de poeira combustível a espessura exigida é 4 mm, e a malha de captação é mantida.",
+  "estrutura.desc":"Descidas naturais: pilares metálicos ou armaduras de concreto eletricamente contínuas, com ensaio ≤ 0,2 Ω entre topo e base (NBR 5419-3, 4.3 e Anexo F). Dispensam cabos de descida, anéis intermediários e distância de segurança.",
+  "estrutura.km":"Material entre o condutor do SPDA e as instalações internas, usado na distância de segurança s = ki/km · kc · l (NBR 5419-3, 6.3 e Tab. 11).",
+  "estrutura.passo":"Medida contra tensões de toque e passo junto às descidas (NBR 5419-3, seção 8). Dispensada com dez ou mais descidas naturais.",
   "orc.despesas":"Gastos diretos não incluídos na lista: deslocamento, diárias, taxa da ART, aluguel de equipamentos, frete.",
-  "orc.lucro":"Margem de lucro da empresa, aplicada sobre o custo direto (materiais + serviços + despesas).",
+  "orc.lucro":"Margem de lucro da empresa, aplicada sobre o custo direto (materiais + serviços + despesas). Sugestão: 40 %.",
+  "orc.cub":"Custo Unitário Básico da construção (R$/m², padrão R8-N), publicado mensalmente pelo Sinduscon do estado. Serve de base para a hora técnica de engenharia.",
+  "orc.cubFrac":"Fração do CUB que vale uma hora técnica de engenharia. 0,10 é a convenção usada como padrão; confira a tabela de honorários do sindicato ou do CREA da região.",
+  "orc.salTec":"Salário mensal de um técnico em eletrotécnica em jornada de 40 h semanais. Define o custo horário da equipe de execução e implantação.",
+  "orc.encTec":"Encargos sociais e trabalhistas sobre o salário (INSS patronal, FGTS, férias, 13º, RAT etc.). Mensalista: cerca de 70 a 90 %.",
+  "orc.hMes":"Horas remuneradas por mês. Jornada de 40 h semanais: divisor 200 (CLT).",
+  "orc.trib.iss":"Imposto sobre serviços, municipal: 2 a 5 % conforme o município. 5 % é o teto e o valor mais comum.",
+  "orc.trib.pis":"PIS no regime cumulativo (lucro presumido): 0,65 % sobre a receita.",
+  "orc.trib.cofins":"COFINS no regime cumulativo (lucro presumido): 3 % sobre a receita.",
+  "orc.trib.irpj":"IRPJ no lucro presumido de serviços: 15 % sobre a presunção de 32 % da receita = 4,8 % (sem o adicional de 10 %).",
+  "orc.trib.csll":"CSLL no lucro presumido de serviços: 9 % sobre a presunção de 32 % da receita = 2,88 %. No Simples Nacional, zere os itens e informe a alíquota efetiva no ISS.",
   "orc.impostos":"Impostos que incidem sobre o preço de venda (ISS, PIS, COFINS, Simples etc.). O preço final é calculado por dentro: (custo + lucro) / (1 − impostos).",
   "orc.validade":"Prazo de validade da proposta, em dias.",
   "orc.obs":"Condições comerciais: forma de pagamento, prazo de execução, o que não está incluso."
@@ -639,24 +698,36 @@ function terraCard(){const t=R.terra;
 // 14) subestação
 function mtCard(){const m=R.mt;if(!m)return "";
   return `<div class="tbl"><table><tbody>
-  <tr><td>Transformador ${m.auto?"(potência padronizada ≥ demanda c/ reserva)":"(informado)"}</td><td class="num">${fmt(m.kva,m.kva%1?1:0)} kVA · carregamento ${fmt(m.carreg*100,0)} %</td></tr>
-  <tr><td>Corrente nominal no primário (${fmt(m.kV,1)} kV) / secundário</td><td class="num">${fmt(m.Imt,2)} A / ${fmt(m.Isec,1)} A</td></tr>
+  <tr><td>Tensão nominal / classe dos equipamentos / NBI (4.2.5)</td><td class="num">${fmt(m.kV,1)} kV / ${fmt(m.cl.cls,1)} kV / ${m.cl.nbi} kV${m.nomOk?"":` <span class="pill bad">fora de 4.2.5.2</span>`}</td></tr>
+  <tr><td>Transformador ${m.auto?"(potência padronizada ≥ demanda c/ reserva)":"(informado)"}</td><td class="num">${fmt(m.kva,m.kva%1?1:0)} kVA ${m.seco?"a seco":`em óleo (≈ ${m.oleo} L)`} · carregamento ${fmt(m.carreg*100,0)} %</td></tr>
+  <tr><td>Corrente nominal no primário / secundário</td><td class="num">${fmt(m.Imt,2)} A / ${fmt(m.Isec,1)} A</td></tr>
   <tr><td>Icc no secundário (Z = ${fmt(m.z*100,1)} %)</td><td class="num">${fmt(m.icc,2)} kA</td></tr>
-  <tr><td>Subestação</td><td class="num">${m.tipo==="poste"?"aérea em poste — chaves fusíveis":"abrigada — disjuntor MT com relé 50/51"}</td></tr>
-  <tr><td>Elo fusível (≈ 1,5 × In primário)</td><td class="num">${m.elo[0]}</td></tr>
-  ${m.tipo==="abrigada"?`<tr><td>Relé 51: partida de fase (≈ 1,25 × In primário)</td><td class="num">${fmt(m.pickup,2)} A primários</td></tr>`:""}
-  <tr><td>Para-raios de distribuição (ZnO, 10 kA)</td><td class="num">Ur ${m.ur} kV</td></tr>
-  </tbody></table></div><p class="note" style="margin-top:8px">Valores típicos para pré-dimensionamento pela NBR 14039: elos, ajustes de proteção, malha de aterramento e arranjo da subestação devem seguir o padrão técnico da distribuidora. ${m.carreg>0.9?"Carregamento acima de 90 %: considere a potência padronizada seguinte. ":""}O limite de queda de tensão total passa a ser 7 % a partir do secundário (6.2.7.1).</p>`;}
+  <tr><td>Subestação e proteção geral (5.3.1)</td><td class="num">${m.tipo==="poste"?`aérea em poste — chave fusível, elo ${m.elo[0]}, + disjuntor geral BT`:`${m.tipo==="integrada"?"integrada à edificação (trafo a seco, 9.4.3)":"abrigada"} — disjuntor MT com relés 50/51 e 50N/51N`}</td></tr>
+  ${m.disj?`<tr><td>Relé 51: partida de fase (≈ 1,25 × In) · inrush ≈ 8 × In · ponto ANSI (In/Z)</td><td class="num">${fmt(m.pickup,2)} A · ${fmt(m.inrush,1)} A · ${fmt(m.ansi,0)} A</td></tr>
+  <tr><td>Fonte capacitiva da bobina de abertura e reserva do relé ≥ 2 h (5.3.4.1, notas 1 a 3)</td><td class="num">incluídas</td></tr>`:""}
+  ${m.sMT?`<tr><td>Ramal subterrâneo de MT (${fmt0(m.Lmt)} m): cabo Cu XLPE/EPR ${m.isol} blindado (6.2.3.3)</td><td class="num">3 × 1 × ${m.sMT} mm² · I<sub>z</sub> ${m.izMT} A (Tab. 28, F1)${m.iccMT?` · S<sub>cc</sub> ≥ ${fmt(m.sCC,1)} mm²`:""}</td></tr>`:""}
+  <tr><td>Para-raios de distribuição (ZnO, 10 kA, 5.4)</td><td class="num">Ur ${m.ur} kV</td></tr>
+  <tr><td>Distância mínima fase-terra e fase-fase (Tab. 21)</td><td class="num">${m.cl.int} mm interna / ${m.cl.ext} mm externa</td></tr>
+  <tr><td>Esquema de aterramento da MT (4.2.3)</td><td class="num">${m.esq} · ≈ 10 Ω (6.4.1.2)</td></tr>
+  ${m.contencao?`<tr><td>Líquido isolante ≥ 100 L (5.8.1)</td><td class="num"><span class="pill bad">tanque de contenção</span></td></tr>`:""}
+  </tbody></table></div><p class="note" style="margin-top:8px">Pré-dimensionamento pela NBR 14039:2021: elos, ajustes e coordenação da proteção (5.3.4.1, nota 4), malha de aterramento e arranjo devem seguir o padrão técnico da distribuidora. ${m.tipo!=="poste"?"Subestação abrigada: partes vivas a ≥ 2,70 m nas áreas de circulação (Tab. 19), corredores livres ≥ 0,70 m, porta metálica 0,80 × 2,10 m abrindo para fora, ventilação em chicana com tela, iluminação de segurança de 2 h e placas “Perigo de morte” (9.1.9, 9.2.1 e 9.2.2). ":"Em poste, partes vivas a ≥ 5 m do solo nas áreas de circulação (9.3.3.1). "}${m.carreg>0.9?"Carregamento acima de 90 %: considere a potência padronizada seguinte. ":""}O limite de queda de tensão total passa a ser 7 % a partir do secundário (NBR 5410, 6.2.7.1).</p>`;}
 function spdaCard(){const s=R.spda;
   if(!s.ok)return `<p class="note warn">Informe comprimento, largura e altura da estrutura para dimensionar o SPDA.</p>`;
+  const toq={brita:"brita 20 cm ou asfalto 5 cm até 3 m das descidas",isolacao:"isolação das descidas (100 kV, 1,2/50 µs) até 3 m",barreira:"barreiras e placas de advertência",baixa:"dispensada: baixa presença de pessoas",naturais:"dispensada: ≥ 10 descidas naturais"}[s.toque]||"—";
   return `<div class="tbl"><table><tbody>
   <tr><td>Área de exposição equivalente A<sub>D</sub> = L·W + 6H(L+W) + π(3H)²</td><td class="num">${fmt0(s.Ad)} m²</td></tr>
   <tr><td>Eventos perigosos por ano N<sub>D</sub> = N<sub>G</sub> · A<sub>D</sub> · C<sub>D</sub> · 10⁻⁶</td><td class="num">${s.ng?fmt(s.Nd,4)+" /ano":"informe N<sub>G</sub>"}</td></tr>
-  <tr><td>NP ${s.np}: raio da esfera rolante / malha de captação (Tab. 2)</td><td class="num">${s.g.r} m / ${s.g.m} × ${s.g.m} m</td></tr>
-  <tr><td>Descidas: espaçamento médio ${s.g.d} m (Tab. 4) no perímetro de ${fmt0(s.per)} m</td><td class="num">${s.nDesc} descidas</td></tr>
-  <tr><td>Captação em malha (${s.linhasL} × ${fmt(s.L,1)} m + ${s.linhasW} × ${fmt(s.W,1)} m) + descidas (${s.nDesc} × ${fmt(s.H,1)} m)</td><td class="num">${fmt0(s.captacao+s.descidas)} m</td></tr>
-  <tr><td>Eletrodo em anel (arranjo B) a ~1 m da fundação · raio médio r<sub>e</sub></td><td class="num">${fmt0(s.anel)} m · r<sub>e</sub> ${fmt(s.re,1)} m</td></tr>
-  <tr><td>Comprimento mínimo l<sub>1</sub> do eletrodo (Fig. 3)</td><td class="num">${s.l1!=null?`${s.l1} m — <span class="pill ${s.anelOk?"ok":"bad"}">${s.anelOk?"r<sub>e</sub> ≥ l<sub>1</sub>":"acrescentar eletrodos"}</span>`:`NP ${s.np}: depende de ρ${s.rho?` = ${fmt0(s.rho)} Ω·m`:" (informe na etapa 02)"}`}</td></tr>
+  <tr><td>NP ${s.np}: captação (Tab. 2 e 5.2.5)</td><td class="num">${s.cobMet?"natural: cobertura metálica contínua":`malha ${s.g.m} × ${s.g.m} m · esfera ${s.g.r} m${s.cobMetZona?" (telha sobre zona de poeira não é captor)":""}`}</td></tr>
+  <tr><td>Descidas: uma em cada canto, espaçamento ≤ ${s.g.d} m (5.3.3, Tab. 4)</td><td class="num">${s.nDesc} ${s.natural?"descidas naturais (pilares/armaduras)":"descidas"}</td></tr>
+  ${s.nAneis?`<tr><td>Anéis horizontais intermediários a cada ${s.g.d} m de altura (5.3.1)</td><td class="num">${s.nAneis} × ${fmt0(s.per)} m</td></tr>`:""}
+  <tr><td>Condutores Cu 35 mm²: captação + descidas + anéis</td><td class="num">${fmt0(s.captacao)} + ${fmt0(s.descidas)} + ${fmt0(s.aneisInt)} m</td></tr>
+  <tr><td>Eletrodo em anel a ~1 m das paredes e ≥ 0,5 m de profundidade · raio médio r<sub>e</sub></td><td class="num">${fmt0(s.anel)} m · r<sub>e</sub> ${fmt(s.re,1)} m</td></tr>
+  <tr><td>Comprimento mínimo l<sub>1</sub> do eletrodo (Fig. 3, 5.4.2)</td><td class="num">${s.l1!=null?`${fmt(s.l1,1)} m — <span class="pill ${s.anelOk?"ok":"bad"}">${s.anelOk?"r<sub>e</sub> ≥ l<sub>1</sub>":`+ ${s.hastesAd} hastes (l<sub>v</sub> = ${fmt(s.lv,1)} m por descida)`}</span>`:`NP ${s.np}: depende de ρ (informe na etapa 02)`}</td></tr>
+  <tr><td>Distância de segurança s = k<sub>i</sub>/k<sub>m</sub> · k<sub>c</sub> · l (6.3)</td><td class="num">${s.natural?"não exigida (estrutura contínua)":`${fmt(s.ki,2)}/${fmt(s.km,1)} · ${fmt(s.kc,2)} · ${fmt(s.H,1)} m = <b>${fmt(s.sSeg,2)} m</b>`}</td></tr>
+  <tr><td>Barramentos de equipotencialização (6.2.2.2)</td><td class="num">BEP${s.nBEL?` + ${s.nBEL} BEL (estrutura > 20 m)`:""}</td></tr>
+  <tr><td>DPS classe I nas linhas que entram (6.2.5), por polo</td><td class="num">${(R.dps.itens[0]||{}).i||"—"}</td></tr>
+  <tr><td>Tensões de toque e passo (seção 8)</td><td class="num">${toq}</td></tr>
+  <tr><td>Inspeção (7.3)</td><td class="num">visual semestral · periódica a cada ${s.insp===1?"1 ano":"3 anos"}</td></tr>
   <tr><td>Seções mínimas (Tab. 6 e 7): captação e descidas / aterramento</td><td class="num">Cu 35 mm² / Cu 50 mm²</td></tr>
   </tbody></table></div>
   ${s.ng?`<h3 style="margin-top:12px">Análise de risco R1 (NBR 5419-2) — tolerável R<sub>T</sub> = 10⁻⁵</h3>
@@ -689,7 +760,7 @@ ${S.forn.atend==="MT"?`<label class="chk"><input type="checkbox" data-bind="forn
 <div class="grid wide">
 ${fld("forn.sistema","Tipo de alimentação (tensão secundária)",{opts:Object.entries(SISTEMAS).map(([k,v])=>[k,v.nome]),hint:"Define as ligações possíveis dos circuitos e o alimentador de entrada."})}
 ${fld("forn.rede","Rede existente no local",{ph:"Ex.: rede MT 13,8 kV trifásica"})}${fld("forn.distRede","Distância até o ponto de derivação",{ph:"Ex.: 80 m"})}
-${S.forn.atend==="MT"?fld("forn.trafoKVA","Transformador (kVA)",{type:"number",step:"0.5",ph:R.mt?`${fmt(R.mt.kva,R.mt.kva%1?1:0)} (auto)`:"",hint:"Em branco: menor potência padronizada ≥ demanda com reserva."})+fld("par.zTrafo","Impedância percentual do transformador (%)",{type:"number",step:"0.1",hint:"Placa ou NBR 5440: 3,5 % até 150 kVA; 4,5 % até 300 kVA; 5 % acima."})+fld("par.tipoSub","Tipo de subestação",{opts:[["poste","Aérea em poste (até ~300 kVA)"],["abrigada","Abrigada / em alvenaria (disjuntor MT)"]]}):fld("par.icc","Icc presumida no ponto de entrega (kA)",{type:"number",step:"0.5",hint:"Informada pela distribuidora. A Icc de cada quadro é calculada a partir dela."})}
+${S.forn.atend==="MT"?fld("forn.trafoKVA","Transformador (kVA)",{type:"number",step:"0.5",ph:R.mt?`${fmt(R.mt.kva,R.mt.kva%1?1:0)} (auto)`:"",hint:"Em branco: menor potência padronizada ≥ demanda com reserva."})+fld("par.zTrafo","Impedância percentual do transformador (%)",{type:"number",step:"0.1",hint:"Placa ou NBR 5440: 3,5 % até 150 kVA; 4,5 % até 300 kVA; 5 % acima."})+fld("par.tipoSub","Tipo de subestação",{opts:[["poste","Aérea em poste — chave fusível (até 300 kVA)"],["abrigada","Abrigada / alvenaria separada — disjuntor MT"],["integrada","Integrada à edificação industrial — trafo a seco"]]})+fld("forn.iccMT","Icc no ponto de entrega em MT (kA)",{type:"number",step:"0.1",ph:"informada pela distribuidora"})+fld("forn.Lmt","Ramal subterrâneo de MT (m)",{type:"number",step:"1"}):fld("par.icc","Icc presumida no ponto de entrega (kA)",{type:"number",step:"0.5",hint:"Informada pela distribuidora. A Icc de cada quadro é calculada a partir dela."})}
 ${fld("forn.aterr","Esquema de aterramento",{opts:Object.entries(ATERR),hint:"Padrão TN-S."})}
 ${S.forn.aterr==="TT"?fld("forn.ra","RA — resistência do eletrodo + PE das massas (Ω)",{type:"number",step:"0.1"})+fld("forn.ul","UL — tensão de contato limite (V)",{opts:[[50,"50 V (situação 1)"],[25,"25 V (situação 2)"]]}):""}
 ${fld("forn.rhoEletrica","Resistividade elétrica do solo (Ω·m)",{type:"number",step:"1",hint:"Medida pelo método de Wenner. Dimensiona o eletrodo de aterramento (hastes e anel do SPDA)."})}
@@ -922,7 +993,7 @@ ${S.ambientes.some(a=>a.zona)?`<p class="note warn"><b>Áreas classificadas:</b>
 ${S.projetos.luminotecnico?`<div class="block"><h3>Projeto luminotécnico</h3>${attBlock("luminotecnico")}</div>`:""}
 ${S.projetos.spda?`<div class="block"><h3>Projeto de SPDA — NBR 5419:2015</h3>
 <p class="note">Análise de risco R1 (perda de vida humana, NBR 5419-2) com as componentes R<sub>A</sub>, R<sub>B</sub>, R<sub>U</sub> e R<sub>V</sub>, e pré-dimensionamento pelo método das malhas (NBR 5419-3) para o nível de proteção adotado. R<sub>C</sub>, R<sub>M</sub>, R<sub>W</sub> e R<sub>Z</sub> só compõem R1 em estruturas com risco de explosão ou hospitais e não são calculadas aqui.</p>
-<div class="grid">${fld("estrutura.L","Comprimento da estrutura (m)",{type:"number",step:"0.1"})}${fld("estrutura.W","Largura da estrutura (m)",{type:"number",step:"0.1"})}${fld("estrutura.H","Altura máxima (m)",{type:"number",step:"0.1"})}${fld("estrutura.ng","N<sub>G</sub> (descargas/km²/ano)",{type:"number",step:"0.1",ph:"mapa NBR 5419-2"})}${fld("estrutura.cd","Localização — C<sub>D</sub>",{opts:Object.entries(CD5419)})}${fld("estrutura.np","Nível de proteção adotado",{opts:Object.keys(NP5419).map(k=>[k,`NP ${k}`])})}</div>
+<div class="grid">${fld("estrutura.L","Comprimento da estrutura (m)",{type:"number",step:"0.1"})}${fld("estrutura.W","Largura da estrutura (m)",{type:"number",step:"0.1"})}${fld("estrutura.H","Altura máxima (m)",{type:"number",step:"0.1"})}${fld("estrutura.ng","N<sub>G</sub> (descargas/km²/ano)",{type:"number",step:"0.1",ph:"mapa NBR 5419-2"})}${fld("estrutura.cd","Localização — C<sub>D</sub>",{opts:Object.entries(CD5419)})}${fld("estrutura.np","Nível de proteção adotado",{opts:Object.keys(NP5419).map(k=>[k,`NP ${k}`])})}${fld("estrutura.cob","Cobertura",{opts:[["nao_metalica","Não metálica (cerâmica, fibrocimento, laje)"],["metalica","Metálica contínua (captor natural, 5.2.5)"]]})}${fld("estrutura.desc","Descidas",{opts:[["convencional","Condutores de descida (cobre 35 mm²)"],["natural","Naturais: pilares metálicos ou armadura contínua"]]})}${fld("estrutura.km","Isolante entre SPDA e instalações — k<sub>m</sub>",{opts:[["1","Ar (1)"],["0.5","Concreto ou tijolo (0,5)"]]})}${fld("estrutura.passo","Tensões de toque e passo (seção 8)",{opts:[["brita","Brita 20 cm ou asfalto 5 cm até 3 m das descidas"],["isolacao","Isolação das descidas (100 kV, XLPE 3 mm)"],["barreira","Barreiras e placas de advertência"],["baixa","Dispensada: baixa presença de pessoas"]]})}</div>
 <details><summary>Análise de risco R1 (NBR 5419-2) — parâmetros</summary><div class="grid" style="margin-top:8px">
 ${fld("estrutura.horas","Permanência de pessoas (h/dia)",{type:"number",step:"1"})}${fld("estrutura.rt","Tipo de piso — rt",{opts:Object.entries(R5419.rt)})}${fld("estrutura.PTA","Medidas contra tensão de toque/passo — PTA",{opts:Object.entries(R5419.PTA)})}
 ${fld("estrutura.rf","Risco de incêndio — rf",{opts:Object.entries(R5419.rf)})}${fld("estrutura.rp","Providências contra incêndio — rp",{opts:Object.entries(R5419.rp)})}${fld("estrutura.hz","Perigo especial — hz",{opts:Object.entries(R5419.hz)})}
@@ -951,11 +1022,13 @@ function memoAuto(){
       return `As correntes de curto-circuito foram calculadas a partir de ${R.mt?`um transformador de ${fmt(R.mt.kva,R.mt.kva%1?1:0)} kVA com impedância de ${fmt(R.mt.z*100,1)} % (${fmt(R.mt.icc,2)} kA no secundário)`:`uma corrente presumida de ${fmt(R.iccFonte,1)} kA no ponto de entrega`}, somando a impedância dos alimentadores: ${R.quadros.map(q=>`${q.q.nome} ${fmt(q.iccMax,2)} kA (dispositivos com capacidade de interrupção ≥ ${fmt(q.icn,q.icn%1?1:0)} kA)`).join("; ")}. A proteção contra choques elétricos por seccionamento automático da alimentação (5.1.2.2.4) foi verificada no esquema ${at}: ${at==="TT"?"o seccionamento é feito por dispositivos DR em todos os circuitos":`a corrente de falta fase-massa no ponto mais distante de cada circuito supera a corrente de atuação instantânea do dispositivo de proteção em ${ok} de ${tot} circuitos, garantindo o tempo máximo de ${fmt(R.tmax,1)} s da Tabela 25${ok<tot?`; os circuitos ${R.out.filter(o=>o.sec&&!o.sec.ok).map(o=>o.i+1).join(", ")} devem ser revistos`:""}`}. A integral de Joule dos dispositivos deve ser inferior a k²S² dos condutores (5.3.5.5.2). Os alimentadores dos quadros foram dimensionados com dispositivo de corrente nominal ao menos 1,6 vez a do maior dispositivo a jusante, para seletividade amperimétrica; a seletividade no curto-circuito é parcial e deve ser confirmada pelas tabelas do fabricante.`;})(),
     infl:(()=>{const z=S.ambientes.filter(a=>a.zona);return `As influências externas (NBR 5410, Tabela 32) foram classificadas por ambiente e por quadro, definindo o grau de proteção mínimo dos componentes: ${S.ambientes.map(a=>`${a.nome}: ${(INFL[a.infl]||INFL.seco).t}, ${(INFL[a.infl]||INFL.seco).ip}`).join("; ")||"—"}; quadros: ${S.quadros.map(q=>`${q.nome} ${(INFL[q.infl]||INFL.seco).ipQ}`).join(", ")}.${z.length?` Por haver manuseio de grãos e farelos, ${z.map(a=>`o ambiente ${a.nome} foi considerado ${ZONAS[a.zona].t.toLowerCase()}`).join("; ")} (NBR IEC 60079-10-2). Nessas áreas, luminárias, tomadas, interruptores, motores e caixas terão certificação Ex (${[...new Set(z.map(a=>ZONAS[a.zona].epl))].join("; ")}), temperatura máxima de superfície compatível com a nuvem e a camada de poeira, prensa-cabos certificados e instalação conforme a NBR IEC 60079-14; os quadros ficarão, preferencialmente, fora das áreas classificadas. A classificação deve ser confirmada por estudo específico.`:""}`;})(),
     lum:(()=>{const a=S.ambientes;return `O dimensionamento da iluminação seguiu o método dos lúmens, N = E × A / (φ × FU × FM), com iluminâncias de referência da ABNT NBR ISO/CIE 8995-1 e limitação do espaçamento entre luminárias pela relação S/Hm do fabricante, adotando-se o maior dos dois resultados. ${a.map(x=>{const c=calcularAmbiente(x);return `${x.nome}: ${fmt0(c.area)} m², ${x.lux} lx exigidos, ${c.luminarias} luminárias de ${fmt0(+x.lm)} lm / ${fmt0(+x.w)} W, iluminância média mantida de ${fmt0(c.em)} lx, densidade de ${fmt(c.dens,1)} W/m²`;}).join("; ")||"Nenhum ambiente cadastrado"}. Os fatores de utilização devem ser confirmados nas tabelas fotométricas das luminárias escolhidas.`;})(),
-    spda:(()=>{const s=R.spda;if(!s.ok)return "As dimensões da estrutura não foram informadas; o SPDA será dimensionado após o levantamento.";const rk=s.ng?` A análise de risco de perda de vida humana (NBR 5419-2) resultou em R1 = ${s.risco.nenhum.R1.toExponential(2).replace(".",",")} sem proteção e ${s.risco[s.np].R1.toExponential(2).replace(".",",")} com SPDA NP ${s.np} e DPS classe I, frente ao tolerável de 10⁻⁵ (${s.rec==="nenhum"?"a proteção não é obrigatória por esse critério e foi adotada por decisão de projeto":s.rec?`nível mínimo necessário: NP ${s.rec}`:"são necessárias medidas adicionais"}).`:"";return `O sistema de proteção contra descargas atmosféricas foi pré-dimensionado conforme a ABNT NBR 5419:2015 para a estrutura de ${fmt(s.L,1)} × ${fmt(s.W,1)} m e altura de ${fmt(s.H,1)} m. A área de exposição equivalente é de ${fmt0(s.Ad)} m²${s.ng?` e, com NG = ${fmt(s.ng,1)} descargas/km²/ano e CD = ${fmt(s.cd,2)}, o número anual de eventos perigosos é ND = ${fmt(s.Nd,4)}`:""} (NBR 5419-2, Anexo A). Adotou-se nível de proteção ${s.np}, com captação em malha de ${s.g.m} × ${s.g.m} m (esfera rolante de ${s.g.r} m), ${s.nDesc} condutores de descida espaçados em média ${s.g.d} m, condutores de cobre de 35 mm² na captação e nas descidas, e eletrodo de aterramento em anel (arranjo B) em cobre nu de 50 mm², interligado ao BEP. Na entrada de energia serão instalados DPS classe I. O nível de proteção deve ser confirmado pela análise de risco completa antes da execução.${rk}`;})(),
+    spda:(()=>{const s=R.spda;if(!s.ok)return "As dimensões da estrutura não foram informadas; o SPDA será dimensionado após o levantamento.";const rk=s.ng?` A análise de risco de perda de vida humana (NBR 5419-2) resultou em R1 = ${s.risco.nenhum.R1.toExponential(2).replace(".",",")} sem proteção e ${s.risco[s.np].R1.toExponential(2).replace(".",",")} com SPDA NP ${s.np} e DPS classe I, frente ao tolerável de 10⁻⁵ (${s.rec==="nenhum"?"a proteção não é obrigatória por esse critério e foi adotada por decisão de projeto":s.rec?`nível mínimo necessário: NP ${s.rec}`:"são necessárias medidas adicionais"}).`:"";
+      const toq={brita:"camada de brita de 20 cm (ou asfalto de 5 cm) num raio de 3 m em torno de cada descida (8.1.1-c e 8.2)",isolacao:"isolação das descidas expostas, até 3 m de altura, com material que suporte 100 kV 1,2/50 µs, como XLPE de 3 mm (8.1.2-a)",barreira:"barreiras físicas e placas de advertência que impeçam a aproximação a menos de 3 m das descidas (8.1.2-b e 8.2-a)",baixa:"dispensadas pela baixa probabilidade de presença de pessoas junto às descidas (8.1.1-a)",naturais:"dispensadas, pois há pelo menos dez descidas naturais interligadas (8.1.1-b)"}[s.toque]||"a definir";
+      return `O sistema de proteção contra descargas atmosféricas foi pré-dimensionado conforme a ABNT NBR 5419:2015 para a estrutura de ${fmt(s.L,1)} × ${fmt(s.W,1)} m e altura de ${fmt(s.H,1)} m. A área de exposição equivalente é de ${fmt0(s.Ad)} m²${s.ng?` e, com NG = ${fmt(s.ng,1)} descargas/km²/ano e CD = ${fmt(s.cd,2)}, o número anual de eventos perigosos é ND = ${fmt(s.Nd,4)}`:""} (NBR 5419-2, Anexo A). Adotou-se o nível de proteção ${s.np} (NBR 5419-3), com ${s.cobMet?"captação natural pela cobertura metálica contínua, de espessura não inferior a 0,5 mm e com continuidade elétrica durável entre as telhas (5.2.5 e Tab. 3)":`captação em malha de ${s.g.m} × ${s.g.m} m (esfera rolante de ${s.g.r} m) em cobre nu de 35 mm², na periferia, nas saliências e nas cumeeiras (Anexo A.3)${s.cobMetZona?"; a cobertura metálica não foi aproveitada como captor por estar sobre área com poeira combustível, que exige espessura de 4 mm (Tab. 3)":""}`}; ${s.natural?`descidas naturais pelos pilares metálicos ou armaduras de concreto eletricamente contínuas, ligadas à captação em pelo menos ${s.nDesc} pontos e validadas pelo ensaio de continuidade do Anexo F (resistência ≤ 0,2 Ω entre o topo e o BEP)`:`${s.nDesc} condutores de descida em cobre nu de 35 mm², um em cada canto saliente e os demais espaçados no máximo ${s.g.d} m (5.3.3 e Tab. 4), retilíneos e verticais, fixados a cada 1,5 m (5.5.2), com conector de ensaio a cerca de 1,5 m do piso em cada descida (5.3.6)${s.nAneis?`, interligados por ${s.nAneis} anel(éis) horizontal(is) a cada ${s.g.d} m de altura (5.3.1)`:""}`}; e eletrodo de aterramento em anel de cobre nu de 50 mm², enterrado a pelo menos 0,5 m e a cerca de 1 m das paredes, em contato com o solo em ao menos 80 % do comprimento (5.4.2 e 5.4.3)${s.l1!=null?`, com raio médio de ${fmt(s.re,1)} m frente ao mínimo l1 = ${fmt(s.l1,1)} m (Fig. 3)${s.falta>0?`, complementado por ${s.hastesAd} hastes junto às descidas (lv = ${fmt(s.lv,1)} m cada)`:""}`:""}, interligado ao BEP como eletrodo único da instalação (5.4.1). ${s.natural?"Por ser a estrutura metálica ou de concreto armado contínuo, não se exige distância de segurança (6.3.1).":`A distância de segurança entre o SPDA e instalações metálicas ou linhas internas é s = ki/km · kc · l = ${fmt(s.ki,2)}/${fmt(s.km,1)} · ${fmt(s.kc,2)} · ${fmt(s.H,1)} = ${fmt(s.sSeg,2)} m (6.3); onde a distância for menor, as partes serão equipotencializadas.`} A equipotencialização é feita no nível do solo pelo BEP${s.nBEL?` e por ${s.nBEL} BEL interligados a ele, por a estrutura ter mais de 20 m (6.2.2.2-a)`:""}, com condutores de cobre de 16 mm² entre barramentos (50 mm² se enterrados, Tab. 8) e de 6 mm² para as instalações metálicas internas (Tab. 9). As linhas de energia e de sinal serão equipotencializadas na entrada por DPS classe I (${(R.dps.itens[0]||{}).i||"Iimp ≥ 12,5 kA"} por polo, 6.2.5). Contra tensões de toque e passo: ${toq}. ${s.zMax?`Por haver zona ${s.zMax} de poeira combustível, os condutores do SPDA ficarão a pelo menos 1 m da zona (Anexo D, D.5.1), a equipotencialização considerará kc = 1 (s = ${fmt(s.sZona,2)} m, D.3.4) e os DPS ficarão fora da zona ou serão certificados para ela (D.5.1.1). `:""}Serão feitas inspeções visuais semestrais e periódicas a cada ${s.insp===1?"ano":"três anos"} por profissional habilitado, com relatório (7.3), e a documentação técnica será mantida no local: análise de risco, desenhos em escala, resistividade e estratificação do solo e registros de ensaio (7.5). O nível de proteção deve ser confirmado pela análise de risco completa antes da execução.${rk}`;})(),
     emerg:(()=>{const a=S.ambientes.map(x=>[x,emergCalc(x)]);return `A iluminação de emergência atende à ABNT NBR 10898 por meio de luminárias autônomas de LED com autonomia mínima de 1 hora, espaçadas no máximo quatro vezes a sua altura de instalação (limite de 15 m), garantindo no mínimo 3 lux no piso das rotas de fuga, além de sinalização de saída em cada porta: ${a.map(([x,e])=>`${x.nome}, ${e.n} luminária(s) e ${e.saidas} sinalização(ões)`).join("; ")}. As unidades serão alimentadas pelo circuito de iluminação do próprio ambiente, a montante do interruptor, para que permaneçam carregadas.`;})(),
     fp:(()=>{const x=R.fp;return x.need?`O fator de potência estimado da demanda é ${fmt(R.fpG,2)}, inferior ao valor de referência de ${fmt(x.alvo,2)} da REN ANEEL nº 1.000/2021. Para evitar a cobrança de excedente reativo, será instalado no ${S.quadros[0].nome} um banco de capacitores ${x.auto?"automático, com controlador de fator de potência,":"fixo"} de ${fmt(x.std,x.std%1?1:0)} kvar (Qc = P × (tg φ1 − tg φ2) = ${fmt(x.Qc,2)} kvar), protegido por disjuntor de ${x.dj} A e alimentado por cabo de ${sec(x.s)} mm², dimensionados para 1,43 vez a corrente nominal do banco (IEC 60831). O fator de potência resultante é de aproximadamente ${fmt(x.fpNovo,3)}. Motores acionados por inversor ou soft-starter não recebem capacitores individuais.`:`O fator de potência estimado da demanda é ${fmt(R.fpG,2)}, igual ou superior ao valor de referência de ${fmt(x.alvo,2)}; não é necessária correção. Recomenda-se medir o fator de potência após a entrada em operação.`;})(),
-    mt:(()=>{const m=R.mt;if(!m)return "Atendimento em tensão secundária: não há subestação própria.";return `O atendimento será em ${fmt(m.kV,1)} kV, com subestação ${m.tipo==="poste"?"aérea em poste":"abrigada"} conforme a ABNT NBR 14039 e o padrão da distribuidora. Transformador trifásico de ${fmt(m.kva,m.kva%1?1:0)} kVA (carregamento previsto de ${fmt(m.carreg*100,0)} %), corrente nominal de ${fmt(m.Imt,2)} A no primário e ${fmt(m.Isec,1)} A no secundário, impedância de ${fmt(m.z*100,1)} %. Proteção no primário por ${m.tipo==="poste"?`chaves fusíveis com elo ${m.elo[0]}`:`disjuntor de média tensão com relé secundário 50/51 e 50N/51N (partida de fase ≈ ${fmt(m.pickup,2)} A)`}, e contra surtos por para-raios de óxido de zinco de ${m.ur} kV, 10 kA. A malha de aterramento da subestação será interligada ao BEP.`;})(),
-    custo:(()=>{const c=custos(),o=orcamento();return `A estimativa de custo dos materiais relacionados na lista de materiais totaliza ${brl(c.tot)}, assim distribuída: ${Object.keys(GRUPOS).filter(g=>c.por[g]!=null).map(g=>`${GRUPOS[g]}, ${brl(c.por[g]||0)}`).join("; ")}.${c.semPreco?` ${c.semPreco} de ${c.m.length} itens estão sem preço informado e não entram no total.`:""}${o.mo>0||o.desp>0?` Os serviços de engenharia, execução e implantação somam ${brl(o.mo)} (${fmt(o.horas,0)} h)${o.desp?` e as despesas diretas ${brl(o.desp)}`:""}, resultando em custo direto de ${brl(o.direto)}; com lucro de ${fmt(+S.orc.lucro||0,1)} %${+S.orc.impostos?` e impostos de ${fmt(+S.orc.impostos,1)} % sobre o preço de venda`:""}, o valor global estimado é de ${brl(o.pv)}.`:" Os valores não incluem mão de obra, frete, impostos nem BDI."} Os preços devem ser atualizados por cotação na data da execução.`;})(),
+    mt:(()=>{const m=R.mt;if(!m)return "Atendimento em tensão secundária: não há subestação própria.";return `O atendimento será em ${fmt(m.kV,1)} kV, com equipamentos de classe ${fmt(m.cl.cls,1)} kV e NBI de ${m.cl.nbi} kV (4.2.5), em subestação ${m.tipo==="poste"?"aérea em poste":m.tipo==="integrada"?"abrigada integrada à edificação industrial":"abrigada"}, conforme a ABNT NBR 14039:2021 e o padrão da distribuidora. Transformador trifásico de ${fmt(m.kva,m.kva%1?1:0)} kVA (carregamento previsto de ${fmt(m.carreg*100,0)} %), ${m.seco?"a seco, obrigatório por a subestação integrar a edificação industrial (9.4.3)":`em óleo mineral (≈ ${m.oleo} L${m.contencao?", com tanque de contenção por conter 100 L ou mais (5.8.1)":""})`}, corrente nominal de ${fmt(m.Imt,2)} A no primário e ${fmt(m.Isec,1)} A no secundário, impedância de ${fmt(m.z*100,1)} %. A proteção geral em MT será feita ${m.disj?`por chave seccionadora intertravada e disjuntor a vácuo com relé secundário 50/51 e 50N/51N (partida de fase ≈ ${fmt(m.pickup,2)} A), com TCs a montante do disjuntor, fonte capacitiva para a bobina de abertura e reserva de 2 h para o relé (5.3.1 e 5.3.4.1)`:`por chaves fusíveis com elo ${m.elo[0]} e, na baixa tensão, por disjuntor geral (5.3.1.1)`}; a corrente de magnetização (≈ ${fmt(m.inrush,1)} A) e o ponto ANSI (≈ ${fmt0(m.ansi)} A) serão considerados no estudo de seletividade com a proteção da distribuidora (5.3.4.1, nota 4). Contra sobretensões, para-raios de óxido de zinco de ${m.ur} kV, 10 kA, com ligação à terra curta e retilínea (5.4 e 6.4.2.1.4). ${m.sMT?`O ramal de MT até a subestação, com ${fmt0(m.Lmt)} m, terá cabos unipolares de cobre de ${m.sMT} mm², isolação XLPE/EPR ${m.isol} com blindagem (6.2.3.3 e 6.2.3.5), em eletroduto enterrado a pelo menos 0,9 m (1,2 m sob vias), com fita de advertência 0,10 m acima, declividade mínima de 1 % e poços de inspeção (6.2.11.4); a capacidade de condução é de ${m.izMT} A (Tab. 28, método F1)${m.iccMT?` e a seção mínima por curto-circuito, ${fmt(m.sCC,1)} mm² para ${fmt(m.iccMT,1)} kA em ${fmt(m.tcc,1)} s (6.2.6.1)`:""}. Na subida externa, o cabo será protegido por eletroduto de aço classe pesada até 3 m do solo (9.2.1.11). `:""}As distâncias mínimas entre partes vivas e à terra são de ${m.cl.int} mm em instalação interna e ${m.cl.ext} mm em externa (Tab. 21). ${m.tipo!=="poste"?`Na subestação abrigada: partes vivas a pelo menos 2,70 m nas áreas de circulação e anteparos a ${m.D} mm delas (Tab. 19), corredores livres de 0,70 m, porta metálica de 0,80 × 2,10 m abrindo para fora, ventilação em chicana a 20 cm do piso com tela de 5 a 13 mm, iluminação de segurança com autonomia de 2 h, esquema geral afixado e placas "Perigo de morte" (9.1.9, 9.1.10, 9.2.1 e 9.2.2).`:"Na subestação em poste, as partes vivas ficarão a pelo menos 5 m do solo nas áreas de circulação (9.3.3.1)."} O esquema de aterramento da MT é ${m.esq} (4.2.3), ${m.esq==="TNR"?"com massas da subestação, neutro e massas da instalação no mesmo eletrodo":"com neutro e massas da subestação num eletrodo e massas da instalação em outro"}; a resistência recomendada é da ordem de 10 Ω (6.4.1.2), com malha sob a subestação ou anel em torno dela (6.4.2.2.1), condutor de aterramento de cobre com pelo menos 16 mm² (25 mm² em solo alcalino sem proteção contra corrosão, Tab. 46) e equipotencialização principal de pelo menos 16 mm² (6.4.4.1); a tensão de contato limite é de 50 V em áreas internas e 25 V em externas (Tab. 22). Os barramentos de MT serão identificados nas cores vermelha, branca e marrom para as fases A, B e C (6.1.5.3.6). Antes da energização serão feitos inspeção visual e ensaios de continuidade dos condutores de proteção, resistência de isolamento, tensão aplicada, resistência de aterramento e funcionamento, com laudo de conformidade (7.1.5 e 7.3). Operação e manobras somente por pessoas qualificadas (BA5), com EPI e EPC (8.1 e 8.3).`;})(),
+    custo:(()=>{const c=custos(),o=orcamento();return `A estimativa de custo dos materiais relacionados na lista de materiais totaliza ${brl(c.tot)}, assim distribuída: ${Object.keys(GRUPOS).filter(g=>c.por[g]!=null).map(g=>`${GRUPOS[g]}, ${brl(c.por[g]||0)}`).join("; ")}.${c.semPreco?` ${c.semPreco} de ${c.m.length} itens estão sem preço informado e não entram no total.`:""}${o.mo>0||o.desp>0?` Os serviços de engenharia, execução e implantação somam ${brl(o.mo)} (${fmt(o.horas,0)} h)${o.desp?` e as despesas diretas ${brl(o.desp)}`:""}, resultando em custo direto de ${brl(o.direto)}; com lucro de ${fmt(+S.orc.lucro||0,1)} %${o.imp?` e impostos de ${fmt(o.imp,2)} % sobre o preço de venda${o.trib.length?` (${o.trib.filter(x=>x.v).map(x=>`${x.n.split(" (")[0]} ${fmt(x.v,2)} %`).join(", ")})`:""}`:""}, o valor global estimado é de ${brl(o.pv)}.`:" Os valores não incluem mão de obra, frete, impostos nem BDI."} ${c.nEst?` Dos materiais, ${c.nEst} itens usam preço de referência estimado (base ${PRECOS_REF_DATA}); inversores e soft-starters têm como referência os modelos WEG de 5 cv, escalados pela potência.`:""}${o.srv.some(x=>x.est)?` O valor da hora de engenharia foi tomado como ${fmt(+S.orc.cubFrac||REF_ORC.cubFrac,2)} CUB R8-N (${brl(horaRef("eng"))}/h) e o da equipe pelo custo de um técnico em jornada de 40 h semanais com encargos (${brl(horaRef("serv"))}/h).`:""} Os preços devem ser atualizados por cotação na data da execução.`;})(),
     doc:`Integram este projeto: ART, carta de solicitação à distribuidora, memorial descritivo, memorial de cálculo, plantas, quadros de distribuição de cargas, diagramas unifilar e multifilar, detalhes construtivos, especificações técnicas e lista de materiais. A aprovação pela distribuidora não exime o responsável técnico da responsabilidade pelo projeto.`
   };
 }
@@ -1075,25 +1148,51 @@ function materiais(){
   add("spda",`Cabo de cobre ${sec(t.sEq)} mm² verde-amarelo — equipotencialização principal (estruturas, silos, tubulações)`,"m",t.nEq*t.lEq*sob,null,PROD.caboMedio);
   add("spda","Conector/grampo de equipotencialização para estrutura metálica ou tubulação","pç",t.nEq*2);
   const sp=R.spda;if(S.projetos.spda&&sp.ok){
-    add("spda",`Cabo de cobre nu 35 mm² — captação em malha ${sp.g.m} × ${sp.g.m} m e descidas (NBR 5419-3, Tab. 6)`,"m",(sp.captacao+sp.descidas)*sob,null,PROD.spdaCabo);
-    add("spda","Cabo de cobre nu 50 mm² — eletrodo de aterramento em anel, enterrado a ≥ 0,5 m (NBR 5419-3, Tab. 7)","m",sp.anel*sob,null,PROD.spdaCabo);
-    add("spda","Caixa de inspeção de aterramento com conector de medição (desconexão), uma por descida","pç",sp.nDesc,null,0.5);
-    add("spda","Eletroduto de PVC rígido para proteção mecânica das descidas junto ao solo (≈ 2,5 m por descida; ver medidas contra tensão de toque na NBR 5419-3)","m",sp.nDesc*2.5*sob);
-    add("spda","Suportes/fixadores para condutor de captação e descida, a cada 1 m (conforme fabricante)","pç",Math.ceil(sp.captacao+sp.descidas));
-    add("spda","Conector de emenda/derivação para malha de captação (tipo split-bolt ou solda exotérmica)","pç",sp.linhasL*sp.linhasW+2*sp.nDesc);}
-  // subestação própria (NBR 14039)
-  const mt=R.mt;if(mt){
-    add("mt",`Transformador trifásico ${fmt(mt.kva,mt.kva%1?1:0)} kVA, ${fmt(mt.kV,1)} kV / ${Vf}-${sys.vfn} V, imersão em óleo mineral, Z ≈ ${fmt(mt.z*100,1)} % (NBR 5356 / NBR 5440)`,"pç",1,null,16);
-    add("mt",`Para-raios de distribuição de óxido de zinco, Ur ${mt.ur} kV, 10 kA, com desligador automático`,"pç",3,null,1);
-    add("mt",`Chave fusível de distribuição base C, ${fmt(mt.kV,1)} kV, 100 A, 10 kA`,"pç",3,null,1);
-    add("mt",`Elo fusível tipo ${mt.elo[0]} (In do transformador ${fmt(mt.Imt,2)} A; 3 instalados + 3 de reserva)`,"pç",6);
-    if(mt.tipo==="abrigada")add("mt",`Disjuntor de média tensão a vácuo ${fmt(mt.kV,1)} kV com relé secundário 50/51 e 50N/51N (partida ≈ ${fmt(mt.pickup,1)} A no primário), TCs e fonte capacitiva (NBR 14039)`,"pç",1,null,16);
-    add("mt",`Malha de aterramento da subestação (cabo de cobre nu 50 mm² e hastes) e estrutura ${mt.tipo==="poste"?"em poste":"abrigada"}, conforme padrão da distribuidora`,"vb",1,null,24);}
+    if(sp.captacao>0)add("spda",`Cabo de cobre nu 35 mm² — captação em malha ${sp.g.m} × ${sp.g.m} m (NBR 5419-3, 5.2 e Tab. 6)`,"m",sp.captacao*sob,null,PROD.spdaCabo);
+    else add("spda","Terminal de interligação da cobertura metálica ao SPDA — captação natural (NBR 5419-3, 5.2.5)","pç",2*sp.nDesc,null,0.3);
+    if(sp.descidas>0)add("spda","Cabo de cobre nu 35 mm² — condutores de descida (NBR 5419-3, 5.3 e Tab. 6)","m",sp.descidas*sob,null,PROD.spdaCabo);
+    else add("spda","Conexão do SPDA às armaduras ou pilares metálicos (descida natural), com ensaio de continuidade ≤ 0,2 Ω (NBR 5419-3, 4.3 e Anexo F)","pç",2*sp.nDesc,null,1);
+    if(sp.aneisInt>0)add("spda",`Cabo de cobre nu 35 mm² — anéis intermediários de interligação das descidas a cada ${sp.g.d} m de altura (5.3.1)`,"m",sp.aneisInt*sob,null,PROD.spdaCabo);
+    add("spda","Cabo de cobre nu 50 mm² — eletrodo de aterramento em anel, enterrado a ≥ 0,5 m e a ~1 m das paredes (NBR 5419-3, 5.4.3 e Tab. 7)","m",sp.anel*sob,null,PROD.spdaCabo);
+    if(sp.hastesAd>0)add("spda",`Haste cobreada 5/8" × 2,4 m — eletrodos adicionais junto às descidas, lv = (l1 − re)/2 = ${fmt(sp.lv,1)} m (5.4.2)`,"pç",sp.hastesAd,null,PROD.haste);
+    if(!sp.natural)add("spda","Conector de medição (ensaio) desconectável só com ferramenta, a ~1,5 m do piso, um por descida (5.3.6 e 5.5.3)","pç",sp.nDesc,null,0.3);
+    add("spda","Caixa de inspeção de aterramento Ø ≥ 250 mm com tampa, na ligação de cada descida ao anel","pç",sp.nDesc,null,0.5);
+    add("spda","Fixadores para condutor de SPDA — a cada 1,0 m na horizontal e 1,5 m na vertical (5.5.2)","pç",sp.fixH+sp.fixV);
+    add("spda","Conector de emenda/derivação para captação, anéis e descidas (solda exotérmica ou compressão, 5.5.3)","pç",sp.linhasL*sp.linhasW+2*sp.nDesc+sp.nAneis*sp.nDesc);
+    if(sp.nBEL>0){add("spda","Barramento de equipotencialização local (BEL) interligado ao BEP — estrutura com mais de 20 m (6.2.2.2-a)","pç",sp.nBEL,null,2);
+      add("spda","Cabo de cobre 16 mm² — interligação BEL–BEP não enterrada (Tab. 8)","m",sp.nBEL*20*sob,null,PROD.caboMedio);}
+    if(sp.toque==="brita")add("spda","Brita nº 2 em camada de 20 cm num raio de 3 m em torno de cada descida — tensões de toque e passo (8.1.1-c e 8.2)","m³",Math.ceil(sp.nDesc*Math.PI*9/2*0.2*10)/10,null,0.5);
+    else if(sp.toque==="isolacao")add("spda","Isolação das descidas expostas até 3 m, suportabilidade 100 kV 1,2/50 µs, ex.: XLPE ≥ 3 mm (8.1.2-a)","m",sp.nDesc*3*sob,null,0.1);
+    else if(sp.toque==="barreira")add("spda","Barreira física e placa de advertência junto a cada descida, raio de 3 m (8.1.2-b e 8.2-a)","pç",sp.nDesc,null,1);}
+  // subestação própria (NBR 14039:2021)
+  const mt=R.mt;if(mt){const cl=fmt(mt.cl.cls,1),kv=fmt(mt.kva,mt.kva%1?1:0);
+    add("mt",mt.seco?`Transformador trifásico a seco ${kv} kVA, ${fmt(mt.kV,1)} kV / ${Vf}-${sys.vfn} V, classe ${cl} kV, Z ≈ ${fmt(mt.z*100,1)} % (NBR 10295) — subestação integrada à edificação (NBR 14039, 9.4.3)`:`Transformador trifásico ${kv} kVA, ${fmt(mt.kV,1)} kV / ${Vf}-${sys.vfn} V, classe ${cl} kV, imersão em óleo mineral (≈ ${mt.oleo} L), Z ≈ ${fmt(mt.z*100,1)} % (NBR 5356 / NBR 5440)`,"pç",1,null,16);
+    add("mt",`Para-raios de distribuição de óxido de zinco, Ur ${mt.ur} kV, 10 kA, com desligador automático (NBR 14039, 5.4)`,"pç",3,null,1);
+    if(!mt.disj){add("mt",`Chave fusível de distribuição base C, classe ${cl} kV, 100 A, 10 kA (5.3.1.1)`,"pç",3,null,1);
+      add("mt",`Elo fusível tipo ${mt.elo[0]} (In do transformador ${fmt(mt.Imt,2)} A; 3 instalados + 3 de reserva)`,"pç",6);}
+    else{add("mt",`Chave seccionadora tripolar de abertura sem carga, classe ${cl} kV, 400 A, intertravada com o disjuntor e com a placa "Esta chave não deve ser manobrada em carga" (6.3.6.1.3 e 6.3.6.1.7)`,"pç",1,null,4);
+      add("mt",`Disjuntor de média tensão a vácuo, classe ${cl} kV, capacidade de interrupção ≥ Icc presumida${mt.iccMT?` de ${fmt(mt.iccMT,1)} kA`:""} (5.3.1 e 6.3.3.5.1-a)`,"pç",1,null,16);
+      add("mt",`Relé secundário de proteção 50/51 e 50N/51N, partida de fase ≈ ${fmt(mt.pickup,1)} A no primário (5.3.4.1)`,"pç",1,null,4);
+      add("mt",`Transformador de corrente de proteção, classe ${cl} kV, instalado a montante do disjuntor (5.3.4.1, nota 2; 6.5.2.2)`,"pç",3,null,1);
+      add("mt","Fonte capacitiva para a bobina de abertura do disjuntor, com teste individual (5.3.4.1, nota 3)","pç",1,null,1);
+      add("mt","Fonte de alimentação reserva (nobreak) do relé, autonomia ≥ 2 h (5.3.4.1, nota 1)","pç",1,null,1);
+      if(mt.sMT){add("mt",`Cabo de MT unipolar de cobre ${mt.sMT} mm², isolação XLPE/EPR ${mt.isol}, com blindagem (6.2.3.3 e 6.2.3.5) — ramal subterrâneo`,"m",3*(mt.Lmt+6)*sob,null,PROD.caboGrosso);
+        add("mt",`Terminação (mufla) para cabo de MT ${mt.isol}, ${mt.sMT} mm²`,"pç",6,null,2);
+        add("mt","Eletroduto PEAD corrugado enterrado a ≥ 0,9 m (1,2 m sob vias), declividade ≥ 1 % (6.2.11.4)","m",mt.Lmt*sob,null,PROD.eletrodutoEnterrado);
+        add("mt","Eletroduto de aço galvanizado classe pesada no trecho exposto da subida, até ≥ 3 m do solo (9.2.1.11)","m",4,null,PROD.eletrodutoAparente);
+        add("mt","Fita de advertência enterrada a ≥ 0,10 m acima do duto de MT (6.2.11.4.6)","m",mt.Lmt*sob);
+        add("mt","Poço de inspeção de MT com tampa e drenagem (6.2.11.4.7 e 6.2.11.4.8)","pç",Math.max(1,Math.ceil(mt.Lmt/50)),null,6);}
+      add("mt","Iluminação de segurança da subestação, autonomia ≥ 2 h (9.2.1.3)","pç",2,null,PROD.emergencia);
+      add("mt","Kit de segurança: tapete isolante, luvas isolantes, detector de tensão e vara de manobra (5.7.1)","vb",1);
+      add("mt","Porta metálica 0,80 × 2,10 m abrindo para fora e ventilação em chicana a ≥ 20 cm do piso, com tela de 5 a 13 mm (9.2.1.10 e 9.2.2)","vb",1,null,8);
+      if(mt.contencao)add("mt",`Tanque/bacia de contenção do óleo isolante, para ≥ ${mt.oleo} L (5.8.1)`,"vb",1,null,8);}
+    add("mt",'Placa de advertência "PERIGO DE MORTE" com símbolo (9.1.9)',"pç",mt.disj?3:1);
+    add("mt",`Malha de aterramento da subestação (cabo de cobre nu 50 mm² e hastes, ≈ 10 Ω, 6.4.1.2 e 6.4.2.2) e estrutura ${mt.tipo==="poste"?"em poste":"abrigada"}, conforme padrão da distribuidora`,"vb",1,null,24);}
   const ordem=Object.keys(GRUPOS);
   const num=t=>{const m=t.match(/(\d+(?:,\d+)?) mm²/);return m?parseFloat(m[1].replace(",",".")):0;};
   const auto=Object.values(M).sort((a,b)=>ordem.indexOf(a.g)-ordem.indexOf(b.g)||(a.g==="cab"?num(a.d)-num(b.d):0)||a.d.localeCompare(b.d)).map(x=>{
-    const ref=x.c.size?` — circ. ${[...x.c].sort((a,b)=>a-b).join(", ")}`:"";const key=x.g+"|"+x.d;const pu=+(S.precos||{})[key]||0;const q=x.un==="m"?Math.ceil(x.q):x.q;
-    return {d:x.d+ref,un:x.un,q,key,g:x.g,pu,sub:pu*q};});
+    const ref=x.c.size?` — circ. ${[...x.c].sort((a,b)=>a-b).join(", ")}`:"";const key=x.g+"|"+x.d;const pi=+(S.precos||{})[key]||0,pr=precoRef(x.g,x.d,x.un),est=!pi&&S.orc?.usarRef!==false&&pr>0,pu=pi||(est?pr:0);const q=x.un==="m"?Math.ceil(x.q):x.q;
+    return {d:x.d+ref,un:x.un,q,key,g:x.g,pu,pi,pr,est,sub:pu*q};}); // pi = preço informado; pr = referência estimada (PRECOS_REF_DATA)
   // materiais inseridos manualmente: entram no grupo escolhido, depois dos itens calculados
   const ext=(S.extras||[]).map((x,j)=>{const q=+x.q||0,pu=+x.pu||0;return {d:x.d||"(sem descrição)",un:x.un||"pç",q,key:"extra|"+j,g:GRUPOS[x.g]?x.g:"extra",pu,sub:pu*q,ext:j};});
   const lista=ordem.flatMap(g=>[...auto.filter(r=>r.g===g),...ext.filter(r=>r.g===g)]);lista.horasServ=hs;return lista;
@@ -1106,16 +1205,24 @@ function horasEstimadas(){
   const r=x=>Math.ceil(x*2)/2;return {eng:r(eng),serv:r(serv),impl:r(impl)};
 }
 const brl=v=>isFinite(v)?v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}):"—";
-function custos(){const m=materiais();const tot=m.reduce((a,r)=>a+r.sub,0);const semPreco=m.filter(r=>!r.pu).length;const por={};m.forEach(r=>por[r.g]=(por[r.g]||0)+r.sub);return {m,tot,semPreco,por};}
+function precoMsg(c){return `${c.nEst?`* ${c.nEst} de ${c.m.length} itens com preço de referência estimado (base ${PRECOS_REF_DATA}), somando ${brl(c.totEst)} — substitua por cotações. `:""}${c.semPreco?`${c.semPreco} item(ns) sem preço (não somados).`:c.nEst?"":"Todos os itens com preço informado."}`;}
+function custos(){const m=materiais();const tot=m.reduce((a,r)=>a+r.sub,0);const semPreco=m.filter(r=>!r.pu).length,nEst=m.filter(r=>r.est).length,totEst=m.filter(r=>r.est).reduce((a,r)=>a+r.sub,0);const por={};m.forEach(r=>por[r.g]=(por[r.g]||0)+r.sub);return {m,tot,semPreco,nEst,totEst,por};}
 // Orçamento: materiais + serviços (horas × valor/hora) + despesas → custo direto; lucro sobre o custo; impostos "por dentro" no preço de venda
+// valor da hora de referência: engenharia = fração do CUB; execução e implantação = técnico de 40 h semanais com encargos
+function horaRef(cat){const o=S.orc||{},num=(v,d)=>+v>0?+v:d;
+  if(cat==="eng")return num(o.cub,REF_ORC.cub)*num(o.cubFrac,REF_ORC.cubFrac);
+  if(cat==="serv"||cat==="impl")return num(o.salTec,REF_ORC.salTec)*(1+num(o.encTec,REF_ORC.encTec)/100)/num(o.hMes,REF_ORC.hMes);
+  return 0;}
+function tributos(){const o=S.orc||{};if(!o.trib)return {lista:[],tot:Math.min(Math.max(+o.impostos||0,0),99)};
+  const lista=Object.keys(TRIB_NOMES).map(k=>[k,TRIB_NOMES[k],Math.max(0,+o.trib[k]||0)]);return {lista,tot:Math.min(lista.reduce((a,x)=>a+x[2],0),99)};}
 function orcamento(){
   const c=custos(),o=S.orc||{};
-  const srv=(o.servicos||[]).map(s=>({...s,h:+s.h||0,vh:+s.vh||0,sub:(+s.h||0)*(+s.vh||0)}));
+  const srv=(o.servicos||[]).map(s=>{const vi=+s.vh||0,vr=horaRef(s.cat),est=!vi&&o.usarRef!==false&&vr>0,vh=vi||(est?vr:0);return {...s,h:+s.h||0,vh,vr,est,sub:(+s.h||0)*vh};});
   const porCat={};srv.forEach(s=>porCat[s.cat]=(porCat[s.cat]||0)+s.sub);
   const mo=srv.reduce((a,s)=>a+s.sub,0),horas=srv.reduce((a,s)=>a+s.h,0),desp=+o.despesas||0;
-  const direto=c.tot+mo+desp,lucro=direto*(+o.lucro||0)/100,imp=Math.min(Math.max(+o.impostos||0,0),99);
+  const tb=tributos(),direto=c.tot+mo+desp,lucro=direto*(+o.lucro||0)/100,imp=tb.tot;
   const pv=(direto+lucro)/(1-imp/100);
-  return {...c,mat:c.tot,srv,porCat,mo,horas,desp,direto,lucro,impV:pv-direto-lucro,imp,pv,margem:pv>0?lucro/pv:0};
+  return {...c,mat:c.tot,srv,porCat,mo,horas,desp,direto,lucro,impV:pv-direto-lucro,imp,trib:tb.lista.map(([k,n,v])=>({k,n,v,val:pv*v/100})),pv,margem:pv>0?lucro/pv:0};
 }
 const espec=()=>[...ESPEC,
   ["Pontos de utilização","Tomadas 2P+T NBR 14136; tomadas e plugues industriais IEC 60309 nos circuitos de uso específico; interruptores 10 A ou bipolares 25 A; grau de proteção conforme as influências externas de cada ambiente (Tab. 32 da NBR 5410)."],
@@ -1147,14 +1254,16 @@ ${Object.keys(GRUPOS).map(g=>{const rows=m.filter(r=>r.g===g);if(!rows.length)re
   if(r.ext!=null){const j=r.ext,x=S.extras[j];return `<tr style="background:var(--accent-soft)"><td class="num">${i+1}</td><td style="min-width:320px"><div style="display:flex;gap:6px"><select data-ext="${j}" data-f="g" aria-label="Grupo do material adicional" style="max-width:150px">${Object.entries(GRUPOS).map(([k,v])=>`<option value="${k}" ${x.g===k?"selected":""}>${esc(v)}</option>`).join("")}</select><input data-ext="${j}" data-f="d" value="${esc(x.d)}" placeholder="Descrição e especificação do material" aria-label="Descrição do material adicional"></div></td>
   <td><input class="w-s" data-ext="${j}" data-f="un" value="${esc(x.un)}" aria-label="Unidade"></td><td><input type="number" min="0" step="any" class="w-s" data-ext="${j}" data-f="q" value="${x.q}" aria-label="Quantidade"></td>
   <td><input type="number" min="0" step="0.01" class="w-m" data-ext="${j}" data-f="pu" value="${x.pu||""}" placeholder="0,00" aria-label="Preço unitário do material adicional"></td><td class="num" data-live="sub${i}">${r.pu?brl(r.sub):"—"}</td><td><button class="btn small danger" type="button" data-delext="${j}" aria-label="Remover material adicional">✕</button></td></tr>`;}
-  return `<tr><td class="num">${i+1}</td><td style="white-space:normal;min-width:320px">${esc(r.d)}</td><td>${r.un}</td><td class="num">${r.q}</td><td><input type="number" min="0" step="0.01" class="w-m" data-preco="${esc(r.key)}" value="${r.pu||""}" placeholder="0,00" aria-label="Preço unitário do item ${i+1}"></td><td class="num" data-live="sub${i}">${r.pu?brl(r.sub):"—"}</td><td></td></tr>`;}).join("")+`<tr><td></td><td colspan="4" style="text-align:right;color:var(--muted)">Subtotal — ${GRUPOS[g]}</td><td class="num" data-live="grp-${g}">${brl(rows.reduce((a,r)=>a+r.sub,0))}</td><td></td></tr>`;}).join("")}
+  return `<tr><td class="num">${i+1}</td><td style="white-space:normal;min-width:320px">${esc(r.d)}</td><td>${r.un}</td><td class="num">${r.q}</td><td><input type="number" min="0" step="0.01" class="w-m" data-preco="${esc(r.key)}" value="${r.pi||""}" placeholder="${r.pr?"ref. "+fmt(r.pr,2):"0,00"}" aria-label="Preço unitário do item ${i+1}${r.pr?` (referência ${fmt(r.pr,2)})`:""}"></td><td class="num" data-live="sub${i}">${r.pu?brl(r.sub)+(r.est?" *":""):"—"}</td><td></td></tr>`;}).join("")+`<tr><td></td><td colspan="4" style="text-align:right;color:var(--muted)">Subtotal — ${GRUPOS[g]}</td><td class="num" data-live="grp-${g}">${brl(rows.reduce((a,r)=>a+r.sub,0))}</td><td></td></tr>`;}).join("")}
 <tr class="sub"><td></td><td colspan="4" style="text-align:right">TOTAL DE MATERIAIS</td><td class="num" data-live="totmat">${brl(m.reduce((a,r)=>a+r.sub,0))}</td><td></td></tr>
 </tbody></table></div>
-<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn small" type="button" id="addExt" data-tip="Inclui uma linha livre na lista de materiais, para itens que o cálculo automático não gera.">+ Material adicional</button><p class="note" data-live="sempreco" style="flex:1">${m.filter(r=>!r.pu).length} de ${m.length} itens sem preço informado.</p></div></div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn small" type="button" id="addExt" data-tip="Inclui uma linha livre na lista de materiais, para itens que o cálculo automático não gera.">+ Material adicional</button><p class="note" data-live="sempreco" style="flex:1">${precoMsg(custos())}</p></div>
+<div style="margin-top:8px">${chkT("orc.usarRef",`Usar preços de referência estimados (base ${PRECOS_REF_DATA}) nos itens sem preço`,"Os valores de referência são médias estimadas de varejo/distribuidor, sem frete nem BDI, para pré-orçamento. Não substituem cotação. Digitar um preço na linha substitui a referência; apagar o valor volta à referência.")}</div></div>
 <div class="block"><h3>Especificações técnicas</h3><div class="tbl"><table><tbody>${espec().map(([a,b])=>`<tr><td style="white-space:normal;font-weight:600;width:170px">${a}</td><td style="white-space:normal">${b}</td></tr>`).join("")}</tbody></table></div></div>
 ${nav()}`;};
 
 /* ---------- orçamento: materiais + horas de engenharia, serviço e implantação + lucro ---------- */
+function orcRefTxt(){const o=S.orc||{},n=(v,d)=>+v>0?+v:d;return `Hora de engenharia: ${fmt(n(o.cubFrac,REF_ORC.cubFrac),2)} × CUB ${brl(n(o.cub,REF_ORC.cub))} = <b>${brl(horaRef("eng"))}/h</b>. Hora da equipe (execução e implantação): ${brl(n(o.salTec,REF_ORC.salTec))} × (1 + ${fmt(n(o.encTec,REF_ORC.encTec),0)} %) ÷ ${fmt0(n(o.hMes,REF_ORC.hMes))} h = <b>${brl(horaRef("serv"))}/h</b>. Base ${PRECOS_REF_DATA}; valores marcados com * usam a referência.`;}
 function orcResumo(o){return `<div class="tbl"><table><tbody>
   <tr><td>Materiais (etapa 10${o.semPreco?`, ${o.semPreco} itens sem preço`:""})</td><td class="num" data-live="orc-mat">${brl(o.mat)}</td></tr>
   ${Object.entries(CAT_SERV).filter(([k])=>o.porCat[k]).map(([k,v])=>`<tr><td>${v}</td><td class="num">${brl(o.porCat[k])}</td></tr>`).join("")}
@@ -1162,7 +1271,8 @@ function orcResumo(o){return `<div class="tbl"><table><tbody>
   <tr><td>Despesas diretas</td><td class="num">${brl(o.desp)}</td></tr>
   <tr class="sub"><td>Custo direto</td><td class="num" data-live="orc-dir">${brl(o.direto)}</td></tr>
   <tr><td>Lucro (${fmt(+S.orc.lucro||0,1)} % sobre o custo direto)</td><td class="num">${brl(o.lucro)}</td></tr>
-  <tr><td>Impostos (${fmt(o.imp,1)} % sobre o preço de venda)</td><td class="num">${brl(o.impV)}</td></tr>
+  <tr><td>Impostos (${fmt(o.imp,2)} % sobre o preço de venda)</td><td class="num">${brl(o.impV)}</td></tr>
+  ${o.trib.map(x=>`<tr><td style="padding-left:22px;color:var(--muted)">${x.n} — ${fmt(x.v,2)} %</td><td class="num" style="color:var(--muted)">${brl(x.val)}</td></tr>`).join("")}
   <tr class="sub"><td>PREÇO DE VENDA</td><td class="num" data-live="orc-pv" style="font-size:15px">${brl(o.pv)}</td></tr>
   <tr><td>Margem de lucro sobre o preço de venda</td><td class="num">${fmt(o.margem*100,1)} %</td></tr>
   </tbody></table></div>`;}
@@ -1174,13 +1284,16 @@ ${(()=>{const h=horasEstimadas();return `<div class="note" style="display:flex;g
 ${srv.map((s,j)=>`<tr><td><select data-srv="${j}" data-f="cat" aria-label="Categoria do serviço">${Object.entries(CAT_SERV).map(([k,v])=>`<option value="${k}" ${s.cat===k?"selected":""}>${v}</option>`).join("")}</select></td>
 <td><input class="w-l" style="width:320px" data-srv="${j}" data-f="d" value="${esc(s.d)}" aria-label="Descrição do serviço"></td>
 <td><input type="number" min="0" step="0.5" data-srv="${j}" data-f="h" value="${s.h||""}" placeholder="0" aria-label="Horas"></td>
-<td><input type="number" min="0" step="0.01" class="w-m" data-srv="${j}" data-f="vh" value="${s.vh||""}" placeholder="0,00" aria-label="Valor da hora"></td>
-<td class="num" data-live="srv${j}">${brl((+s.h||0)*(+s.vh||0))}</td><td><button class="btn small danger" type="button" data-delsrv="${j}" aria-label="Remover serviço">✕</button></td></tr>`).join("")||`<tr><td colspan="6" style="color:var(--muted);padding:12px">Nenhum serviço. Use o botão abaixo.</td></tr>`}
+<td><input type="number" min="0" step="0.01" class="w-m" data-srv="${j}" data-f="vh" value="${s.vh||""}" placeholder="${horaRef(s.cat)?"ref. "+fmt(horaRef(s.cat),2):"0,00"}" aria-label="Valor da hora"></td>
+<td class="num" data-live="srv${j}">${(r=>brl(r.sub)+(r.est?" *":""))(o.srv[j])}</td><td><button class="btn small danger" type="button" data-delsrv="${j}" aria-label="Remover serviço">✕</button></td></tr>`).join("")||`<tr><td colspan="6" style="color:var(--muted);padding:12px">Nenhum serviço. Use o botão abaixo.</td></tr>`}
 </tbody></table></div>
 <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" id="addSrv" data-tip="Inclui outra linha de serviço (ex.: desenhista, eletricista auxiliar, plantão de partida).">+ Serviço</button>${srv.length?"":`<button class="btn small ghost" type="button" id="srvPadrao">Restaurar engenharia, serviço e implantação</button>`}</div>
+<div class="grid" style="margin-top:10px">${fld("orc.cub","CUB R8-N (R$/m²)",{type:"number",step:"0.01",hint:`Sinduscon da região; referência ${brl(REF_ORC.cub)} (${PRECOS_REF_DATA}).`})}${fld("orc.cubFrac","Hora de engenharia (× CUB)",{type:"number",step:"0.01",hint:"Convenção: 0,10 CUB por hora técnica."})}${fld("orc.salTec","Salário do técnico, 40 h/semana (R$/mês)",{type:"number",step:"10"})}${fld("orc.encTec","Encargos sociais (%)",{type:"number",step:"1"})}${fld("orc.hMes","Horas remuneradas por mês",{type:"number",step:"1",hint:"40 h semanais: divisor 200."})}</div>
+<p class="note" data-live="orcref">${orcRefTxt()}</p>
+${chkT("orc.usarRef","Usar os valores de referência nas linhas sem valor da hora","Linhas de engenharia usam a fração do CUB; execução e implantação usam o custo horário do técnico com encargos. Digitar um valor na linha substitui a referência.")}
 <p class="note">Referências para o valor da hora: custo da equipe com encargos, tabela de honorários do sindicato/CREA ou valores praticados na região. Para estimar horas de engenharia, considere o número de circuitos (${S.circ.length}), quadros (${S.quadros.length}) e projetos complementares incluídos.</p></div>
 <div class="block"><h3>Despesas, lucro e impostos</h3><div class="grid">
-${fld("orc.despesas","Despesas diretas (R$)",{type:"number",step:"0.01"})}${fld("orc.lucro","Lucro da empresa (%)",{type:"number",step:"0.5"})}${fld("orc.impostos","Impostos sobre a venda (%)",{type:"number",step:"0.1"})}${fld("orc.validade","Validade da proposta (dias)",{type:"number",step:"1"})}
+${fld("orc.despesas","Despesas diretas (R$)",{type:"number",step:"0.01"})}${fld("orc.lucro","Lucro da empresa (%)",{type:"number",step:"0.5",hint:`Sugestão: ${REF_ORC.lucro} % sobre o custo direto.`})}${S.orc.trib?Object.keys(TRIB_NOMES).map(k=>fld("orc.trib."+k,TRIB_NOMES[k]+" (%)",{type:"number",step:"0.01"})).join(""):fld("orc.impostos","Impostos sobre a venda (%)",{type:"number",step:"0.1"})}${fld("orc.validade","Validade da proposta (dias)",{type:"number",step:"1"})}
 </div>${fld("orc.obs","Condições comerciais / observações",{type:"textarea",ph:"Forma de pagamento, prazo de execução, itens não inclusos..."})}
 ${chkT("orc.pdf","Incluir o orçamento no PDF do projeto","Acrescenta uma seção de orçamento após a lista de materiais. Desmarque se o PDF for enviado à distribuidora sem valores.")}</div>
 <div class="block"><h3>Resumo do orçamento</h3><div data-live="orc">${orcResumo(o)}</div></div>
@@ -1243,10 +1356,10 @@ function liveCells(){R.out.forEach(o=>{const a=document.querySelector(`[data-liv
     const em=document.querySelector(`[data-live="amb-em-${i}"]`);if(em)em.style.color=c.area>0&&c.em<(+a.lux||0)-0.5?"var(--bad)":"";});}
 // totais de materiais e orçamento sem redesenhar a página (mantém o foco no campo em edição)
 function atualizarTotais(){
-  const c=custos();c.m.forEach((r,i)=>{const el=document.querySelector(`[data-live="sub${i}"]`);if(el)el.textContent=r.pu?brl(r.sub):"—";});
+  const c=custos();c.m.forEach((r,i)=>{const el=document.querySelector(`[data-live="sub${i}"]`);if(el)el.textContent=r.pu?brl(r.sub)+(r.est?" *":""):"—";});
   Object.keys(GRUPOS).forEach(g=>{const el=document.querySelector(`[data-live="grp-${g}"]`);if(el)el.textContent=brl(c.por[g]||0);});
-  const tt=document.querySelector('[data-live="totmat"]');if(tt)tt.textContent=brl(c.tot);const sp=document.querySelector('[data-live="sempreco"]');if(sp)sp.textContent=`${c.semPreco} de ${c.m.length} itens sem preço informado.`;
-  (S.orc.servicos||[]).forEach((s,j)=>{const el=document.querySelector(`[data-live="srv${j}"]`);if(el)el.textContent=brl((+s.h||0)*(+s.vh||0));});
+  const tt=document.querySelector('[data-live="totmat"]');if(tt)tt.textContent=brl(c.tot);const sp=document.querySelector('[data-live="sempreco"]');if(sp)sp.textContent=precoMsg(c);
+  orcamento().srv.forEach((r,j)=>{const el=document.querySelector(`[data-live="srv${j}"]`);if(el)el.textContent=brl(r.sub)+(r.est?" *":"");});
   const ob=document.querySelector('[data-live="orc"]');if(ob)ob.innerHTML=orcResumo(orcamento());
   renderSteps();renderSummary();persist();}
 function render(keepScroll){calc();esconderTip();renderSteps();renderStamp();renderSummary();
@@ -1258,6 +1371,8 @@ function soft(){calc();renderSteps();renderStamp();renderSummary();liveCells();
   document.querySelectorAll('[data-live="spda"]').forEach(el=>el.innerHTML=spdaCard());
   [["fp",fpCard],["terra",terraCard],["mt",mtCard]].forEach(([k,fn])=>document.querySelectorAll(`[data-live="${k}"]`).forEach(el=>el.innerHTML=fn()));
   document.querySelectorAll('[data-live="orc"]').forEach(el=>el.innerHTML=orcResumo(orcamento()));
+  document.querySelectorAll('[data-live="orcref"]').forEach(el=>el.innerHTML=orcRefTxt());
+  if(S.orc)orcamento().srv.forEach((r,j)=>{const el=document.querySelector(`[data-live="srv${j}"]`);if(el)el.textContent=brl(r.sub)+(r.est?" *":"");});
   // atualiza textos automáticos do memorial sem perder foco
   if(STEPS[cur].k==="memo"){const au=memoAuto();Object.keys(memoT()).forEach(k=>{if(S.memo[k]==null){const t=document.getElementById("memo-"+k);if(t&&document.activeElement!==t)t.value=au[k];}});}
   if(!document.getElementById("jsonPanel").hidden)atualizarJsonOut();
@@ -1388,7 +1503,7 @@ function normalizar(d){
   n.quadros=Array.isArray(d.quadros)&&d.quadros.length?d.quadros.map((q,j)=>({nome:String(q.nome||"QD"),L:j===0?0:+q.L||0,met:METODOS[q.met]?q.met:"B1",pai:j===0?"":String(q.pai||d.quadros[0].nome||"QGBT"),infl:INFL[q.infl]?q.infl:"seco",x:q.x===""||q.x==null?"":+q.x||0,y:q.y===""||q.y==null?"":+q.y||0})):b.quadros;
   {const S0=S;S={quadros:n.quadros};n.quadros.forEach((q,j)=>{if(j&&(!n.quadros.some(x=>x!==q&&x.nome===q.pai)||!cadeia(q).includes(n.quadros[0])))q.pai=n.quadros[0].nome;});S=S0;} // origem inexistente ou ciclo → QGBT
   n.extras=Array.isArray(d.extras)?d.extras.map(x=>({g:GRUPOS[x.g]?x.g:"extra",d:String(x.d||""),un:String(x.un||"pç"),q:+x.q||0,pu:+x.pu||0})):[];
-  n.orc=Object.assign(b.orc,d.orc||{});n.orc.servicos=Array.isArray(d.orc?.servicos)?d.orc.servicos.map(s=>({cat:CAT_SERV[s.cat]?s.cat:"outro",d:String(s.d||""),h:+s.h||0,vh:+s.vh||0})):b.orc.servicos;
+  n.orc=Object.assign(b.orc,d.orc||{});if(d.orc&&d.orc.impostos!=null&&!d.orc.trib&&+d.orc.impostos>0)n.orc.trib=null;n.orc.servicos=Array.isArray(d.orc?.servicos)?d.orc.servicos.map(s=>({cat:CAT_SERV[s.cat]?s.cat:"outro",d:String(s.d||""),h:+s.h||0,vh:+s.vh||0})):b.orc.servicos;
   n.estrutura=Object.assign(b.estrutura,d.estrutura||{});if(!NP5419[n.estrutura.np])n.estrutura.np="III";
   n.ambientes=Array.isArray(d.ambientes)?d.ambientes.map((a,i)=>{const x=Object.assign({id:`amb-${i+1}`,nome:`Ambiente ${i+1}`,comprimento:0,largura:0,altura:3,lux:300,lm:4000,w:40,uf:0.6,mf:0.8,espTomadas:5,espLum:1.5,infl:"seco",zona:"",saidas:1,x:"",y:""},a,{id:String(a.id||`amb-${i+1}`)});if(!INFL[x.infl])x.infl="seco";if(!ZONAS[x.zona||""])x.zona="";return x;}):[];
   n.revisoes=Array.isArray(d.revisoes)&&d.revisoes.length?d.revisoes.map(r=>({rev:String(r.rev??""),data:String(r.data||""),desc:String(r.desc||""),autor:String(r.autor||"")})):[{rev:"00",data:n.id.data||"",desc:"Emissão inicial",autor:n.id.rt||""}];
@@ -1405,24 +1520,65 @@ async function abrirJSON(f){if(!f)return;try{aplicarImport(JSON.parse(await f.te
 function importarTexto(t){try{aplicarImport(JSON.parse(t));document.getElementById("jsonIn").value="";}catch(e){toast("Texto inválido: cole o JSON completo exportado por esta ferramenta.");}}
 
 /* ============================================================
+   SIMBOLOGIA ABNT NBR 5444:1989 — geometria comum ao PDF e ao DXF
+   Unidade = meia largura do símbolo. Primitivas: l (linha), pl (polilinha), c (círculo), p (polígono), t (texto);
+   f: true = cheio, false = fundo branco, "n" = vazado. Dispositivos de manobra ficam na vertical (terminais em y = ±1); ang = 90 os deita.
+   ============================================================ */
+function sim5444(tipo,o={}){
+  const r=[],L=(a,b,c,d)=>r.push({l:[a,b,c,d]}),C=(x,y,rr,f=false)=>r.push({c:[x,y,rr],f}),P=(pts,f=false)=>r.push({p:pts,f}),PL=pts=>r.push({pl:pts}),Tx=(x,y,h,t)=>r.push({t:[x,y,h,t]});
+  const ret=(x1,y1,x2,y2,f)=>P([[x1,y1],[x2,y1],[x2,y2],[x1,y2]],f);
+  const arco=(cx,cy,rr,a0,a1,n=12)=>Array.from({length:n+1},(_,k)=>{const a=a0+(a1-a0)*k/n;return [cx+rr*Math.cos(a),cy+rr*Math.sin(a)];});
+  const parede=y=>{L(-1.5,y,1.5,y);for(let k=-1.2;k<=1.21;k+=0.4)L(k,y,k-0.25,y-0.25);}; // face da parede (quadro aparente)
+  switch(tipo){
+    case "lum":ret(-1.3,-0.6,1.3,0.6);C(0,0,0.42);break;                                        // 8.4 ponto de luz fluorescente/LED no teto
+    case "lumInc":C(0,0,0.9);break;                                                              // 8.1 ponto de luz incandescente no teto
+    case "emg":C(0,0,0.7);L(-1.2,0,1.2,0);L(0,-1.2,0,1.2);break;                                // 8.15 ponto de luz de emergência com alimentação independente
+    case "inter":C(0,0,0.42);break;                                                              // 7.1 interruptor de uma seção
+    case "tom":P([[-0.55,-0.7],[0.85,0],[-0.55,0.7]],o.alt==="alta");if(o.alt==="media")P([[-0.55,-0.7],[0.85,0],[-0.55,0]],true);
+      L(-0.95,-0.85,-0.95,0.85);[-0.6,0,0.6].forEach(k=>L(-0.95,k,-1.25,k-0.3));break;        // 9.1 baixa · 9.2 meia altura · 9.3 alta (traço hachurado = parede)
+    case "motor":C(0,0,1);Tx(0,-0.36,1,"M");break;                                               // 10.2 motor
+    case "qdp":ret(-1.3,-0.5,1.3,0.5,true);parede(-0.5);break;                                  // 6.1 quadro parcial de luz e força aparente
+    case "qdg":ret(-1.3,-0.5,1.3,0.5);P([[-1.3,-0.5],[1.3,-0.5],[1.3,0.5]],true);parede(-0.5);break; // 6.3 quadro geral de luz e força aparente
+    case "med":L(-1.6,0,-1.1,0);L(1.1,0,1.6,0);ret(-1.1,-0.45,1.1,0.45);Tx(0,-0.2,0.55,"MED");break; // 6.6 caixa para medidor
+    case "desce":L(-0.9,-0.9,0.9,0.9);C(-0.9,-0.9,0.22);P([[-0.6,-0.6],[-0.45,-0.15],[-0.15,-0.45]],true);break; // 5.18 eletroduto que desce
+    case "sobe":L(-0.9,-0.9,0.9,0.9);C(-0.9,-0.9,0.22);P([[0.9,0.9],[0.75,0.45],[0.45,0.75]],true);break;        // 5.17 eletroduto que sobe
+    case "caixa":C(0,0,0.6);Tx(0,-0.24,0.65,"P");break;                                         // 5.15 caixa de passagem no teto
+    case "cond":{const it=[...Array(o.nf||0).fill("F"),...(o.n?["N"]:[]),...(o.pe?["T"]:[])],x0=-(it.length-1)*0.25; // 5.6 fase · 5.7 neutro · 5.9 terra
+      it.forEach((k,i)=>{const x=x0+i*0.5;if(k==="T"){L(x,0,x,0.5);L(x-0.2,0.5,x+0.2,0.5);}else{L(x,-0.45,x,0.45);if(k==="N")L(x-0.3,0.45,x,0.45);}});break;}
+    case "terraT":L(0,0,0,0.5);L(-0.3,0.5,0.3,0.5);break;                                       // 5.12 cordoalha de terra (marca)
+    case "disj":C(0,0.82,0.18);C(0,-0.82,0.18);PL(arco(0,0,0.82,Math.PI/2-0.22,-Math.PI/2+0.22));break; // 7.15 disjuntor a seco
+    case "fus":L(0,1,0,0.75);L(0,-0.75,0,-1);ret(-0.3,-0.75,0.3,0.75);L(0,0.75,0,-0.75);break;  // 7.9 fusível
+    case "secc":C(0,0.82,0.18);C(0,-0.82,0.18);L(0,-0.64,0.62,0.55);break;                      // 7.12 chave seccionadora, abertura sem carga
+    case "seccf":{C(0,0.82,0.18);C(0,-0.82,0.18);L(0,-0.64,0.62,0.55);const m=[0.31,-0.05],u=[0.47,0.88],n=[-0.88,0.47],q=(a,b)=>[m[0]+a*u[0]+b*n[0],m[1]+a*u[1]+b*n[1]];
+      P([q(-0.32,-0.14),q(0.32,-0.14),q(0.32,0.14),q(-0.32,0.14)]);break;}                    // 7.10 chave seccionadora com fusíveis, abertura sem carga
+    case "trafo":C(0,0.42,0.58,"n");C(0,-0.42,0.58,"n");break;                                   // 10.3 transformador de potência
+    case "tc":L(0,1,0,-1);C(0.3,0,0.3,"n");break;                                                // 10.4 transformador de corrente
+    case "pr":L(0,1,0,0.6);ret(-0.3,-0.6,0.3,0.6);L(0,0.4,0,-0.2);P([[0,-0.45],[-0.14,-0.18],[0.14,-0.18]],true);L(0,-0.6,0,-1);break; // para-raios (IEC 60617)
+    case "terra":L(0,1,0,0);L(-0.8,0,0.8,0);L(-0.5,-0.3,0.5,-0.3);L(-0.2,-0.6,0.2,-0.6);break;  // aterramento (IEC 60617)
+  }
+  return r;
+}
+/* ============================================================
    PLANTA EM ESCALA REAL (metros) — usada no PDF e na exportação DXF
    ============================================================ */
 const temXY=o=>o&&o.x!==""&&o.x!=null&&o.y!==""&&o.y!=null&&isFinite(+o.x)&&isFinite(+o.y);
 function layoutPlanta(){
-  const fixos=S.ambientes.filter(temXY);let xAuto=fixos.length?Math.max(...fixos.map(a=>+a.x+(+a.comprimento||0)))+2:0;
+  const fixos=S.ambientes.filter(temXY);let nCmd=0,xAuto=fixos.length?Math.max(...fixos.map(a=>+a.x+(+a.comprimento||0)))+2:0;
   const amb=S.ambientes.map(a=>{const L=Math.max(0,+a.comprimento||0),W=Math.max(0,+a.largura||0);let x,y;
     if(temXY(a)){x=+a.x;y=+a.y;}else{x=xAuto;y=0;xAuto+=L+2;}
     const oc=R.out.filter(o=>o.c.ambiente===a.id),num=t=>oc.filter(o=>o.c.tipo===t);
     const grade=(n,mx=0)=>{if(!n||!L||!W)return [];const cols=Math.max(1,Math.round(Math.sqrt(n*L/W))),rows=Math.ceil(n/cols),r=[];
       for(let k=0;k<n;k++)r.push([x+L*((k%cols)+0.5)/cols,y+W*(Math.floor(k/cols)+0.5)/rows]);return r;};
     const nLum=Math.max(0,...num("ilum").map(o=>+o.c.qtd||0)),nTug=Math.max(0,...num("tug").map(o=>+o.c.qtd||0));
+    const lc=num("ilum")[0],tc=num("tug")[0],wLum=lc?lc.P/Math.max(1,+lc.c.qtd||1):0,vaTug=tc?tc.S/Math.max(1,+tc.c.qtd||1):0;
     const per=2*(L+W),tug=[];for(let k=0;k<nTug;k++){let d=per*(k+0.5)/nTug;const in_=0.3;
-      if(d<L)tug.push([x+d,y+in_]);else if((d-=L)<W)tug.push([x+L-in_,y+d]);else if((d-=W)<L)tug.push([x+L-d,y+W-in_]);else tug.push([x+in_,y+W-(d-L)]);}
+      if(d<L)tug.push([x+d,y+in_,0]);else if((d-=L)<W)tug.push([x+L-in_,y+d,1]);else if((d-=W)<L)tug.push([x+L-d,y+W-in_,2]);else tug.push([x+in_,y+W-(d-L),3]);} // 3º elemento: parede (0 baixo, 1 direita, 2 cima, 3 esquerda)
     const fix=[...num("tue"),...num("motor")].map((o,k,arr)=>({o,p:[x+L*(k+1)/(arr.length+1),y+W-0.8]}));
     const e=S.par.emerg?emergCalc(a):{n:0,saidas:0,esp:1};const ce=Math.max(1,Math.ceil(L/e.esp)),re=Math.max(1,Math.ceil(W/e.esp)),emg=[];
     for(let i=0;i<ce;i++)for(let j=0;j<re;j++)if(emg.length<e.n)emg.push([x+L*(i+0.5)/ce+0.6,y+W*(j+0.5)/re+0.6]);
     const sai=[];for(let k=0;k<e.saidas;k++)sai.push([x+L*(k+1)/(e.saidas+1),y]);
-    return {a,x,y,L,W,lum:grade(nLum),tug,fix,emg,sai,cI:num("ilum").map(o=>o.i+1),cT:num("tug").map(o=>o.i+1)};});
+    return {a,x,y,L,W,lum:grade(nLum),tug,fix,emg,sai,cI:num("ilum").map(o=>o.i+1),cT:num("tug").map(o=>o.i+1),nLum,wLum,vaTug,
+      inter:nLum&&L&&W?[x+Math.min(0.8,L/4),y+0.35]:null,letra:nLum?String.fromCharCode(97+(nCmd++%26)):""};});
   const bb={x1:0,y1:0,x2:1,y2:1};amb.forEach(r=>{bb.x1=Math.min(bb.x1,r.x);bb.y1=Math.min(bb.y1,r.y);bb.x2=Math.max(bb.x2,r.x+r.L);bb.y2=Math.max(bb.y2,r.y+r.W);});
   let qa=0;const quad=S.quadros.map(q=>temXY(q)?{q,x:+q.x,y:+q.y}:{q,x:bb.x1+1+4*(qa++),y:bb.y1-3});
   quad.forEach(r=>{bb.x1=Math.min(bb.x1,r.x-1);bb.y1=Math.min(bb.y1,r.y-1);bb.x2=Math.max(bb.x2,r.x+1);bb.y2=Math.max(bb.y2,r.y+1);});
@@ -1435,28 +1591,49 @@ function layoutPlanta(){
 }
 function exportarDXF(){
   calc();const Lp=layoutPlanta(),o=[];const e=(...a)=>a.forEach(v=>o.push(String(v)));
-  const t1252=t=>String(t).replace(/[–—]/g,"-").replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/[²]/g,"2").replace(/[^\x00-\xff]/g,"?");
-  const CAM={AMBIENTES:7,ILUMINACAO:2,TOMADAS:4,FORCA:6,EMERGENCIA:1,QUADROS:5,CANALETAS:3,ALIMENTADORES:1,TEXTOS:7,COTAS:8};
-  const ln=(c,x1,y1,x2,y2)=>e(0,"LINE",8,c,10,x1.toFixed(3),20,y1.toFixed(3),30,0,11,x2.toFixed(3),21,y2.toFixed(3),31,0);
-  const ci=(c,x,y,r)=>e(0,"CIRCLE",8,c,10,x.toFixed(3),20,y.toFixed(3),30,0,40,r);
-  const tx=(c,x,y,hh,t)=>e(0,"TEXT",8,c,10,x.toFixed(3),20,y.toFixed(3),30,0,40,hh,1,t1252(t));
+  const t1252=t=>String(t).replace(/[–—]/g,"-").replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/•/g,"\x95").replace(/[^\x00-\xff]/g,"?");
+  const CAM={AMBIENTES:7,ILUMINACAO:2,INTERRUPTORES:2,TOMADAS:4,FORCA:6,EMERGENCIA:1,QUADROS:5,CANALETAS:3,ALIMENTADORES:1,TEXTOS:7,COTAS:8};
+  const f3=v=>(+v).toFixed(3);
+  const ln=(c,x1,y1,x2,y2)=>e(0,"LINE",8,c,10,f3(x1),20,f3(y1),30,0,11,f3(x2),21,f3(y2),31,0);
+  const ci=(c,x,y,r)=>e(0,"CIRCLE",8,c,10,f3(x),20,f3(y),30,0,40,f3(r));
+  const tx=(c,x,y,hh,t,centro)=>centro?e(0,"TEXT",8,c,10,f3(x),20,f3(y),30,0,40,hh,1,t1252(t),72,1,11,f3(x),21,f3(y),31,0):e(0,"TEXT",8,c,10,f3(x),20,f3(y),30,0,40,hh,1,t1252(t));
+  const so=(c,a,b,d)=>e(0,"SOLID",8,c,10,f3(a[0]),20,f3(a[1]),30,0,11,f3(b[0]),21,f3(b[1]),31,0,12,f3(d[0]),22,f3(d[1]),32,0,13,f3(d[0]),23,f3(d[1]),33,0);
   const rt=(c,x,y,w,h)=>{ln(c,x,y,x+w,y);ln(c,x+w,y,x+w,y+h);ln(c,x+w,y+h,x,y+h);ln(c,x,y+h,x,y);};
+  const tr=(c,x1,y1,x2,y2,da=0.4,va=0.25)=>{const L=Math.hypot(x2-x1,y2-y1);if(!L)return;const ux=(x2-x1)/L,uy=(y2-y1)/L;for(let d=0;d<L;d+=da+va){const d2=Math.min(L,d+da);ln(c,x1+ux*d,y1+uy*d,x1+ux*d2,y1+uy*d2);}}; // tracejado (5.2)
+  // símbolos NBR 5444 em metros (s = meia largura)
+  const sim=(c,tp,x,y,s,op={})=>{const a=(op.ang||0)*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a),X=(u,v)=>[x+s*(u*ca-v*sa),y+s*(u*sa+v*ca)];
+    sim5444(tp,op).forEach(g=>{if(g.l){const p=X(g.l[0],g.l[1]),q=X(g.l[2],g.l[3]);ln(c,p[0],p[1],q[0],q[1]);}
+      else if(g.pl){for(let k=1;k<g.pl.length;k++){const p=X(...g.pl[k-1]),q=X(...g.pl[k]);ln(c,p[0],p[1],q[0],q[1]);}}
+      else if(g.c){const p=X(g.c[0],g.c[1]);ci(c,p[0],p[1],g.c[2]*s);}
+      else if(g.p){const q=g.p.map(([u,v])=>X(u,v));q.forEach((p,k)=>{const n=q[(k+1)%q.length];ln(c,p[0],p[1],n[0],n[1]);});if(g.f===true)for(let k=1;k+1<q.length;k++)so(c,q[0],q[k],q[k+1]);}
+      else if(g.t){const p=X(g.t[0],g.t[1]);tx(c,p[0],p[1],f3(g.t[2]*s),g.t[3],true);}});};
+  const ct=a=>a.map(n=>`-${n}-`).join(" ");
   e(0,"SECTION",2,"HEADER",9,"$ACADVER",1,"AC1009",9,"$DWGCODEPAGE",3,"ANSI_1252",9,"$INSUNITS",70,6,0,"ENDSEC");
   e(0,"SECTION",2,"TABLES",0,"TABLE",2,"LAYER",70,Object.keys(CAM).length);Object.entries(CAM).forEach(([n,c])=>e(0,"LAYER",2,n,70,0,62,c,6,"CONTINUOUS"));e(0,"ENDTAB",0,"ENDSEC");
   e(0,"SECTION",2,"ENTITIES");
   Lp.amb.forEach(r=>{rt("AMBIENTES",r.x,r.y,r.L,r.W);tx("TEXTOS",r.x+0.3,r.y+r.W-0.6,0.35,r.a.nome);tx("COTAS",r.x+0.3,r.y+r.W-1.1,0.22,`${fmt(r.L,2)} x ${fmt(r.W,2)} m - H ${fmt(+r.a.altura||0,2)} m${r.a.zona?` - ZONA ${r.a.zona}`:""}`);
-    r.lum.forEach(([x,y])=>{ci("ILUMINACAO",x,y,0.25);ln("ILUMINACAO",x-0.18,y-0.18,x+0.18,y+0.18);ln("ILUMINACAO",x-0.18,y+0.18,x+0.18,y-0.18);});
-    if(r.lum.length)tx("ILUMINACAO",r.lum[0][0]+0.3,r.lum[0][1]+0.3,0.2,`C${r.cI.join(",")}`);
-    r.tug.forEach(([x,y])=>{rt("TOMADAS",x-0.15,y-0.15,0.3,0.3);});if(r.tug.length)tx("TOMADAS",r.tug[0][0]+0.25,r.tug[0][1]+0.1,0.2,`C${r.cT.join(",")}`);
-    r.fix.forEach(({o:c,p:[x,y]})=>{if(c.c.tipo==="motor"){ci("FORCA",x,y,0.4);tx("FORCA",x-0.15,y-0.12,0.25,"M");}else{rt("FORCA",x-0.2,y-0.2,0.4,0.4);ln("FORCA",x-0.2,y-0.2,x+0.2,y+0.2);}tx("FORCA",x+0.5,y,0.2,`C${c.i+1} ${c.c.nome}`);});
-    r.emg.forEach(([x,y])=>{ci("EMERGENCIA",x,y,0.2);tx("EMERGENCIA",x-0.08,y-0.09,0.18,"E");});
+    r.lum.forEach(([x,y])=>{sim("ILUMINACAO","lum",x,y,0.25);if(r.letra)tx("ILUMINACAO",x+0.36,y+0.16,0.15,r.letra);});
+    if(r.lum.length)tx("ILUMINACAO",r.lum[0][0]-0.32,r.lum[0][1]-0.42,0.16,`${ct(r.cI)} ${r.nLum}x${fmt0(r.wLum)}W`);
+    if(r.inter){sim("INTERRUPTORES","inter",r.inter[0],r.inter[1],0.18);tx("INTERRUPTORES",r.inter[0]+0.12,r.inter[1]+0.1,0.15,r.letra);}
+    r.tug.forEach(([x,y,d])=>sim("TOMADAS","tom",x,y,0.2,{alt:"media",ang:[90,180,270,0][d||0]}));
+    if(r.tug.length)tx("TOMADAS",r.tug[0][0]+0.3,r.tug[0][1]+0.3,0.16,`${ct(r.cT)}${Math.round(r.vaTug)!==100?` ${fmt0(r.vaTug)} VA`:""}`);
+    r.fix.forEach(({o:c,p:[x,y]})=>{if(c.c.tipo==="motor")sim("FORCA","motor",x,y,0.35);else sim("FORCA","tom",x,y,0.22,{alt:"alta",ang:270});tx("FORCA",x+0.45,y-0.08,0.16,`${ct([c.i+1])} ${fmt(c.P/1000,1)} kW - ${c.c.nome}`);});
+    r.emg.forEach(([x,y])=>sim("EMERGENCIA","emg",x,y,0.2));
     r.sai.forEach(([x,y])=>{rt("EMERGENCIA",x-0.5,y+0.1,1,0.35);tx("EMERGENCIA",x-0.42,y+0.18,0.2,"SAIDA");});});
-  Lp.rotas.forEach(r=>{r.segs.forEach(([a,b])=>ln("CANALETAS",a[0],a[1],b[0],b[1]));const [a,b]=r.segs[0];tx("CANALETAS",(a[0]+b[0])/2,a[1]+0.15,0.22,r.k);});
-  Lp.alim.forEach(({de,para,q})=>{ln("ALIMENTADORES",de.x,de.y,de.x,para.y);ln("ALIMENTADORES",de.x,para.y,para.x,para.y);const f=R.quadros.find(z=>z.q===q)?.f;tx("ALIMENTADORES",para.x+0.6,para.y-0.6,0.2,`${de.q.nome} > ${q.nome}${f&&f.s?`: ${f.txt} mm2`:""}`);});
-  Lp.quad.forEach(r=>{rt("QUADROS",r.x-0.4,r.y-0.15,0.8,0.3);tx("QUADROS",r.x-0.4,r.y+0.25,0.28,r.q.nome);});
-  const bb=Lp.bb,lx=bb.x2+3;let ly=bb.y2;tx("TEXTOS",lx,ly,0.4,"LEGENDA");
-  [["ILUMINACAO","Luminaria"],["TOMADAS","Tomada de uso geral"],["FORCA","TUE / motor"],["EMERGENCIA","Iluminacao de emergencia (E) e saida"],["QUADROS","Quadro de distribuicao"],["CANALETAS","Rota de canaleta/eletrocalha"],["ALIMENTADORES","Alimentador entre quadros"]].forEach(([c,t])=>{ly-=0.8;ln(c,lx,ly+0.1,lx+0.6,ly+0.1);tx("TEXTOS",lx+0.9,ly,0.25,t);});
-  ly-=1.4;tx("TEXTOS",lx,ly,0.3,t1252(`${S.id.obra||"Projeto"} - ${S.id.cliente||""}`));ly-=0.6;tx("TEXTOS",lx,ly,0.22,`Unidades: metros. Rev. ${(S.revisoes.at(-1)||{}).rev||"00"} - ${S.id.data||""}`);
+  Lp.rotas.forEach(r=>{r.segs.forEach(([a,b],k)=>{ln("CANALETAS",a[0],a[1],b[0],b[1]);if(k%2)sim("CANALETAS","desce",b[0],b[1],0.22);});const [a,b]=r.segs[0],g=R.cans[r.k];tx("CANALETAS",Math.min(a[0],b[0])+0.2,a[1]+0.15,0.2,`${r.k}${g?` - ${g.dim}`:""}`);});
+  Lp.alim.forEach(({de,para,q})=>{tr("ALIMENTADORES",de.x,de.y,de.x,para.y);tr("ALIMENTADORES",de.x,para.y,para.x,para.y);const f=R.quadros.find(z=>z.q===q)?.f,mx=(de.x+para.x)/2;
+    if(f&&f.s){sim("ALIMENTADORES","cond",mx,para.y,0.25,{nf:f.nf,n:f.sn>0,pe:f.spe>0});const dn=((f.ed||{}).nome||"").match(/DN (\d+)/);tx("ALIMENTADORES",mx-0.8,para.y-0.45,0.18,`${dn?"ø"+dn[1]+" - ":""}${f.txt} mm2`);}
+    tx("ALIMENTADORES",para.x+0.6,para.y+0.6,0.18,`${de.q.nome} > ${q.nome}`);});
+  Lp.quad.forEach(r=>{sim("QUADROS",r.q===S.quadros[0]?"qdg":"qdp",r.x,r.y,0.35);const rq=R.quadros.find(z=>z.q===r.q);tx("QUADROS",r.x-0.45,r.y+0.3,0.25,r.q.nome);if(rq)tx("QUADROS",r.x-0.45,r.y-0.65,0.16,`${fmt(rq.inst,1)} kW`);});
+  const bb=Lp.bb,lx=bb.x2+3;let ly=bb.y2;tx("TEXTOS",lx,ly,0.4,"LEGENDA - ABNT NBR 5444");
+  [["8.4",(x,y)=>sim("ILUMINACAO","lum",x,y,0.25),"Ponto de luz no teto (LED/fluorescente): letra = comando, -n- = circuito"],["7.1",(x,y)=>sim("INTERRUPTORES","inter",x,y,0.18),"Interruptor de uma seção"],
+   ["9.2",(x,y)=>sim("TOMADAS","tom",x,y,0.2,{alt:"media",ang:90}),"Tomada a meia altura (1,30 m) - potência em VA"],["9.3",(x,y)=>sim("FORCA","tom",x,y,0.2,{alt:"alta",ang:90}),"Tomada alta / ponto de força - potência em kW"],
+   ["10.2",(x,y)=>sim("FORCA","motor",x,y,0.3),"Motor"],["8.15",(x,y)=>sim("EMERGENCIA","emg",x,y,0.2),"Ponto de luz de emergência com alimentação independente"],
+   ["6.3",(x,y)=>sim("QUADROS","qdg",x,y,0.3),"Quadro geral de luz e força aparente"],["6.1",(x,y)=>sim("QUADROS","qdp",x,y,0.3),"Quadro parcial de luz e força aparente"],
+   ["5.13",(x,y)=>ln("CANALETAS",x-0.4,y,x+0.4,y),"Eletrocalha / leito de cabos"],["5.18",(x,y)=>sim("CANALETAS","desce",x,y,0.22),"Eletroduto que desce"],
+   ["5.2",(x,y)=>tr("ALIMENTADORES",x-0.4,y,x+0.4,y,0.2,0.12),"Eletroduto no piso / enterrado - ø em mm"],["5.6-5.9",(x,y)=>{ln("ALIMENTADORES",x-0.5,y,x+0.5,y);sim("ALIMENTADORES","cond",x,y,0.25,{nf:3,n:true,pe:true});},"Condutores fase, neutro e terra"]
+  ].forEach(([n,fn,t])=>{ly-=0.9;fn(lx+0.4,ly+0.1);tx("TEXTOS",lx+1.2,ly,0.22,`${n}  ${t}`);});
+  ly-=1.4;tx("TEXTOS",lx,ly,0.3,t1252(`${S.id.obra||"Projeto"} - ${S.id.cliente||""}`));ly-=0.6;tx("TEXTOS",lx,ly,0.22,`Unidades: metros. Simbologia ABNT NBR 5444. Rev. ${(S.revisoes.at(-1)||{}).rev||"00"} - ${S.id.data||""}`);
   e(0,"ENDSEC",0,"EOF");
   const txt=o.join("\r\n"),u=new Uint8Array(txt.length);for(let i=0;i<txt.length;i++)u[i]=txt.charCodeAt(i)&255;
   oferecer(`Planta_${slug(S.id.obra)}.dxf`,new Blob([u],{type:"application/dxf"}));
@@ -1466,7 +1643,7 @@ function exportarDXF(){
    PDF
    ============================================================ */
 const WIN=new Set("€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ");
-function pt(s){s=String(s??"").replace(/≤/g,"<=").replace(/≥/g,">=").replace(/Δ/g,"dV").replace(/√3/g,"raiz(3)").replace(/√/g,"raiz").replace(/Ω/g,"ohm").replace(/η/g,"rend.").replace(/φ/g,"phi").replace(/→/g,"->").replace(/←/g,"<-").replace(/✕/g,"x").replace(/−/g,"-").replace(/⁻¹/g,"^-1").replace(/⁻⁵/g,"^-5").replace(/⁻⁶/g,"^-6").replace(/ | /g," ");
+function pt(s){s=String(s??"").replace(/≤/g,"<=").replace(/≥/g,">=").replace(/Δ/g,"dV").replace(/√3/g,"raiz(3)").replace(/√/g,"raiz").replace(/Ω/g,"ohm").replace(/ρ/g,"rho").replace(/≈/g,"~").replace(/η/g,"rend.").replace(/φ/g,"phi").replace(/→/g,"->").replace(/←/g,"<-").replace(/✕/g,"x").replace(/−/g,"-").replace(/⁻¹/g,"^-1").replace(/⁻⁵/g,"^-5").replace(/⁻⁶/g,"^-6").replace(/ | /g," ");
   let o="";for(const ch of s){const c=ch.codePointAt(0);o+=(c<256||WIN.has(ch))?ch:"?";}return o;}
 async function gerarPDF(){
   const prog=document.getElementById("pdfProg"),msg=document.getElementById("pdfMsg");
@@ -1501,6 +1678,64 @@ async function gerarPDF(){
     y-=10;
   }
   function kv(pairs){table([{h:"Item",w:0.35},{h:"Valor",w:0.65}],pairs,{size:9});}
+  // gráfico de colunas (agrupadas) com grade, rótulos, legenda e linha de limite opcional — usado nas análises do memorial
+  const PHC={R:rgb(0.71,0.27,0.18),S:rgb(0.18,0.37,0.71),T:rgb(0.54,0.45,0.09)};let nFig=0;
+  function grafico(titulo,cats,series,{un="",lim=null,limTxt="",h=160,dec=1,nota=""}={}){
+    if(!cats.length)return;ensure(h+70);nFig++;text(`Figura ${nFig} — ${titulo}`,{size:9.5,font:FB,gap:4});
+    const LIMC=rgb(0.82,0.08,0.08),x0=M+34,x1=W-M-6,yt=y-8,yb=yt-h,vals=series.flatMap(s=>s.v.map(v=>+v||0)),max=Math.max(1e-9,lim||0,...vals)*1.15;
+    for(let k=0;k<=4;k++){const yy=yb+(yt-yb)*k/4,v=max*k/4,t=pt(fmt(v,v<10?(v<1?2:1):0));pg.drawLine({start:{x:x0,y:yy},end:{x:x1,y:yy},thickness:0.3,color:LN});pg.drawText(t,{x:x0-4-F.widthOfTextAtSize(t,6.5),y:yy-2,size:6.5,font:F,color:MUT});}
+    pg.drawText(pt(un),{x:M,y:yt+4,size:6.5,font:FB,color:MUT});
+    const gw=(x1-x0)/cats.length,bw=Math.min(30,gw*0.78/series.length),rot=series.length*cats.length<=30,fl=Math.max(5,Math.min(6.5,gw/4));
+    cats.forEach((c,i)=>{const gx=x0+gw*i+(gw-bw*series.length)/2;
+      series.forEach((s,j)=>{const v=+s.v[i]||0,bh=(yt-yb)*v/max;pg.drawRectangle({x:gx+j*bw,y:yb,width:Math.max(1,bw-1.5),height:Math.max(0,bh),color:(s.cores&&s.cores[i])||s.cor});
+        if(rot){const t=pt(fmt(v,dec));pg.drawText(t,{x:gx+j*bw+(bw-1.5)/2-F.widthOfTextAtSize(t,6)/2,y:yb+bh+2,size:6,font:F,color:INK});}});
+      wrap(c,F,fl,gw-2).slice(0,2).forEach((l,k)=>pg.drawText(l,{x:x0+gw*i+gw/2-F.widthOfTextAtSize(l,fl)/2,y:yb-9-k*(fl+1.5),size:fl,font:F,color:INK}));});
+    pg.drawLine({start:{x:x0,y:yb},end:{x:x1,y:yb},thickness:0.8,color:INK});
+    if(lim!=null){const yy=yb+(yt-yb)*lim/max,t=pt(limTxt);pg.drawLine({start:{x:x0,y:yy},end:{x:x1,y:yy},thickness:1,color:LIMC,dashArray:[4,3]});pg.drawText(t,{x:x1-F.widthOfTextAtSize(t,6.5),y:yy+2,size:6.5,font:FB,color:LIMC});}
+    y=yb-30;
+    if(series.some(s=>s.nome)){let lx=x0;series.forEach(s=>{if(!s.nome)return;pg.drawRectangle({x:lx,y:y+1,width:8,height:6,color:s.cor});const t=pt(s.nome);pg.drawText(t,{x:lx+11,y:y+1,size:7,font:F,color:INK});lx+=F.widthOfTextAtSize(t,7)+26;});y-=12;}
+    if(nota)text(nota,{size:8,color:MUT,gap:10});else y-=8;
+  }
+  // análises da tela (etapas 03 a 08) reunidas no memorial descritivo
+  function analises(){
+    const p=S.par,cor=ACC,cor2=rgb(0.62,0.78,0.7),RUIM=rgb(0.82,0.08,0.08);
+    h2("Análises e indicadores do projeto");
+    text("Os gráficos e quadros a seguir reproduzem as análises feitas no dimensionamento (etapas 03 a 08 do sistema) e fundamentam as soluções descritas acima.",{size:9,color:MUT,gap:8});
+    // enquadramento
+    const c=R.cls;kv([["Classe / subclasse",`${c.classeT} / ${c.subclasse}`],["Grupo / subgrupo / modalidade",`${c.grupo} / ${c.sub} / ${c.modalidade}`],["Carga instalada / demanda com reserva",`${fmt(R.inst,2)} kW / ${fmt(R.ent.S,2)} kVA`],["Corrente de entrada / alimentador",`${fmt(R.Ient,1)} A — ${R.ent.s?R.ent.txt+" mm², disjuntor "+R.ent.polos+"P "+R.ent.inom+" A":"sem solução"}`],...c.avisos.map(a=>["Aviso",a])]);
+    // 1 equilíbrio de fases
+    const vals=R.PH.map(k=>R.ph[k]/1000),maxPh=Math.max(...vals),med=vals.reduce((a,b)=>a+b,0)/vals.length,deseq=med>0?(maxPh-med)/med*100:0;
+    grafico("Equilíbrio de fases: carga aparente por fase",R.PH.map(k=>`Fase ${k}`),[{v:vals,cores:R.PH.map(k=>PHC[k]),cor}],{un:"kVA",lim:R.PH.length>1?med:null,limTxt:`média ${fmt(med,2)} kVA`,dec:2,
+      nota:R.sys.fases===1?"Sistema monofásico: toda a carga fica na fase R.":`Desequilíbrio máximo em relação à média: ${fmt(deseq,1)} %${deseq>10?" — acima de 10 %: rever a distribuição dos circuitos monofásicos e bifásicos.":" (até 10 %, aceitável)."} Os circuitos monofásicos e bifásicos foram distribuídos do maior para o menor na fase menos carregada; a atribuição está na coluna Fases da previsão de cargas.`});
+    if(R.PH.length>1&&R.quadros.length>1)grafico("Distribuição das fases por quadro (inclui sub-quadros)",R.quadros.map(q=>q.q.nome),R.PH.map(k=>({nome:`Fase ${k}`,cor:PHC[k],v:R.quadros.map(q=>q.phT[k]/1000)})),{un:"kVA",dec:2});
+    // 2 cargas
+    grafico("Carga instalada e demanda com reserva por quadro (inclui sub-quadros)",R.quadros.map(q=>q.q.nome),[{nome:"Instalada (kW)",cor:cor2,v:R.quadros.map(q=>q.inst)},{nome:"Demanda com reserva (kVA)",cor,v:R.quadros.map(q=>q.S)}],{un:"kW / kVA",dec:1});
+    const tps=Object.keys(TIPOS).filter(t=>R.out.some(o=>o.c.tipo===t));
+    grafico("Composição da carga por tipo",tps.map(t=>TIPOS[t]),[{nome:"Instalada (kW)",cor:cor2,v:tps.map(t=>R.out.filter(o=>o.c.tipo===t).reduce((a,o)=>a+o.P,0)/1000)},{nome:"Demanda (kW)",cor,v:tps.map(t=>R.out.filter(o=>o.c.tipo===t).reduce((a,o)=>a+o.dem,0))}],{un:"kW",dec:2,
+      nota:`Fator de demanda global ${R.inst>0?fmt(R.dem/R.inst,2):"—"}; fator de potência da demanda ${fmt(R.fpG,2)}.`});
+    // 3 queda de tensão
+    const cs=R.out.filter(o=>o.s);
+    grafico("Queda de tensão total por circuito (da entrada ao ponto mais distante)",cs.map(o=>`C${o.i+1}`),[{v:cs.map(o=>o.dvTot),cor,cores:cs.map(o=>o.dvOk?cor:RUIM)}],{un:"%",lim:+p.dvTotal,limTxt:`limite ${fmt(+p.dvTotal,1)} %`,dec:2,
+      nota:`Maior queda: ${cs.length?(o=>`C${o.i+1} ${o.c.nome}, ${fmt(o.dvTot,2)} %`)(cs.reduce((a,o)=>o.dvTot>a.dvTot?o:a)):"—"}. Inclui a queda do alimentador de entrada (${fmt(R.ent.dv||0,2)} %) e dos alimentadores intermediários.`});
+    // 4 curto-circuito
+    grafico("Corrente de curto-circuito presumida e capacidade de interrupção mínima por quadro",R.quadros.map(q=>q.q.nome),[{nome:"Icc máx. trifásica (kA)",cor,v:R.quadros.map(q=>q.iccMax)},{nome:"Icn mínima adotada (kA)",cor:cor2,v:R.quadros.map(q=>q.icn)},{nome:"Icc mín. fase-PE (kA)",cor:rgb(0.85,0.6,0.2),v:R.quadros.map(q=>q.iccMin)}],{un:"kA",dec:2,
+      nota:"A Icc decresce ao longo dos alimentadores; os dispositivos de cada quadro têm capacidade de interrupção não inferior à Icc máxima no ponto (NBR 5410, 5.3.5.5)."});
+    // 5 canaletas
+    const gs=Object.values(R.cans).filter(g=>g.ocup!=null);
+    if(gs.length)grafico("Ocupação das canaletas de distribuição",gs.map(g=>`${g.k} (${g.dim})`),[{v:gs.map(g=>g.ocup*100),cor,cores:gs.map(g=>g.ocup*100>(+p.ocupCan||40)+1e-9?RUIM:cor)}],{un:"%",lim:+p.ocupCan||40,limTxt:`limite ${fmt(+p.ocupCan||40,0)} %`,dec:1});
+    // 6 iluminação
+    const amb=S.ambientes.filter(a=>+a.comprimento>0&&+a.largura>0);
+    if(amb.length)grafico("Iluminância exigida e calculada por ambiente (método dos lúmens)",amb.map(a=>a.nome),[{nome:"Exigida (lx)",cor:cor2,v:amb.map(a=>+a.lux||0)},{nome:"Calculada (lx)",cor,v:amb.map(a=>calcularAmbiente(a).em)}],{un:"lx",dec:0,
+      nota:"Iluminâncias de referência da NBR ISO/CIE 8995-1. "+amb.map(a=>{const k=calcularAmbiente(a);return `${a.nome}: ${k.luminarias} luminárias, ${fmt0(k.potencia)} W, ${fmt(k.dens,1)} W/m²`;}).join("; ")+"."});
+    // 7 fator de potência
+    if(R.fp.need)grafico("Fator de potência da demanda",["Sem correção",`Com banco de ${fmt(R.fp.std,R.fp.std%1?1:0)} kvar`],[{v:[R.fpG,R.fp.fpNovo],cor,cores:[RUIM,cor]}],{un:"FP",lim:R.fp.alvo,limTxt:`referência ${fmt(R.fp.alvo,2)} (REN 1.000/2021)`,dec:3,h:120});
+    // 8 SPDA
+    if(S.projetos.spda&&R.spda.ok){const sp=R.spda;ensure(140);text("Quadro-resumo do SPDA (NBR 5419-3)",{size:9.5,font:FB,gap:4});
+      kv([["Nível de proteção / captação",`NP ${sp.np} — ${sp.cobMet?"captação natural pela cobertura metálica":`malha ${sp.g.m} × ${sp.g.m} m, esfera ${sp.g.r} m`}`],["Descidas",`${sp.nDesc}${sp.natural?" naturais":""}, espaçamento <= ${sp.g.d} m${sp.nAneis?`, ${sp.nAneis} anel(éis) intermediário(s)`:""}`],["Eletrodo em anel",`${fmt0(sp.anel)} m, re ${fmt(sp.re,1)} m${sp.l1!=null?` (l1 ${fmt(sp.l1,1)} m${sp.hastesAd?`, + ${sp.hastesAd} hastes`:""})`:""}`],["Distância de segurança s",sp.natural?"não exigida":`${fmt(sp.sSeg,2)} m`],["Equipotencialização",`BEP${sp.nBEL?` + ${sp.nBEL} BEL`:""}; DPS classe I ${(R.dps.itens[0]||{}).i||""}`],
+        ...(sp.ng?[["Risco R1 sem / com SPDA",`${sp.risco.nenhum.R1.toExponential(2).replace(".",",")} / ${sp.risco[sp.np].R1.toExponential(2).replace(".",",")} (tolerável 10^-5)`]]:[])]);}
+    // 9 alertas
+    if(R.issues.length){ensure(60);text("Alertas e observações da verificação automática",{size:9.5,font:FB,gap:4});R.issues.forEach(t=>text("• "+t,{size:8.5,gap:2}));y-=6;}
+  }
   function pendencia(titulo,desc){newPage(false,titulo);pg.drawText(pt(titulo),{x:M,y:y-18,size:18,font:FB,color:INK});y-=40;pg.drawRectangle({x:M,y:y-70,width:W-2*M,height:70,borderColor:rgb(0.6,0.36,0),borderWidth:1.2,color:rgb(0.97,0.92,0.84)});pg.drawText(pt("DOCUMENTO PENDENTE"),{x:M+14,y:y-26,size:12,font:FB,color:rgb(0.6,0.36,0)});pg.drawText(pt(desc),{x:M+14,y:y-46,size:9.5,font:F,color:INK});}
   const id=S.id,sys=R.sys,p=S.par;
 
@@ -1556,6 +1791,14 @@ async function gerarPDF(){
   const Ln=(pp,x1,y1,x2,y2,th=1,color=INK,dash)=>pp.drawLine({start:{x:x1,y:y1},end:{x:x2,y:y2},thickness:th,color,dashArray:dash});
   const Bx=(pp,x,y,w,h,o={})=>pp.drawRectangle({x,y,width:w,height:h,borderColor:o.bc||INK,borderWidth:o.bw??1,color:o.fill});
   const Ci=(pp,x,y,r,o={})=>pp.drawCircle({x,y,size:r,borderColor:o.bc||INK,borderWidth:o.bw??1,color:o.fill});
+  // símbolos NBR 5444 (geometria em sim5444); s = meia largura em pt, ang em graus
+  const SIM=(pp,tipo,x,y,s,o={},cor=INK,fundo=rgb(1,1,1))=>{const a=(o.ang||0)*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a),X=(u,v)=>[x+s*(u*ca-v*sa),y+s*(u*sa+v*ca)],bw=Math.max(0.45,s*0.1);
+    sim5444(tipo,o).forEach(g=>{
+      if(g.l){const [a1,b1]=X(g.l[0],g.l[1]),[a2,b2]=X(g.l[2],g.l[3]);Ln(pp,a1,b1,a2,b2,bw,cor);}
+      else if(g.pl){for(let k=1;k<g.pl.length;k++){const [a1,b1]=X(...g.pl[k-1]),[a2,b2]=X(...g.pl[k]);Ln(pp,a1,b1,a2,b2,bw,cor);}}
+      else if(g.c){const [cx,cy]=X(g.c[0],g.c[1]);Ci(pp,cx,cy,g.c[2]*s,{bc:cor,bw,fill:g.f==="n"?undefined:g.f?cor:fundo});}
+      else if(g.p){const q=g.p.map(([u,v])=>X(u,v));pp.drawSvgPath("M "+q.map(([px,py])=>`${px.toFixed(2)} ${(-py).toFixed(2)}`).join(" L ")+" Z",{color:g.f==="n"?undefined:g.f?cor:fundo,borderColor:cor,borderWidth:bw});}
+      else if(g.t){const [tx,ty]=X(g.t[0],g.t[1]);TC(pp,g.t[3],tx,ty,g.t[2]*s,FB,cor);}});};
   const redU=(pp,x,y,w)=>Ln(pp,x,y-2,x+w,y-2,1.2,RED);
   const TW=(pp,str,x,y,maxW,size=7,font=F,color=INK,lead=1.25)=>{wrap(str,font,size,maxW).forEach((l,i)=>pp.drawText(l,{x,y:y-i*size*lead,size,font,color}));return wrap(str,font,size,maxW).length;};
   function simPage(size,titulo){
@@ -1602,48 +1845,59 @@ async function gerarPDF(){
     Bx(pp,120,230,w-560,480,{bc:GR,bw:1.2});T(pp,"Limite do terreno",130,700,8,F,GR);
     Bx(pp,300,380,w-860,240,{bw:2,fill:LG});TC(pp,id.obra||"Edificação",300+(w-860)/2,500,11,FB);TC(pp,id.atividade||"",300+(w-860)/2,484,8,F,MUT);
     // padrão e alimentador
-    Bx(pp,px-18,236,36,30,{bw:1.4,fill:rgb(1,1,1)});TC(pp,"PE",px,247,8,FB);T(pp,"Padrão de entrada / medição",px+24,246,7.5);
+    SIM(pp,"med",px,251,11);T(pp,"Padrão de entrada / medição",px+24,246,7.5);
     Ln(pp,px,197,px,236,1.2,INK,[3,2]);T(pp,`Ramal de ligação — ${f.distRede||"distância a confirmar"}`,px+8,212,7.5,FB,RED);redU(pp,px+8,212,190);
-    const qx=320,qy=400;Bx(pp,qx,qy,26,18,{fill:INK});T(pp,"QGBT",qx,qy+24,8,FB);
+    const qx=320,qy=400;SIM(pp,"qdg",qx+13,qy+9,10);T(pp,"QGBT",qx,qy+24,8,FB);
     Ln(pp,px,266,px,qy+9,1.6);Ln(pp,px,qy+9,qx+26,qy+9,1.6);
     T(pp,`Alimentador de entrada: ${R.ent.s?R.ent.txt+" mm²":"—"}, ${R.ent.ed?R.ent.ed.nome:""}, ${f.Lent} m, método ${f.metEnt}`,px+8,330,7.5,F,INK);
     // quadros: cada um ligado à sua origem (QGBT ou quadro intermediário); x proporcional à distância total de rota até o QGBT
     const pos=new Map([[S.quadros[0],{x:qx,y:qy}]]);
     quadrosEmArvore().slice(1).forEach((q,i)=>{const pq=pos.get(paiDe(q))||pos.get(S.quadros[0]);const x=Math.min(w-420,Math.max(pq.x+50,qx+60+distQGBT(q)*5)),y=Math.max(260,620-i*48);pos.set(q,{x,y});
-      Bx(pp,x,y,26,18,{fill:INK});T(pp,q.nome,x,y+24,8,FB);Ln(pp,pq.x+13,pq.y+(y>pq.y?18:0),pq.x+13,y+9,0.8,INK,[4,3]);Ln(pp,pq.x+13,y+9,x,y+9,0.8,INK,[4,3]);
+      SIM(pp,"qdp",x+13,y+9,10);T(pp,q.nome,x,y+24,8,FB);Ln(pp,pq.x+13,pq.y+(y>pq.y?18:0),pq.x+13,y+9,0.8,INK,[4,3]);Ln(pp,pq.x+13,y+9,x,y+9,0.8,INK,[4,3]);
       T(pp,`${origemQ(q)} -> ${q.nome}: ${fmt(+q.L||0,0)} m`,x+32,y+9,7,F,MUT);if(paiDe(q)!==S.quadros[0])T(pp,`rota até o QGBT: ${fmt(distQGBT(q),0)} m`,x+32,y,6.5,F,MUT);});
     // norte
     const nx=w-420,ny=640;Ln(pp,nx,ny,nx,ny+50,1.4);pp.drawSvgPath(`M ${nx} ${-(ny+60)} L ${nx-7} ${-(ny+44)} L ${nx+7} ${-(ny+44)} Z`,{color:INK});TC(pp,"N",nx,ny+64,10,FB);
     T(pp,"Orientação, distâncias e posição da rede são supostas: conferir em levantamento de campo.",60,90,9,FB,RED);
     carimbo(pp,w,"Planta de situação","SIT-01");
   }
-  // ---- Planta baixa esquemática
+  // ---- Planta baixa esquemática (simbologia ABNT NBR 5444)
   function simPlanta(){
     const {pp,w,h}=simPage(A3L,"Planta baixa — pontos, quadros, emergência e rotas");
     const Lp=layoutPlanta(),X0=50,Y0=130,BW=w-460,BH=h-230,bb=Lp.bb;
     if(!Lp.amb.length){T(pp,"Cadastre ambientes e dimensões na etapa Desenhos para gerar a planta em escala.",X0+20,Y0+BH/2,10,FB,RED);carimbo(pp,w,"Planta baixa","PB-01");return;}
     const sc=Math.min(BW/(bb.x2-bb.x1),BH/(bb.y2-bb.y1)),ox=X0+(BW-(bb.x2-bb.x1)*sc)/2,oy=Y0+(BH-(bb.y2-bb.y1)*sc)/2;
     const P=(x,y)=>[ox+(x-bb.x1)*sc,oy+(y-bb.y1)*sc],ORG=rgb(0.85,0.45,0.05);
+    const s0=Math.max(2.4,Math.min(4.2,0.22*sc)),fs=Math.max(4.6,s0*1.35),ct=a=>a.map(n=>`-${n}-`).join(" ");
     Lp.amb.forEach(r=>{const [x,y]=P(r.x,r.y);Bx(pp,x,y,r.L*sc,r.W*sc,{bc:INK,bw:1.6,fill:r.a.zona?rgb(0.99,0.95,0.88):LG});
       T(pp,r.a.nome.slice(0,34),x+4,y+r.W*sc-11,7,FB,INK);T(pp,`${fmt(r.L,1)} × ${fmt(r.W,1)} m · H ${fmt(+r.a.altura||0,1)} m · ${(INFL[r.a.infl]||INFL.seco).ip}${r.a.zona?` · ZONA ${r.a.zona}`:""}`,x+4,y+r.W*sc-20,5.8,F,r.a.zona?RED:MUT);
-      const rs=Math.max(2.2,Math.min(4.5,0.25*sc));
-      r.lum.forEach(([a,b])=>{const [cx,cy]=P(a,b);Ci(pp,cx,cy,rs);Ln(pp,cx-rs*0.7,cy-rs*0.7,cx+rs*0.7,cy+rs*0.7,0.5);Ln(pp,cx-rs*0.7,cy+rs*0.7,cx+rs*0.7,cy-rs*0.7,0.5);});
-      if(r.lum.length){const [cx,cy]=P(...r.lum[0]);T(pp,`C${r.cI.join(",")}`,cx+rs+1,cy+rs,5.5,FB,RED);}
-      r.tug.forEach(([a,b])=>{const [cx,cy]=P(a,b);Bx(pp,cx-2.5,cy-2.5,5,5,{fill:rgb(1,1,1),bw:0.7});});
-      if(r.tug.length){const [cx,cy]=P(...r.tug[0]);T(pp,`C${r.cT.join(",")}`,cx+4,cy+2,5.5,FB,RED);}
-      r.fix.forEach(({o,p:[a,b]})=>{const [cx,cy]=P(a,b);if(o.c.tipo==="motor"){Ci(pp,cx,cy,6,{fill:rgb(1,1,1)});TC(pp,"M",cx,cy-2.5,6.5,FB);}else Bx(pp,cx-3,cy-3,6,6,{fill:INK});T(pp,`C${o.i+1}`,cx+7,cy-2,5.5,FB,RED);});
-      r.emg.forEach(([a,b])=>{const [cx,cy]=P(a,b);Ci(pp,cx,cy,3.2,{fill:rgb(1,1,1),bc:ORG,bw:1});TC(pp,"E",cx,cy-2,4.5,FB,ORG);});
+      r.lum.forEach(([a,b])=>{const [cx,cy]=P(a,b);SIM(pp,"lum",cx,cy,s0);if(r.letra)T(pp,r.letra,cx+1.4*s0,cy+0.5*s0,fs);});
+      if(r.lum.length){const [cx,cy]=P(...r.lum[0]);T(pp,`${ct(r.cI)} ${r.nLum}×${fmt0(r.wLum)} W`,cx-1.3*s0,cy-0.6*s0-fs-0.5,fs,FB,RED);}
+      if(r.inter){const [cx,cy]=P(...r.inter);SIM(pp,"inter",cx,cy,s0);T(pp,r.letra,cx+0.6*s0,cy+0.4*s0,fs);}
+      r.tug.forEach(([a,b,d])=>{const [cx,cy]=P(a,b);SIM(pp,"tom",cx,cy,s0,{alt:"media",ang:[90,180,270,0][d||0]});});
+      if(r.tug.length){const [cx,cy]=P(...r.tug[0]);T(pp,`${ct(r.cT)}${Math.round(r.vaTug)!==100?` ${fmt0(r.vaTug)} VA`:""}`,cx+1.2*s0,cy+1.2*s0,fs,FB,RED);}
+      r.fix.forEach(({o,p:[a,b]})=>{const [cx,cy]=P(a,b);if(o.c.tipo==="motor")SIM(pp,"motor",cx,cy,s0*1.4);else SIM(pp,"tom",cx,cy,s0,{alt:"alta",ang:270});T(pp,`${ct([o.i+1])} ${fmt(o.P/1000,o.P<10000?1:0)} kW`,cx+1.6*s0,cy-fs/2,fs,FB,RED);});
+      r.emg.forEach(([a,b])=>{const [cx,cy]=P(a,b);SIM(pp,"emg",cx,cy,s0,{},ORG);});
       r.sai.forEach(([a,b])=>{const [cx,cy]=P(a,b);Bx(pp,cx-11,cy+2,22,7,{fill:ACC,bc:ACC});TC(pp,"SAÍDA",cx,cy+3.8,4.5,FB,rgb(1,1,1));});});
-    Lp.rotas.forEach(r=>{r.segs.forEach(([a,b])=>{const [x1,y1]=P(...a),[x2,y2]=P(...b);Ln(pp,x1,y1,x2,y2,1.8,ACC);});const [a,b]=r.segs[0],[x1,y1]=P(...a),[x2]=P(...b);T(pp,r.k,(x1+x2)/2,y1+3,6,FB,ACC);});
-    Lp.alim.forEach(({de,para})=>{const [x1,y1]=P(de.x,de.y),[x2,y2]=P(para.x,para.y);Ln(pp,x1,y1,x1,y2,0.9,INK,[4,3]);Ln(pp,x1,y2,x2,y2,0.9,INK,[4,3]);});
-    Lp.quad.forEach(r=>{const [x,y]=P(r.x,r.y);Bx(pp,x-9,y-4,18,8,{fill:INK});T(pp,r.q.nome,x-9,y+6,6.5,FB,INK);});
+    // eletrocalhas com circuitos passantes (5.13) e baixadas em eletroduto que desce (5.18)
+    Lp.rotas.forEach(r=>{r.segs.forEach(([a,b],k)=>{const [x1,y1]=P(...a),[x2,y2]=P(...b);Ln(pp,x1,y1,x2,y2,2.4,INK);if(k%2)SIM(pp,"desce",x2,y2,s0*0.9);});
+      const [a,b]=r.segs[0],[x1,y1]=P(...a),[x2]=P(...b),g=R.cans[r.k];T(pp,`${r.k}${g?` — ${g.dim} · circ. ${g.circ.join(", ")}`:""}`,Math.min(x1,x2)+4,y1-8,5.5,FB,INK);});
+    // alimentadores: eletroduto no piso/enterrado (5.2), diâmetro em mm e condutores (5.6, 5.7, 5.9)
+    Lp.alim.forEach(({de,para,q})=>{const [x1,y1]=P(de.x,de.y),[x2,y2]=P(para.x,para.y);Ln(pp,x1,y1,x1,y2,0.9,INK,[4,3]);Ln(pp,x1,y2,x2,y2,0.9,INK,[4,3]);
+      const f=(R.quadros.find(z=>z.q===q)||{}).f;if(f&&f.s){const mx=(x1+x2)/2,dn=((f.ed||{}).nome||"").match(/DN (\d+)/);SIM(pp,"cond",mx,y2,s0*1.2,{nf:f.nf,n:f.sn>0,pe:f.spe>0});T(pp,`${dn?"ø"+dn[1]+" — ":""}${f.txt} mm²`,mx-30,y2-fs-3,fs,F,INK);}});
+    Lp.quad.forEach(r=>{const [x,y]=P(r.x,r.y);SIM(pp,r.q===S.quadros[0]?"qdg":"qdp",x,y,s0*1.8);const rq=R.quadros.find(z=>z.q===r.q);T(pp,`${r.q.nome}${rq?` — ${fmt(rq.inst,1)} kW`:""}`,x-2.3*s0,y+1.3*s0,6.5,FB,INK);});
     // escala gráfica
     const m=[1,2,5,10,20,50].find(v=>v*sc>=60)||50;Ln(pp,X0,Y0-30,X0+m*sc,Y0-30,2);Ln(pp,X0,Y0-34,X0,Y0-26,1);Ln(pp,X0+m*sc,Y0-34,X0+m*sc,Y0-26,1);T(pp,`0`,X0-2,Y0-44,7);T(pp,`${m} m`,X0+m*sc-8,Y0-44,7);
     // legenda
-    const lx=X0+BW+30;let ly=h-110;T(pp,"Legenda",lx,ly,10,FB);ly-=20;
-    const lg=[[()=>{Ci(pp,lx+6,ly+3,5);Ln(pp,lx+2,ly-1,lx+10,ly+7,0.6);Ln(pp,lx+2,ly+7,lx+10,ly-1,0.6);},"Luminária"],[()=>Bx(pp,lx+3,ly,6,6,{bw:0.7}),"Tomada de uso geral"],[()=>Bx(pp,lx+3,ly,6,6,{fill:INK}),"Tomada de uso específico"],[()=>{Ci(pp,lx+6,ly+3,6);TC(pp,"M",lx+6,ly,6,FB);},"Motor"],
-      [()=>{Ci(pp,lx+6,ly+3,3.5,{bc:ORG});TC(pp,"E",lx+6,ly+1,4.5,FB,ORG);},"Iluminação de emergência (NBR 10898)"],[()=>Bx(pp,lx,ly,14,6,{fill:ACC,bc:ACC}),"Sinalização de saída"],[()=>Bx(pp,lx,ly,14,6,{fill:INK}),"Quadro de distribuição"],[()=>Ln(pp,lx,ly+3,lx+14,ly+3,2,ACC),"Rota de canaleta/eletrocalha"],[()=>Ln(pp,lx,ly+3,lx+14,ly+3,0.9,INK,[4,3]),"Alimentador entre quadros"],[()=>Bx(pp,lx,ly,14,7,{fill:rgb(0.99,0.95,0.88),bc:INK,bw:0.6}),"Área classificada (poeira)"]];
-    lg.forEach(([fn,t])=>{fn();T(pp,t,lx+22,ly,7.5);ly-=17;});ly-=8;T(pp,"Número vermelho = circuito",lx,ly,7.5,FB,RED);ly-=22;
+    const lx=X0+BW+30,ls=3.6;let ly=h-110;T(pp,"Legenda — ABNT NBR 5444",lx,ly,10,FB);ly-=18;
+    const lg=[["8.4",()=>{SIM(pp,"lum",lx+10,ly+3,ls);},"Ponto de luz no teto (LED/fluorescente): letra = comando; -n- = circuito; nº × W"],["7.1",()=>SIM(pp,"inter",lx+10,ly+3,ls),"Interruptor de uma seção (letra do ponto comandado)"],
+      ["9.2",()=>SIM(pp,"tom",lx+10,ly+3,ls,{alt:"media",ang:90}),"Tomada a meia altura (1,30 m) — potência em VA, exceto 100 VA"],["9.3",()=>SIM(pp,"tom",lx+10,ly+3,ls,{alt:"alta",ang:90}),"Tomada alta (2,00 m) / ponto de força — potência em W ou kW"],
+      ["10.2",()=>SIM(pp,"motor",lx+10,ly+3,ls*1.3),"Motor — características nominais"],["8.15",()=>SIM(pp,"emg",lx+10,ly+3,ls,{},ORG),"Ponto de luz de emergência com alimentação independente (NBR 10898)"],
+      ["—",()=>Bx(pp,lx+2,ly,16,6,{fill:ACC,bc:ACC}),"Sinalização de saída (NBR 13434)"],["6.3",()=>SIM(pp,"qdg",lx+10,ly+4,ls*1.6),"Quadro geral de luz e força aparente"],["6.1",()=>SIM(pp,"qdp",lx+10,ly+4,ls*1.6),"Quadro parcial de luz e força aparente — carga em kW"],
+      ["5.13",()=>Ln(pp,lx,ly+3,lx+20,ly+3,2.4,INK),"Eletrocalha / leito de cabos com circuitos passantes"],["5.18",()=>SIM(pp,"desce",lx+10,ly+3,ls),"Eletroduto que desce (baixada)"],
+      ["5.2",()=>Ln(pp,lx,ly+3,lx+20,ly+3,0.9,INK,[4,3]),"Eletroduto embutido no piso / enterrado — ø em mm (Tab. 1)"],["5.6–5.9",()=>{Ln(pp,lx,ly+3,lx+20,ly+3,0.6);SIM(pp,"cond",lx+10,ly+3,ls,{nf:3,n:true,pe:true});},"Condutores fase, neutro e terra no eletroduto"],
+      ["—",()=>Bx(pp,lx+2,ly-1,16,8,{fill:rgb(0.99,0.95,0.88),bc:INK,bw:0.6}),"Área classificada (poeira combustível)"]];
+    lg.forEach(([n,fn,t])=>{fn();T(pp,n,lx+26,ly,6.5,FB,MUT);const k=TW(pp,t,lx+58,ly,w-lx-80,7);ly-=Math.max(16,k*9+7);});ly-=4;
+    T(pp,"Seção indicada quando diferente de 1,5 mm²; números entre traços = circuito.",lx,ly,6.8,FB,RED);ly-=20;
     T(pp,"Circuitos",lx,ly,10,FB);ly-=15;R.out.forEach(o=>{if(ly<150)return;T(pp,`${o.i+1} — ${o.c.nome}`.slice(0,52),lx,ly,6.8);ly-=10;});
     T(pp,"Posições informadas nas etapas 04 e 08 (ou automáticas). Pontos distribuídos em grade: ajustar no projeto executivo. Arquivo DXF em escala na etapa 08.",50,62,8,FB,RED);
     carimbo(pp,w,"Planta baixa","PB-01",`Escala gráfica (1:${fmt0(Math.round(1000/(sc*0.3528)/50)*50)})`);
@@ -1658,7 +1912,7 @@ async function gerarPDF(){
       Bx(pp,x,y,rw,rh,{bc:GR,bw:1.2,fill:LG});T(pp,a.nome.slice(0,38),x+5,y+rh-14,7,FB);
       T(pp,`${fmt(+a.comprimento||0,1)} × ${fmt(+a.largura||0,1)} m · H ${fmt(+a.altura||0,1)} m`,x+5,y+rh-25,6,F,MUT);
       const cols=Math.max(1,Math.ceil(Math.sqrt(c.luminarias*Math.max(+a.comprimento||0,0.1)/Math.max(+a.largura||0,0.1)))),rows=Math.ceil(c.luminarias/cols);
-      for(let i=0;i<c.luminarias;i++){const cx=x+rw*(i%cols+0.5)/cols,cy=y+rh*(Math.floor(i/cols)+0.5)/Math.max(rows,1);Ci(pp,cx,cy,5);Ln(pp,cx-3,cy-3,cx+3,cy+3,0.7);Ln(pp,cx-3,cy+3,cx+3,cy-3,0.7);}
+      for(let i=0;i<c.luminarias;i++){const cx=x+rw*(i%cols+0.5)/cols,cy=y+rh*(Math.floor(i/cols)+0.5)/Math.max(rows,1);SIM(pp,"lum",cx,cy,4);}
       T(pp,`${a.lux} lx exig. · Em ${fmt0(c.em)} lx · ${c.luminarias} lum. · ${fmt0(c.potencia)} W`,x,y-14,7,FB,c.em>=(+a.lux||0)-0.5?ACC:RED);
       T(pp,`${fmt0(c.area)} m² · K ${fmt(c.k,2)} · FU ${fmt(+a.uf,2)} · FM ${fmt(+a.mf,2)} · ${fmt(a.lm,0)} lm / peça · ${fmt(c.dens,1)} W/m²`,x,y-25,6.5,F,MUT);
       x+=rw+5;
@@ -1668,25 +1922,33 @@ async function gerarPDF(){
     carimbo(pp,w,"Luminotécnico","LUM-01");
   }
   function simSpda(){
-    const sp=R.spda,{pp,w,h}=simPage(A3L,sp.ok?`SPDA — pré-dimensionamento NBR 5419-3, NP ${sp.np} (método das malhas)`:"Análise de risco e projeto de SPDA — dados pendentes");
-    // planta: contorno da estrutura, malha de captação, descidas e anel de aterramento
+    const sp=R.spda,{pp,w,h}=simPage(A3L,sp.ok?`SPDA — pré-dimensionamento NBR 5419-3, NP ${sp.np} (${sp.cobMet?"captação natural pela cobertura":"método das malhas"})`:"Análise de risco e projeto de SPDA — dados pendentes");
+    // planta: contorno, captação, descidas (uma por canto) e anel de aterramento (cordoalha de terra, NBR 5444 5.12)
     const X0=60,Y0=150,AW=560,AH=h-300;
     if(sp.ok){const e=Math.min(AW/(sp.L+4),AH/(sp.W+4)),ox=X0+(AW-sp.L*e)/2,oy=Y0+(AH-sp.W*e)/2,bw=sp.L*e,bh=sp.W*e;
-      const MAR=rgb(0.55,0.35,0.15),ax=ox-e,ay=oy-e,aw=bw+2*e,ah=bh+2*e; // anel a ~1 m
-      [[ax,ay,ax+aw,ay],[ax+aw,ay,ax+aw,ay+ah],[ax+aw,ay+ah,ax,ay+ah],[ax,ay+ah,ax,ay]].forEach(([x1,y1,x2,y2])=>Ln(pp,x1,y1,x2,y2,1.4,MAR,[6,3]));
+      const MAR=rgb(0.55,0.35,0.15),ax=ox-e,ay=oy-e,aw=bw+2*e,ah=bh+2*e;
+      [[ax,ay,ax+aw,ay],[ax+aw,ay,ax+aw,ay+ah],[ax+aw,ay+ah,ax,ay+ah],[ax,ay+ah,ax,ay]].forEach(([x1,y1,x2,y2],j)=>{Ln(pp,x1,y1,x2,y2,1.4,MAR);
+        const n=Math.max(1,Math.floor(Math.hypot(x2-x1,y2-y1)/45));for(let k=1;k<=n;k++){const t=k/(n+1);SIM(pp,"terraT",x1+(x2-x1)*t,y1+(y2-y1)*t,7,{ang:[180,270,0,90][j]},MAR);}});
+      T(pp,"50•",ax+aw+4,ay+4,7,FB,MAR);
       Bx(pp,ox,oy,bw,bh,{bw:2,fill:LG});
-      for(let k=0;k<sp.linhasL;k++){const yy=oy+bh*k/Math.max(sp.linhasL-1,1);Ln(pp,ox,yy,ox+bw,yy,1.1,ACC);}
-      for(let k=0;k<sp.linhasW;k++){const xx=ox+bw*k/Math.max(sp.linhasW-1,1);Ln(pp,xx,oy,xx,oy+bh,1.1,ACC);}
-      // descidas distribuídas pelo perímetro, começando pelos cantos
-      const per=2*(bw+bh),pts=[];for(let k=0;k<sp.nDesc;k++){let d=per*k/sp.nDesc;if(d<bw)pts.push([ox+d,oy]);else if((d-=bw)<bh)pts.push([ox+bw,oy+d]);else if((d-=bh)<bw)pts.push([ox+bw-d,oy+bh]);else pts.push([ox,oy+bh-(d-bw)]);}
-      pts.forEach(([x,y],k)=>{Ci(pp,x,y,5,{fill:RED,bc:RED});T(pp,`D${k+1}`,x+6,y+5,6.5,FB,RED);});
+      if(sp.cobMet)TC(pp,"Cobertura metálica contínua = captor natural (5.2.5)",ox+bw/2,oy+bh/2,8,FB,ACC);
+      else{for(let k=0;k<sp.linhasL;k++){const yy=oy+bh*k/Math.max(sp.linhasL-1,1);Ln(pp,ox,yy,ox+bw,yy,1.1,ACC);}
+        for(let k=0;k<sp.linhasW;k++){const xx=ox+bw*k/Math.max(sp.linhasW-1,1);Ln(pp,xx,oy,xx,oy+bh,1.1,ACC);}}
+      descidasPos(sp.L,sp.W,sp.nDesc).forEach(([a,b],k)=>{const x=ox+a*e,y=oy+b*e;Ci(pp,x,y,5,{fill:RED,bc:RED});T(pp,`D${k+1}`,x+6,y+5,6.5,FB,RED);});
       T(pp,`${fmt(sp.L,1)} m`,ox+bw/2-12,oy-e-14,8,FB);T(pp,`${fmt(sp.W,1)} m`,ox+bw+e+6,oy+bh/2,8,FB);
-      T(pp,`Malha ${sp.g.m} × ${sp.g.m} m (cobre 35 mm²)`,X0,Y0-22,8,FB,ACC);T(pp,`${sp.nDesc} descidas (D) · anel tracejado: cobre nu 50 mm² a ~1 m da fundação`,X0,Y0-34,8,FB,rgb(0.55,0.35,0.15));}
+      T(pp,sp.cobMet?"Captação natural: telhas metálicas interligadas às descidas (Tab. 3: aço >= 0,5 mm)":`Malha ${sp.g.m} × ${sp.g.m} m (cobre 35 mm²)${sp.cobMetZona?" — telha sobre zona de poeira não é captor":""}`,X0,Y0-22,8,FB,ACC);
+      T(pp,`${sp.nDesc} descidas (D), uma em cada canto (5.3.3)${sp.natural?" — naturais":""}${sp.nAneis?` · ${sp.nAneis} anel(éis) intermediário(s) a cada ${sp.g.d} m`:""} · anel: cordoalha de cobre nu 50 mm² a ~1 m`,X0,Y0-34,8,FB,MAR);}
     else T(pp,"Informe comprimento, largura e altura da estrutura na etapa 08 para desenhar a malha.",X0,Y0+AH/2,10,FB,RED);
     // resultados
     const xr=680;let y=h-100;T(pp,"Resultados",xr,y,11,FB);y-=18;
-    const rs=sp.ok?[["Área de exposição AD (NBR 5419-2, A.2)",`${fmt0(sp.Ad)} m²`],["NG / CD",sp.ng?`${fmt(sp.ng,1)} /km²/ano · ${fmt(sp.cd,2)}`:"NG A INFORMAR"],["Eventos perigosos ND = NG·AD·CD·10^-6",sp.ng?`${fmt(sp.Nd,4)} /ano`:"—"],["Nível de proteção adotado",`NP ${sp.np} (confirmar pela análise de risco)`],["Esfera rolante / malha (Tab. 2)",`${sp.g.r} m / ${sp.g.m} × ${sp.g.m} m`],["Descidas (Tab. 4)",`${sp.nDesc} un., espaçamento médio ${sp.g.d} m`],["Condutores captação + descidas",`${fmt0(sp.captacao+sp.descidas)} m de Cu 35 mm²`],["Anel de aterramento (arranjo B)",`${fmt0(sp.anel)} m de Cu nu 50 mm² · re ${fmt(sp.re,1)} m`],["Comprimento mínimo l1 (Fig. 3)",sp.l1!=null?`${sp.l1} m — ${sp.anelOk?"re >= l1, atende":"re < l1: acrescentar eletrodos"}`:`depende de rho${sp.rho?` = ${fmt0(sp.rho)} ohm·m`:" (não informada)"}`]]:[];
-    rs.forEach(([k,v])=>{T(pp,k,xr,y,7.5,F,MUT);T(pp,v,xr+190,y,7.5,FB,/INFORMAR|acrescentar/.test(v)?RED:INK);Ln(pp,xr,y-4,w-30,y-4,0.3,LN);y-=15;});
+    const toq={brita:"brita 20 cm até 3 m das descidas",isolacao:"isolação das descidas (100 kV) até 3 m",barreira:"barreiras e placas de advertência",baixa:"dispensada: baixa presença de pessoas",naturais:"dispensada: >= 10 descidas naturais"}[sp.toque]||"—";
+    const rs=sp.ok?[["Área de exposição AD (NBR 5419-2, A.2)",`${fmt0(sp.Ad)} m²`],["NG / CD",sp.ng?`${fmt(sp.ng,1)} /km²/ano · ${fmt(sp.cd,2)}`:"NG A INFORMAR"],["Eventos perigosos ND = NG·AD·CD·10^-6",sp.ng?`${fmt(sp.Nd,4)} /ano`:"—"],["Nível de proteção adotado",`NP ${sp.np} (confirmar pela análise de risco)`],
+      ["Esfera rolante / malha (Tab. 2)",sp.cobMet?`${sp.g.r} m / captação natural`:`${sp.g.r} m / ${sp.g.m} × ${sp.g.m} m`],["Descidas (5.3.3, Tab. 4)",`${sp.nDesc} un., espaçamento <= ${sp.g.d} m${sp.nAneis?`, ${sp.nAneis} anel(éis) intermediário(s)`:""}`],
+      ["Condutores Cu 35 mm² (captação+descidas+anéis)",`${fmt0(sp.captacao+sp.descidas+sp.aneisInt)} m`],["Anel de aterramento",`${fmt0(sp.anel)} m de Cu nu 50 mm² · re ${fmt(sp.re,1)} m`],
+      ["Comprimento mínimo l1 (Fig. 3)",sp.l1!=null?`${fmt(sp.l1,1)} m — ${sp.anelOk?"re >= l1, atende":`re < l1: ${sp.hastesAd} hastes adicionais (lv ${fmt(sp.lv,1)} m)`}`:"depende de rho (não informada)"],
+      ["Distância de segurança s (6.3)",sp.natural?"não exigida (estrutura contínua)":`ki/km·kc·l = ${fmt(sp.ki,2)}/${fmt(sp.km,1)}·${fmt(sp.kc,2)}·${fmt(sp.H,1)} = ${fmt(sp.sSeg,2)} m`],
+      ["Equipotencialização (6.2.2)",`BEP${sp.nBEL?` + ${sp.nBEL} BEL`:""} · 16 mm² Cu entre barras (Tab. 8)`],["DPS classe I por polo (6.2.5)",(R.dps.itens[0]||{}).i||"—"],["Toque e passo (seção 8)",toq],["Inspeção (7.3)",`visual semestral · periódica a cada ${sp.insp===1?"1 ano":"3 anos"}`]]:[];
+    rs.forEach(([k,v])=>{T(pp,k,xr,y,7.5,F,MUT);T(pp,v,xr+190,y,7.5,FB,/INFORMAR|adicionais|não informada/.test(v)?RED:INK);Ln(pp,xr,y-4,w-30,y-4,0.3,LN);y-=15;});
     y-=10;T(pp,"Análise de risco completa (NBR 5419-2) — dados ainda necessários",xr,y,9,FB,RED);y-=16;
     const pend=[
       [!!sp.ng,"Densidade de descargas NG do local (mapa NBR 5419-2 ou INPE)."],
@@ -1695,23 +1957,28 @@ async function gerarPDF(){
       [false,"Uso e ocupação: número de pessoas, tempo de permanência, animais."],
       [false,"Risco de incêndio/explosão (grãos, pó combustível), perdas especiais."],
       [false,"Linhas de energia e telecomunicações: tipo, comprimento, blindagem."],
-      [!!sp.rho,"Resistividade elétrica do solo (Wenner) para o eletrodo."],
-      [false,"Medidas existentes e cálculo de R1 <= 10^-5 com as componentes RA, RB, RC, RM, RU, RV, RW, RZ."]];
+      [!!sp.rho,"Resistividade elétrica do solo (Wenner) e estratificação para o eletrodo (7.5.1-c)."],
+      [false,"Cálculo de R1 <= 10^-5 com as componentes RA, RB, RC, RM, RU, RV, RW, RZ."]];
     pend.forEach(([ok,t])=>{T(pp,ok?"INFORMADO":"PENDENTE",xr,y,7,FB,ok?ACC:RED);y-=TW(pp,t,xr+62,y,w-xr-100,7.5)*9.5+4;});
     T(pp,"Pré-dimensionamento: o nível de proteção e as medidas devem ser confirmados pela análise de risco e pelo projeto executivo do SPDA (NBR 5419-2/3/4).",54,105,8,FB,RED);
     carimbo(pp,w,sp.ok?`SPDA — NP ${sp.np}`:"SPDA — pendente","SPDA-01");
   }
   // ---- Unifilar
-  const brkSym=(pp,x,y)=>{Bx(pp,x-6,y-22,12,22,{fill:rgb(1,1,1)});Ln(pp,x-6,y-22,x+6,y,0.8);};
-  const carga=(pp,x,y,o)=>{const t=o.c.tipo;if(t==="motor"){Ci(pp,x,y,10,{fill:rgb(1,1,1)});TC(pp,"M",x,y-3,9,FB);}else if(t==="ilum"){Ci(pp,x,y,8);Ln(pp,x-6,y-6,x+6,y+6,0.8);Ln(pp,x-6,y+6,x+6,y-6,0.8);}else{Bx(pp,x-8,y-8,16,16,{fill:t==="tue"?INK:rgb(1,1,1)});}};
+  const brkSym=(pp,x,y,tp="disj")=>SIM(pp,tp,x,y-11,11); // 7.15 disjuntor a seco ou 7.9 fusível, entre y e y − 22
+  const carga=(pp,x,y,o)=>{const t=o.c.tipo;if(t==="motor")SIM(pp,"motor",x,y,10);else if(t==="ilum")SIM(pp,"lum",x,y,7);else SIM(pp,"tom",x,y,8,{alt:t==="tue"?"alta":"media",ang:270});};
   function simUnifilar(){
     // geral
     let {pp,w,h}=simPage(A3L,"Diagrama unifilar geral");
     const y0=h-150,f=S.forn,e=R.ent;
-    Ci(pp,80,y0,14);TC(pp,"~",80,y0-4,12,FB);TC(pp,`Rede ${id.distribuidora||""}`,80,y0-30,8,FB);TC(pp,R.sys.nome,80,y0-41,7,F,MUT);
-    Ln(pp,94,y0,170,y0,1.4);Bx(pp,170,y0-14,40,28,{fill:rgb(1,1,1)});TC(pp,"kWh",190,y0-4,9,FB);TC(pp,"Medição",190,y0-28,7,F,MUT);
-    Ln(pp,210,y0,260,y0,1.4);Bx(pp,260,y0-12,34,24,{fill:rgb(1,1,1)});Ln(pp,260,y0-12,294,y0+12,0.8);TC(pp,e.inom?`DG ${e.polos}P ${e.inom} A`:"DG",277,y0+18,8,FB);
-    Ln(pp,294,y0,400,y0,2);T(pp,e.s?`${e.txt} mm² — ${e.ed.nome}`:"—",300,y0+6,7.5);T(pp,`${f.Lent} m`,300,y0-12,7,F,MUT);
+    const mt=R.mt,xR=mt?70:80,yl=mt?y0+31:y0-30;Ci(pp,xR,y0,14);TC(pp,"~",xR,y0-4,12,FB);TC(pp,`Rede ${id.distribuidora||""}`,xR,yl,8,FB);TC(pp,mt?`${fmt(mt.kV,1)} kV`:R.sys.nome,xR,yl-11,7,F,MUT);
+    let xc=xR+14;const fio=d=>{Ln(pp,xc,y0,xc+d,y0,1.4);xc+=d;},put=(tp,len,lab,o={},span=2,abaixo=false)=>{SIM(pp,tp,xc+len/2,y0,len/span,Object.assign({ang:90},o));if(lab)TC(pp,lab,xc+len/2,abaixo?y0-len/span-12:y0+len/span+5,6.5,FB);xc+=len;};
+    if(mt){fio(16);const xp=xc-8;Ln(pp,xp,y0,xp,y0-12,1);SIM(pp,"pr",xp,y0-22,10);Ln(pp,xp,y0-32,xp,y0-33,1);SIM(pp,"terra",xp,y0-38,5);TC(pp,`PR ${mt.ur} kV`,xp,y0-56,6,F,MUT);
+      if(mt.disj){put("secc",20,"Secc.");fio(4);put("tc",16,"TC",{},2,true);fio(4);put("disj",22,"50/51");}else put("seccf",24,`Elo ${mt.elo[0]}`);
+      fio(6);put("trafo",26,`${fmt(mt.kva,mt.kva%1?1:0)} kVA`,{},2,true);fio(8);}
+    else fio(170-xc);
+    put("med",40,"Medição",{ang:0},3.2,true);fio(mt?8:50);
+    put("disj",28,e.inom?`DG ${e.polos}P ${e.inom} A`:"DG");
+    Ln(pp,xc,y0,400,y0,2);T(pp,e.s?`${e.txt} mm²`:"—",xc+6,y0+6,7.5);T(pp,`${e.s?e.ed.nome+" · ":""}${f.Lent} m`,xc+6,y0-12,7,F,MUT);
     const bx=400,by1=y0+40,by2=Math.max(140,y0-90-S.quadros.length*80);pp.drawRectangle({x:bx-3,y:by2,width:6,height:by1-by2,color:INK});TC(pp,"QGBT",bx,by1+8,10,FB);
     // DPS
     if(R.dps.incl){const yd=y0-50;Ln(pp,bx,yd,bx-80,yd,1);Bx(pp,bx-110,yd-12,30,24,{fill:rgb(1,1,1)});TC(pp,"DPS",bx-95,yd-4,8,FB);Ln(pp,bx-95,yd-12,bx-95,yd-34,1);[0,1,2].forEach(k=>Ln(pp,bx-103+k*2,yd-34-k*4,bx-87-k*2,yd-34-k*4,1));T(pp,`${R.dps.itens.map(it=>it.n+"x "+it.mod).join(" + ")}; Up <= ${fmt(R.dps.up,1)} kV`,bx-170,yd-50,7);}
@@ -1721,7 +1988,7 @@ async function gerarPDF(){
     quadrosEmArvore().slice(1).map(qq=>R.quadros.find(x=>x.q===qq)).forEach((q,i)=>{const y=y0-90-i*80;
       const org=caixa.get(paiDe(q.q)),sx=org?org.x+45:bx,bxq=Math.min(w-110,sx+300);caixa.set(q.q,{x:bxq,y});
       if(org)Ln(pp,sx,org.y-16,sx,y,1.2);Ln(pp,sx,y,sx+60,y,1.2);
-      if(q.f){brkSym(pp,sx+72,y+11);T(pp,`${q.f.polos}P ${q.f.inom||"—"} A`,sx+60,y+16,7.5,FB);}
+      if(q.f){SIM(pp,"disj",sx+69,y,9,{ang:90});T(pp,`${q.f.polos}P ${q.f.inom||"—"} A`,sx+60,y+16,7.5,FB);}
       Ln(pp,sx+78,y,bxq,y,1.4);
       TW(pp,q.f&&q.f.s?`${q.f.txt} mm² — ${q.f.ed.nome} — ${q.pai} -> ${q.q.nome}: ${fmt(+q.q.L||0,0)} m`:(q.f?"sem solução":"L = 0"),sx+100,y+5,bxq-sx-106,7);
       Bx(pp,bxq,y-16,90,32,{bw:1.6,fill:LG});TC(pp,q.q.nome,bxq+45,y-4,10,FB);TC(pp,`${fmt(q.S,2)} kVA${q.filhos.length?" (c/ sub)":""}`,bxq+45,y-26,7,F,MUT);});
@@ -1733,7 +2000,7 @@ async function gerarPDF(){
       ({pp,w,h}=simPage(A3L,`Diagrama unifilar — ${q.q.nome}${q.cs.length>per?` (${k/per+1})`:""}`));
       const yb=h-130,x1=90,x2=w-90,sp=(x2-x1)/cs.length;
       pp.drawRectangle({x:x1-10,y:yb-3,width:x2-x1+20,height:6,color:INK});T(pp,`Barramento ${q.q.nome} — ${R.sys.nome}${q.f&&q.f.s?` — alimentador ${q.f.txt} mm², ${q.f.polos}P ${q.f.inom} A`:""}`,x1-10,yb+12,9,FB);
-      cs.forEach((o,j)=>{const x=x1+sp*j+sp/2;Ln(pp,x,yb,x,yb-20,1);brkSym(pp,x,yb-20);let y=yb-42;
+      cs.forEach((o,j)=>{const x=x1+sp*j+sp/2;Ln(pp,x,yb,x,yb-20,1);brkSym(pp,x,yb-20,o.prot==="fus"?"fus":"disj");let y=yb-42;
         if(o.dr){Ln(pp,x,y,x,y-8,1);Bx(pp,x-9,y-26,18,18,{fill:rgb(1,1,1)});TC(pp,"DR",x,y-20,6.5,FB);y-=26;}
         if(o.mp){Ln(pp,x,y,x,y-8,1);Bx(pp,x-9,y-26,18,18,{fill:LG});TC(pp,o.partida==="inv"?"INV":o.partida==="soft"?"SS":o.partida==="yd"?"Y-D":"K",x,y-20,6,FB);y-=26;}
         Ln(pp,x,y,x,yb-190,1);carga(pp,x,yb-200,o);
@@ -1792,7 +2059,7 @@ async function gerarPDF(){
     Bx(pp,x2+40,h-230,260,26,{fill:LG,bw:1.4});T(pp,`Eletrocalha ${g?g.dim:"—"} com tampa, aço galvanizado`,x2+44,h-240,7.5);
     Ln(pp,x2+170,h-230,x2+170,330,2);T(pp,`Eletroduto ${(R.out.find(o=>o.s)||{ed:{nome:"—"}}).ed.nome}`,x2+178,500,7.5);
     Bx(pp,x2+150,300,40,30,{fill:rgb(1,1,1)});TC(pp,"Caixa 4x2",x2+170,285,7.5);Ln(pp,x2+40,200,x2+300,200,1.2,GR);
-    Ln(pp,x2+220,200,x2+220,300,0.6,RED,[2,2]);T(pp,"1,10 m (tomada) — confirmar",x2+224,250,7.5,FB,RED);
+    Ln(pp,x2+220,200,x2+220,300,0.6,RED,[2,2]);T(pp,"1,30 m (tomada média, NBR 5444 9.2) — confirmar",x2+224,250,7.5,FB,RED);
     T(pp,"Suportes da eletrocalha a cada 1,5 m (máx.)",x2+40,h-270,7.5);T(pp,"Aterramento contínuo da eletrocalha ao BEP",x2+40,h-282,7.5);
     // 3 aterramento
     const x3=780;fr(x3,"3 — Aterramento e BEP");Ln(pp,x3+20,420,x3+320,420,1.2,GR);T(pp,"Nível do solo",x3+24,408,7,F,MUT);
@@ -1806,13 +2073,47 @@ async function gerarPDF(){
   }
   // ---- Convenções
   function simConv(){
-    const {pp,w,h}=simPage(A4,"Convenções e simbologia");let y=h-100;
-    const it=[["QD","Quadro de distribuição",(x,y)=>pp.drawRectangle({x:x-8,y:y-6,width:16,height:14,color:INK})],["ilum","Ponto de iluminação",(x,y)=>{Ci(pp,x,y,6);Ln(pp,x-4,y-4,x+4,y+4,0.8);Ln(pp,x-4,y+4,x+4,y-4,0.8);}],["tug","Tomada de uso geral",(x,y)=>Bx(pp,x-5,y-5,10,10)],["tue","Tomada de uso específico",(x,y)=>Bx(pp,x-5,y-5,10,10,{fill:INK})],["M","Motor",(x,y)=>{Ci(pp,x,y,8);TC(pp,"M",x,y-3,8,FB);}],
-      ["dj","Disjuntor termomagnético",(x,y)=>{Bx(pp,x-5,y-9,10,18,{fill:rgb(1,1,1)});Ln(pp,x-5,y-9,x+5,y+9,0.8);}],["dr","Interruptor diferencial-residual (DR)",(x,y)=>{Bx(pp,x-9,y-9,18,18);TC(pp,"DR",x,y-3,6.5,FB);}],["dps","Dispositivo de proteção contra surtos (DPS)",(x,y)=>{Bx(pp,x-9,y-7,18,14);TC(pp,"DPS",x,y-3,5.5,FB);}],
-      ["k","Contator / chave de partida",(x,y)=>{Bx(pp,x-9,y-7,18,14,{fill:LG});TC(pp,"K",x,y-3,7,FB);}],["f7","Relé térmico de sobrecarga",(x,y)=>{Bx(pp,x-9,y-7,18,14);TC(pp,"F7",x,y-3,6.5,FB);}],["kwh","Medidor de energia",(x,y)=>{Bx(pp,x-10,y-7,20,14);TC(pp,"kWh",x,y-3,5.5,FB);}],
-      ["can","Eletrocalha / canaleta",(x,y)=>Ln(pp,x-12,y,x+12,y,3,ACC)],["ed","Eletroduto (baixada)",(x,y)=>Ln(pp,x-12,y,x+12,y,0.8,INK,[2,2])],["gnd","Aterramento",(x,y)=>{Ln(pp,x,y+8,x,y,1);[0,1,2].forEach(k=>Ln(pp,x-8+k*3,y-k*3,x+8-k*3,y-k*3,1));}]];
-    it.forEach(([,l,fn])=>{fn(80,y+3);T(pp,l,110,y,10);Ln(pp,50,y-10,w-50,y-10,0.3,LN);y-=30;});
-    T(pp,"Simbologia simplificada inspirada na NBR 5444: substituir pela legenda padronizada do escritório.",50,60,8.5,FB,RED);
+    const {pp,w,h}=simPage(A4,"Convenções e simbologia — ABNT NBR 5444");let y=h-92;const ORG=rgb(0.85,0.45,0.05);
+    const cab=t=>{pp.drawRectangle({x:40,y:y-4,width:w-80,height:14,color:LG});T(pp,t,46,y,8.5,FB);y-=19;};
+    const it=(n,fn,t)=>{fn(120,y+3);T(pp,n,46,y,8,FB,MUT);TW(pp,t,170,y,w-210,8);Ln(pp,40,y-6,w-40,y-6,0.3,LN);y-=18;};
+    const H=(x,y)=>Ln(pp,x-22,y,x+22,y,0.9);
+    cab("Dutos e distribuição (Tabela 2)");
+    it("5.1",(x,y)=>{H(x,y);T(pp,"ø25",x+4,y+3,6);},"Eletroduto embutido no teto ou parede — diâmetro em mm (Tab. 1), indicado se diferente de 15 mm");
+    it("5.2",(x,y)=>Ln(pp,x-22,y,x+22,y,0.9,INK,[4,3]),"Eletroduto embutido no piso (ou enterrado)");
+    it("5.6",(x,y)=>{H(x,y);SIM(pp,"cond",x,y,6,{nf:1});},"Condutor fase no eletroduto — indicar seção, nº de condutores e circuito");
+    it("5.7",(x,y)=>{H(x,y);SIM(pp,"cond",x,y,6,{n:true});},"Condutor neutro no eletroduto");
+    it("5.9",(x,y)=>{H(x,y);SIM(pp,"cond",x,y,6,{pe:true});},"Condutor terra (proteção) no eletroduto");
+    it("5.12",(x,y)=>{H(x,y);[-12,0,12].forEach(d=>SIM(pp,"terraT",x+d,y,6));T(pp,"50•",x+14,y-8,6);},"Cordoalha de terra — seção indicada (50• = 50 mm²)");
+    it("5.13",(x,y)=>{Ln(pp,x-22,y,x+22,y,3);},"Leito de cabos / eletrocalha com circuitos passantes — ex.: 3(2×25•)+2×10•");
+    it("5.15",(x,y)=>{H(x,y);SIM(pp,"caixa",x,y,6);},"Caixa de passagem no teto — dimensões em mm");
+    it("5.17",(x,y)=>SIM(pp,"sobe",x,y,7),"Eletroduto que sobe");
+    it("5.18",(x,y)=>SIM(pp,"desce",x,y,7),"Eletroduto que desce");
+    cab("Quadros (Tabela 3) e interruptores, proteção e manobra (Tabela 4)");
+    it("6.1",(x,y)=>SIM(pp,"qdp",x,y,8),"Quadro parcial de luz e força aparente — cargas em W ou kW");
+    it("6.3",(x,y)=>SIM(pp,"qdg",x,y,8),"Quadro geral de luz e força aparente");
+    it("6.6",(x,y)=>SIM(pp,"med",x,y,8),"Caixa para medidor");
+    it("7.1",(x,y)=>{SIM(pp,"inter",x,y,6);T(pp,"a",x+4,y+3,7);},"Interruptor de uma seção — letra minúscula = ponto comandado");
+    it("7.9",(x,y)=>SIM(pp,"fus",x,y,9,{ang:90}),"Fusível — indicar tensão e correntes nominais");
+    it("7.10",(x,y)=>SIM(pp,"seccf",x,y,9,{ang:90}),"Chave seccionadora com fusíveis, abertura sem carga");
+    it("7.12",(x,y)=>SIM(pp,"secc",x,y,9,{ang:90}),"Chave seccionadora, abertura sem carga");
+    it("7.15",(x,y)=>SIM(pp,"disj",x,y,9,{ang:90}),"Disjuntor a seco — tensão, corrente, capacidade de interrupção e polos");
+    cab("Luminárias, tomadas, motores e transformadores (Tabelas 5, 6 e 7)");
+    it("8.4",(x,y)=>{SIM(pp,"lum",x,y,6);T(pp,"a",x+9,y+3,6);T(pp,"-4-",x-30,y-2,6,FB,RED);},"Ponto de luz no teto (fluorescente/LED) — nº de lâmpadas × W, letra do comando, -circuito-");
+    it("8.15",(x,y)=>SIM(pp,"emg",x,y,6,{},ORG),"Ponto de luz de emergência na parede com alimentação independente");
+    it("9.1",(x,y)=>SIM(pp,"tom",x,y,6,{alt:"baixa"}),"Tomada baixa (0,30 m do piso) — potência em VA (exceto 100 VA) e circuito");
+    it("9.2",(x,y)=>SIM(pp,"tom",x,y,6,{alt:"media"}),"Tomada a meia altura (1,30 m do piso)");
+    it("9.3",(x,y)=>SIM(pp,"tom",x,y,6,{alt:"alta"}),"Tomada alta (2,00 m do piso); se de força, indicar W ou kW");
+    it("10.2",(x,y)=>SIM(pp,"motor",x,y,7),"Motor — características nominais");
+    it("10.3",(x,y)=>SIM(pp,"trafo",x,y,9,{ang:90}),"Transformador de potência — relação de tensões e valores nominais");
+    it("10.4",(x,y)=>SIM(pp,"tc",x,y,9,{ang:90}),"Transformador de corrente — relação, classe de exatidão e isolamento");
+    cab("Complementares (não previstos na NBR 5444 — IEC 60617 e NBR 13434)");
+    it("—",(x,y)=>{Bx(pp,x-9,y-6,18,14);TC(pp,"DR",x,y-2,6.5,FB);},"Dispositivo diferencial-residual (IDR)");
+    it("—",(x,y)=>{Bx(pp,x-9,y-6,18,14);TC(pp,"DPS",x,y-2,5.5,FB);},"Dispositivo de proteção contra surtos");
+    it("—",(x,y)=>{Bx(pp,x-9,y-6,18,14,{fill:LG});TC(pp,"K",x,y-2,7,FB);},"Contator / chave de partida (F7 = relé térmico de sobrecarga)");
+    it("—",(x,y)=>SIM(pp,"pr",x,y,9,{ang:90}),"Para-raios de distribuição (média tensão)");
+    it("—",(x,y)=>SIM(pp,"terra",x,y-3,6),"Aterramento");
+    it("—",(x,y)=>Bx(pp,x-10,y-1,20,7,{fill:ACC,bc:ACC}),"Sinalização de saída de emergência");
+    T(pp,"Simbologia conforme ABNT NBR 5444:1989 (Tabelas 2 a 7); itens complementares conforme IEC 60617.",40,44,7.5,FB,RED);
   }
   // ===== SEPARADORES (fluxo da Aula 2, slide 7) =====
   const SBG=rgb(0.059,0.239,0.18),SAMB=rgb(0.949,0.698,0.2),SCR=rgb(0.957,0.937,0.886),SSOFT=rgb(0.624,0.769,0.702),SDIM=rgb(0.114,0.353,0.271);
@@ -1865,9 +2166,10 @@ async function gerarPDF(){
 
   // 3 · MEMORIAL DESCRITIVO
   setP(0.3,"Escrevendo memoriais...");
-  separador("Memorial descritivo","Item H","Descreve o projeto e justifica as soluções adotadas: identificação, normas, fornecimento, distribuição, condutores, proteção e aterramento.",Object.values(memoT()),2);
+  separador("Memorial descritivo","Item H","Descreve o projeto e justifica as soluções adotadas: identificação, normas, fornecimento, distribuição, condutores, proteção e aterramento.",[...Object.values(memoT()),"Análises e indicadores (gráficos)"],2);
   h1("Memorial descritivo");
   Object.entries(memoT()).forEach(([k,t])=>{h2(t);text(memoText(k),{size:10,gap:6});});
+  analises();
 
   // 4 · MEMORIAL DE CÁLCULO
   separador("Memorial de cálculo","Item I","Cálculos que sustentam o projeto: previsão de cargas, demanda, dimensionamento de condutores, condutos e dispositivos de proteção.",[`${R.out.length} circuitos em ${S.quadros.length} quadro(s)`,`Demanda ${fmt(R.dem,2)} kW · ${fmt(R.demS,2)} kVA · FP ${fmt(R.fpG,2)}`,`Métodos de referência: distribuição ${p.metDist}, baixadas ${p.metBaix}`,`Alimentador geral: ${R.ent.s?R.ent.txt+" mm², disjuntor "+R.ent.polos+"P "+R.ent.inom+" A":"sem solução"}`,`${Object.keys(R.cans).length} canaleta(s) de distribuição`],3);
@@ -1965,10 +2267,11 @@ async function gerarPDF(){
   h1("Lista de materiais");
   const cst=custos();const rowsM=[];
   Object.keys(GRUPOS).forEach(g=>{const rs=listaMat.filter(r=>r.g===g);if(!rs.length)return;rowsM.push(Object.assign(["",GRUPOS[g],"","","",""],{_b:true}));
-    rs.forEach(r=>rowsM.push([listaMat.indexOf(r)+1,r.d,r.un,r.q,r.pu?brl(r.pu):"—",r.pu?brl(r.sub):"—"]));
+    rs.forEach(r=>rowsM.push([listaMat.indexOf(r)+1,r.d,r.un,r.q,r.pu?brl(r.pu)+(r.est?" *":""):"—",r.pu?brl(r.sub):"—"]));
     rowsM.push(["",`Subtotal — ${GRUPOS[g]}`,"","","",brl(cst.por[g]||0)]);});
   rowsM.push(Object.assign(["","TOTAL DE MATERIAIS","","","",brl(cst.tot)],{_b:true}));
   table([{h:"Item",w:.06,a:"r"},{h:"Descrição",w:.56},{h:"Un.",w:.05},{h:"Qtd.",w:.07,a:"r"},{h:"Preço unit.",w:.12,a:"r"},{h:"Subtotal",w:.14,a:"r"}],rowsM,{size:8});
+  if(cst.nEst)text(`* Preço de referência estimado (média de mercado, base ${PRECOS_REF_DATA}, sem frete e sem BDI) em ${cst.nEst} de ${listaMat.length} itens, somando ${brl(cst.totEst)}: substituir por cotações antes de contratar.`,{size:8.5,color:MUT});
   if(cst.semPreco)text(`${cst.semPreco} de ${listaMat.length} itens sem preço informado (não somados).`,{size:8.5,color:MUT});
   text("Quantidades estimadas a partir dos comprimentos informados, com sobra de "+p.sobra+" %. Conferir no levantamento em planta.",{size:8.5,color:MUT});
 
@@ -1980,9 +2283,9 @@ async function gerarPDF(){
     table([{h:"Grupo",w:.7},{h:"Valor",w:.3,a:"r"}],[...Object.keys(GRUPOS).filter(g=>o.por[g]).map(g=>[GRUPOS[g],brl(o.por[g])]),Object.assign(["Total de materiais",brl(o.mat)],{_b:true})],{size:9});
     if(o.semPreco)text(`${o.semPreco} item(ns) da lista de materiais sem preço informado: não somados.`,{size:8.5,color:MUT});
     if(o.srv.length){h2("Engenharia, serviços e implantação");
-      table([{h:"Categoria",w:.2},{h:"Descrição",w:.4},{h:"Horas",w:.1,a:"r"},{h:"R$/h",w:.14,a:"r"},{h:"Subtotal",w:.16,a:"r"}],[...o.srv.map(s=>[CAT_SERV[s.cat]||s.cat,s.d||"—",fmt(s.h,1),brl(s.vh),brl(s.sub)]),Object.assign(["Total","",fmt(o.horas,1),"",brl(o.mo)],{_b:true})],{size:9});}
+      table([{h:"Categoria",w:.2},{h:"Descrição",w:.4},{h:"Horas",w:.1,a:"r"},{h:"R$/h",w:.14,a:"r"},{h:"Subtotal",w:.16,a:"r"}],[...o.srv.map(s=>[CAT_SERV[s.cat]||s.cat,s.d||"—",fmt(s.h,1),brl(s.vh)+(s.est?" *":""),brl(s.sub)]),Object.assign(["Total","",fmt(o.horas,1),"",brl(o.mo)],{_b:true})],{size:9});if(o.srv.some(x=>x.est))text(`* Valor da hora de referência (base ${PRECOS_REF_DATA}): engenharia = ${fmt(+S.orc.cubFrac||REF_ORC.cubFrac,2)} × CUB R8-N (${brl(+S.orc.cub||REF_ORC.cub)}) = ${brl(horaRef("eng"))}/h; equipe = técnico de 40 h semanais com encargos = ${brl(horaRef("serv"))}/h.`,{size:8.5,color:MUT});}
     h2("Composição do preço");
-    kv([["Materiais",brl(o.mat)],["Serviços (engenharia, execução, implantação)",brl(o.mo)],["Despesas diretas",brl(o.desp)],["Custo direto",brl(o.direto)],[`Lucro (${fmt(+S.orc.lucro||0,1)} % sobre o custo direto)`,brl(o.lucro)],[`Impostos (${fmt(o.imp,1)} % sobre o preço de venda)`,brl(o.impV)],Object.assign(["PREÇO DE VENDA",brl(o.pv)],{_b:true}),["Validade da proposta",`${S.orc.validade||30} dias a partir de ${id.data||"—"}`]]);
+    kv([["Materiais",brl(o.mat)],["Serviços (engenharia, execução, implantação)",brl(o.mo)],["Despesas diretas",brl(o.desp)],["Custo direto",brl(o.direto)],[`Lucro (${fmt(+S.orc.lucro||0,1)} % sobre o custo direto)`,brl(o.lucro)],[`Impostos (${fmt(o.imp,2)} % sobre o preço de venda)`,brl(o.impV)],...o.trib.map(x=>[`   ${x.n} — ${fmt(x.v,2)} %`,brl(x.val)]),Object.assign(["PREÇO DE VENDA",brl(o.pv)],{_b:true}),["Validade da proposta",`${S.orc.validade||30} dias a partir de ${id.data||"—"}`]]);
     text("Preço de venda = (custo direto + lucro) / (1 − impostos). Valores estimados; preços de materiais sujeitos a cotação na data da compra.",{size:8.5,color:MUT});
     if(S.orc.obs)text(S.orc.obs,{size:9.5});}
 

@@ -394,24 +394,37 @@
         "cat": "eng",
         "d": "Engenharia — projeto, memoriais e ART",
         "h": 50,
-        "vh": 180
+        "vh": 0
       },
       {
         "cat": "serv",
         "d": "Serviço — execução e montagem da instalação",
         "h": 250,
-        "vh": 75
+        "vh": 0
       },
       {
         "cat": "impl",
         "d": "Implantação — testes, comissionamento e partida assistida",
         "h": 20,
-        "vh": 150
+        "vh": 0
       }
     ],
+    "usarRef": true,
     "despesas": 1500,
-    "lucro": 20,
-    "impostos": 8,
+    "lucro": 40,
+    "impostos": 0,
+    "trib": {
+      "iss": 5,
+      "pis": 0.65,
+      "cofins": 3,
+      "irpj": 4.8,
+      "csll": 2.88
+    },
+    "cub": 2950,
+    "cubFrac": 0.1,
+    "salTec": 3800,
+    "encTec": 80,
+    "hMes": 200,
     "validade": 30,
     "obs": "Valores de exemplo, fictícios. Preços de materiais a confirmar por cotação."
   },
@@ -433,7 +446,11 @@
     "CE": "rural",
     "CT": "bt",
     "PTA": "0.1",
-    "PTU": "0.1"
+    "PTU": "0.1",
+    "cob": "metalica",
+    "desc": "convencional",
+    "km": "1",
+    "passo": "brita"
   },
   "revisoes": [
     {
@@ -446,5 +463,5 @@
   "chk": {},
   "exemplo": true,
   "formato": "projeto-eletrico-agro",
-  "exportadoEm": "2026-10-02T19:04:07.315Z"
+  "exportadoEm": "2026-10-02T20:37:12.517Z"
 }

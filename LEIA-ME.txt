@@ -51,6 +51,19 @@ OBSERVAÇÕES
     soma a demanda dos sub-quadros, e a queda de tensão se acumula na cadeia.
   - SPDA: análise de risco R1 (NBR 5419-2, componentes RA, RB, RU e RV) e
     geometria da NBR 5419-3. RC, RM, RW e RZ não são calculadas.
+  - NBR 5419-3: descida em cada canto e anéis intermediários (5.3), l1 da Fig. 3
+    para NP I e II com eletrodos adicionais (5.4.2), distância de segurança
+    s = ki/km·kc·l (6.3), BEL em estruturas > 20 m, fixação (5.5.2), conector de
+    ensaio, cobertura metálica e descidas naturais, tensões de toque e passo
+    (seção 8), inspeção (7.3) e Anexo D para zonas de poeira; DPS classe I com
+    Iimp pelo nível de proteção.
+  - NBR 14039: classe de tensão e distâncias (Tab. 21), proteção geral conforme
+    5.3.1 (fusível até 300 kVA, disjuntor com relés 50/51 acima), relé com TCs,
+    fonte capacitiva e reserva de 2 h, cabo de MT blindado por ampacidade
+    (Tab. 28) e curto-circuito (6.2.6.1), subestação integrada com trafo a
+    seco (9.4.3), contenção de óleo (5.8), esquema TNR/TTN e ensaios (7.3).
+  - Simbologia ABNT NBR 5444:1989 na planta baixa, no DXF, nos unifilares e na
+    folha de convenções (dispositivos ausentes na norma conforme IEC 60617).
   - Verificações incluídas: curto-circuito em cada quadro (Icn dos dispositivos),
     seccionamento automático (5.1.2.2.4, comprimento máximo dos circuitos),
     k²S² (5.3.5.5.2), seletividade (alimentadores com In >= 1,6 × jusante),
@@ -60,6 +73,17 @@ OBSERVAÇÕES
     emergência (NBR 10898) e subestação (NBR 14039, valores típicos).
   - Orçamento: lista de materiais completa (pontos, acessórios, quadros,
     suportes) e horas estimadas por produtividade (tabela PROD em js/tabelas.js).
+  - Preços de referência: cada item calculado recebe um preço unitário médio
+    estimado (varejo/distribuidor, sem frete e sem BDI), marcado com "*", com
+    data-base em PRECOS_REF_DATA (js/tabelas.js, função precoRef). Digitar um
+    preço substitui a referência; a opção pode ser desligada na etapa 10. São
+    estimativas para pré-orçamento, não cotações: atualize a data ao revisar.
+  - Referências do orçamento (REF_ACION e REF_ORC em js/tabelas.js): inversor e
+    soft-starter pelo modelo WEG de 5 cv escalado pela potência; hora de
+    engenharia = 0,10 × CUB R8-N; hora da equipe = salário de técnico em 40 h
+    semanais com encargos ÷ 200 h; tributos do lucro presumido discriminados
+    (ISS 5 %, PIS 0,65 %, COFINS 3 %, IRPJ 4,8 %, CSLL 2,88 %); lucro sugerido
+    de 40 % sobre o custo direto. Todos editáveis na etapa 11.
   - Planta em escala real: posições X/Y dos ambientes e quadros; exportação DXF.
 
 TESTES AUTOMÁTICOS

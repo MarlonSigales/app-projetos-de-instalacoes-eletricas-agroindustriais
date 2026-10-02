@@ -65,6 +65,15 @@ const velho=JSON.parse(JSON.stringify(ex));velho.quadros.forEach(q=>{delete q.pa
 t("JSON antigo é importado",(()=>{try{S=normalizar(velho);calc();return views().length===0;}catch(e){return false;}})());
 const ciclo=JSON.parse(JSON.stringify(ex));ciclo.quadros[1].pai="QD-SECADOR";
 t("ciclo entre quadros é desfeito",normalizar(ciclo).quadros[1].pai==="QGBT");
+S=sample();calc();
+t("NBR 5419-3: l1 da Fig. 3 para NP I e II",Math.abs(l1_5419("I",1000)-20)<1e-9&&Math.abs(l1_5419("II",1000)-9)<1e-9&&l1_5419("III",3000)===5);
+t("NBR 5419-3: descida em cada canto e distância de segurança",R.spda.nDesc>=4&&R.spda.sSeg>0&&descidasPos(36,13,R.spda.nDesc).length===R.spda.nDesc);
+t("NBR 5419-3: cobertura metálica sobre zona de poeira mantém a malha",R.spda.cobMetZona&&R.spda.captacao>0&&R.issues.some(x=>x.includes("Anexo D")));
+t("preços de referência: todos os itens calculados têm estimativa",(c=>c.nEst>0&&c.m.filter(r=>r.ext==null).every(r=>r.pr>0))(custos()));
+S.precos={[materiais()[0].key]:999};t("orçamento: hora pelo CUB e pelo técnico 40 h, tributos discriminados e lucro 40 %",(o=>Math.abs(o.srv[0].vh-295)<1e-6&&Math.abs(o.srv[1].vh-3800*1.8/200)<1e-6&&Math.abs(o.imp-16.33)<1e-9&&S.orc.lucro===40)(orcamento()));
+t("inversor e soft-starter: referência WEG 5 cv",precoRef("cmd","Inversor de frequência — motor 5 cv / 3,68 kW","pç")===3600&&precoRef("cmd","Soft-starter trifásica — motor 5 cv / 3,68 kW","pç")===1700);
+t("preço informado substitui a referência",materiais()[0].pu===999&&!materiais()[0].est);S.precos={};
+t("NBR 5444: geometria dos símbolos (tomada a meia altura, quadro geral)",sim5444("tom",{alt:"media"}).some(g=>g.p&&g.f===true)&&sim5444("qdg").some(g=>g.p&&g.f===true));
 
 // 2) projeto em branco
 S=blank();calc();t("projeto em branco: etapas renderizam",views().length===0,views().join("; "));
@@ -75,6 +84,9 @@ t("MT: transformador e Icc do secundário",R.mt&&R.mt.kva>=R.ent.S&&R.mt.icc>0);
 t("MT/TT: etapas renderizam",views().length===0,views().join("; "));
 t("TT: seccionamento por DR",R.out.filter(o=>o.sec).every(o=>o.sec.viaDR));
 t("MT: subestação na lista de materiais",materiais().some(x=>x.g==="mt"));
+S=sample();S.forn.atend="MT";S.par.tipoSub="abrigada";S.forn.iccMT=10;S.forn.Lmt=40;calc();
+t("NBR 14039: classe 15 kV, cabo de MT por curto-circuito e disjuntor com relé",R.mt.cl.cls===15&&R.mt.sMT===50&&R.mt.disj&&materiais().some(x=>x.d.includes("Relé secundário")));
+S.par.tipoSub="integrada";calc();t("NBR 14039: subestação integrada exige transformador a seco",R.mt.seco&&materiais().some(x=>x.d.includes("a seco")));
 
 // 4) monofásico
 S=sample();S.forn.sistema="1F-220";calc();t("monofásico: etapas renderizam (ligações incompatíveis sinalizadas)",views().length===0&&R.incompat.length>0,views().join("; "));
@@ -100,7 +112,7 @@ def main():
         print("  FALHOU", n)
     if "--pdf" in sys.argv:
         SAIDA.mkdir(parents=True, exist_ok=True)
-        ctx.eval("S=sample();cur=STEPS.length-1;render(true);var __fim=false,__erro=null;gerarPDF().then(()=>{__fim=true;},e=>{__erro=String(e);__fim=true;});")
+        ctx.eval(("S=sample();S.forn.atend='MT';S.par.tipoSub='abrigada';S.forn.iccMT=10;S.forn.Lmt=40;" if "--mt" in sys.argv else "S=sample();")+"cur=STEPS.length-1;render(true);var __fim=false,__erro=null;gerarPDF().then(()=>{__fim=true;},e=>{__erro=String(e);__fim=true;});")
         for _ in range(600):
             ctx.eval("__flush()")
             if ctx.eval("__fim"):

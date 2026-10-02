@@ -114,16 +114,19 @@ function drCirc(c,ib,inom,L,partida){
   return {idn,mot,In,polos:(L.nf+(L.n?1:0))>2?4:2,tipo:partida==="inv"?"B":"A"};
 }
 // DPS no QGBT (5.4.2.1, 6.3.5.2)
-function dpsCalc(sys){
+function dpsCalc(sys,spda){
   const f=S.forn,a=f.aterr;
   const req=(f.aerea&&(f.aq==="AQ2"||f.aq==="AQ3"))||f.aq==="AQ3";
   const Uo=sys.vfn,U=sys.vff||sys.vfn;
   const up=(Uo<=127||sys.fases===1)?1.5:2.5; // Tab. 31, categoria II
   const uc=x=>nxt(DPS_UC,x)||x;
   const nf=sys.fases===1?1:sys.fases;const mono=sys.fases===1;
-  const cls1=!!f.spda;
-  const Imodo=cls1?"Iimp ≥ 12,5 kA (10/350 µs)":"In ≥ 5 kA (8/20 µs)";
-  const Inpe=cls1?(mono?"Iimp ≥ 25 kA":"Iimp ≥ 50 kA"):(mono?"In ≥ 10 kA (8/20 µs)":"In ≥ 20 kA (8/20 µs)");
+  const cls1=!!f.spda||!!(S.projetos&&S.projetos.spda);
+  // NBR 5419-1 (Anexo E) e 5419-3 (6.2.5): metade da corrente de pico do NP escoa pelas linhas, repartida entre os condutores; mínimo 12,5 kA (NBR 5410, 6.3.5.2.4)
+  const Ip=IPICO5419[(spda&&spda.np)||"III"]||100,ncond=nf+(a==="IT"?0:1);
+  const iimp=Math.max(12.5,0.5*Ip/ncond),iimpN=Math.max(mono?25:50,0.5*Ip);
+  const Imodo=cls1?`Iimp ≥ ${fmt(iimp,1)} kA (10/350 µs)`:"In ≥ 5 kA (8/20 µs)";
+  const Inpe=cls1?`Iimp ≥ ${fmt(iimpN,1)} kA`:(mono?"In ≥ 10 kA (8/20 µs)":"In ≥ 20 kA (8/20 µs)");
   let itens,con;
   if(a==="TN-C"){con="conexão 1: fase–PEN";itens=[{n:nf,mod:"fase–PEN",uc:uc(1.1*Uo),i:Imodo}];}
   else if(a==="TT"){con="conexão 3: fase–neutro e neutro–PE";itens=[{n:nf,mod:"fase–neutro",uc:uc(1.1*Uo),i:Imodo},{n:1,mod:"neutro–PE",uc:uc(Uo),i:Inpe}];}
@@ -272,6 +275,15 @@ const CAP_STD=[2.5,5,7.5,10,12.5,15,20,25,30,40,50,60,75,100,125,150,200,250,300
 const TRAFO_STD=[15,30,45,75,112.5,150,225,300,500,750,1000,1500,2000,2500];       // kVA
 const ELO_STD=[["1H",1],["2H",2],["3H",3],["5H",5],["6K",6],["8K",8],["10K",10],["12K",12],["15K",15],["20K",20],["25K",25],["30K",30],["40K",40],["50K",50],["65K",65],["80K",80],["100K",100]];
 function paraRaiosUr(kV){return kV<=15?12:kV<=25?21:kV<=36?30:Math.ceil(kV*0.8);}    // Ur típica dos para-raios de distribuição (kV)
+// NBR 14039:2021 — tensões nominais (4.2.5.2), classe de tensão dos equipamentos (4.2.5.4), NBI e distâncias mínimas fase-terra/fase-fase (Tab. 21, mm)
+const MT14039=[{kV:3,cls:3.6,nbi:40,int:60,ext:120},{kV:4.16,cls:7.2,nbi:60,int:90,ext:120},{kV:6,cls:7.2,nbi:60,int:90,ext:120},{kV:13.8,cls:15,nbi:95,int:160,ext:160},{kV:23.1,cls:24.2,nbi:125,int:220,ext:220},{kV:34.5,cls:36.2,nbi:170,int:320,ext:320}];
+// Tab. 28 — capacidade de condução de corrente (A), cobre, XLPE/EPR 90 °C: método E (eletroduto ao ar) e F1 (eletroduto enterrado)
+const SEC_MT=[10,16,25,35,50,70,95,120,150,185,240];
+const IZ_MT={E:{10:69,16:90,25:117,35:142,50:170,70:211,95:255,120:294,150:330,185:375,240:438},F1:{10:59,16:75,25:97,35:116,50:137,70:167,95:200,120:227,150:251,185:282,240:324}};
+// 6.2.6.1 — I = K·S·√(ln((θf+β)/(θi+β))/t); cobre K = 226, β = 234,5 (Tab. 42); XLPE/EPR de 90 °C a 250 °C (Tab. 43) → A·s½/mm²
+const kccMT=226*Math.sqrt(Math.log((250+234.5)/(90+234.5)));
+// volume típico de óleo de transformadores de distribuição (L), para 5.8 — estimativa, confirmar com o fabricante
+const OLEO_TRAFO={15:55,30:75,45:90,75:130,112.5:165,150:200,225:270,300:320,500:430,750:580,1000:700,1500:950,2000:1150,2500:1350};
 
 /* ============================================================
    NBR 5419-2:2015 — análise de risco R1 (perda de vida humana), tabelas dos Anexos A, B e C
@@ -290,6 +302,12 @@ const R5419={
   CT:{bt:["Linha BT",1],at:["Linha AT com transformador AT/BT",0.2]},
   LT:1e-2,RT:1e-5
 };
+// NBR 5419-3:2015 — isolação do SPDA externo (6.3): ki (Tab. 10) e kc simplificado (Tab. 12); corrente de pico por NP (NBR 5419-1, Tab. 3, kA)
+const KI5419={I:0.08,II:0.06,III:0.04,IV:0.04};
+const IPICO5419={I:200,II:150,III:100,IV:100};
+function kc5419(n){return n<=1?1:n===2?0.66:0.44;}
+// Fig. 3 — comprimento mínimo l1 do eletrodo de aterramento; NP I e II dependem da resistividade (equações 1a e 1b)
+function l1_5419(np,rho){if(np==="III"||np==="IV")return 5;if(!(rho>0))return null;return Math.max(5,np==="I"?0.03*rho-10:0.02*rho-11);}
 
 /* ============================================================
    PRODUTIVIDADE DE MÃO DE OBRA (h por unidade) — referências típicas de orçamento, ajustar à equipe
@@ -297,3 +315,123 @@ const R5419={
 const PROD={caboFino:0.04,caboMedio:0.08,caboGrosso:0.15,eletrodutoAparente:0.30,eletrodutoEmbutido:0.40,eletrodutoEnterrado:0.20,
   eletrocalha:0.50,ponto:0.60,disjuntor:0.30,dr:0.40,quadroBase:4,quadroCirc:0.40,motorDireta:3,motorEspecial:6,spdaCabo:0.15,haste:1.0,
   capacitor:6,emergencia:0.5,teste:0.5,engBase:16,engCirc:0.6,engQuadro:2,engLum:8,engSpda:12,engMT:16,implBase:8,implMotor:1.5};
+
+/* ============================================================
+   PREÇOS DE REFERÊNCIA (R$, varejo/distribuidor, sem frete e sem BDI)
+   Estimativa média para pré-orçamento, NÃO é cotação. Atualizar PRECOS_REF_DATA ao revisar os valores.
+   precoRef(grupo, descrição, unidade) reconhece o item pela descrição gerada em materiais() e devolve o preço unitário (0 = sem referência).
+   ============================================================ */
+const PRECOS_REF_DATA="outubro de 2026";
+// acionamentos: referência WEG de 5 cv, 380 V (inversor CFW500 e soft-starter SSW07), escalada pela potência com expoente 0,6
+const REF_ACION={cv:5,inversor:3600,soft:1700,exp:0.6};
+// orçamento de serviços e tributos — valores de referência editáveis na etapa 11
+const REF_ORC={
+  cub:2950,        // CUB/m² R8-N (Sinduscon-RS), estimado para a data-base — atualizar pelo boletim mensal do Sinduscon
+  cubFrac:0.10,    // hora técnica de engenharia = 0,10 CUB (convenção de honorários; conferir a tabela do sindicato/CREA da região)
+  salTec:3800,     // salário mensal de técnico em eletrotécnica, jornada de 40 h semanais
+  encTec:80,       // encargos sociais e trabalhistas (%), mensalista
+  hMes:200,        // horas remuneradas por mês na jornada de 40 h semanais (divisor CLT)
+  lucro:40,        // margem sugerida sobre o custo direto (%)
+  trib:{iss:5,pis:0.65,cofins:3,irpj:4.8,csll:2.88} // lucro presumido, serviços: IRPJ 15 % e CSLL 9 % sobre presunção de 32 %
+};
+const TRIB_NOMES={iss:"ISS (municipal, 2 a 5 %)",pis:"PIS (cumulativo)",cofins:"COFINS (cumulativo)",irpj:"IRPJ (15 % × 32 % de presunção)",csll:"CSLL (9 % × 32 % de presunção)"};
+const PR_CABO={1.5:2.6,2.5:4.0,4:6.3,6:9.3,10:15.5,16:24,25:38,35:53,50:75,70:105,95:142,120:180,150:225,185:280,240:365,300:455}; // flexível 450/750 V, R$/m
+const PR_NU={10:14,16:21,25:33,35:46,50:65,70:92,95:125,120:158};                                                                 // cobre nu, R$/m
+const PR_ELETRODUTO={pvc:{20:5,25:6.5,32:9,40:13,50:17,60:24,75:32,85:42,110:60},pead:{20:3.5,25:4.5,32:5.5,40:7,50:9,60:11,75:14,85:18,110:25},aco:{20:22,25:28,32:38,40:48,50:62,60:80,75:110,85:135,110:190}}; // R$/m
+function precoRef(g,d,un){
+  const n=re=>{const m=d.match(re);return m?parseFloat(m[1].replace(/\./g,"").replace(",",".")):0;};
+  const tab=(t,x)=>{const ks=Object.keys(t).map(Number).sort((a,b)=>a-b);if(!x)return 0;const k=ks.find(v=>v>=x-1e-9);return k!=null?t[k]:t[ks.at(-1)]*x/ks.at(-1);};
+  const S_=n(/(\d+(?:,\d+)?) mm²/),DN=n(/DN (\d+)/),In=n(/ (\d+(?:,\d+)?) A\b/),kW=n(/\/ (\d+(?:,\d+)?) kW/),ex=/certificação Ex|\(Ex\)/.test(d)?5:1;
+  const ip=/IP6[5-9]/.test(d)?"65":/IP5/.test(d)?"54":"20";
+  // ---- condutores
+  if(/^Cabo de MT/.test(d))return Math.round((50+1.3*S_)*(/20\/35/.test(d)?1.5:/12\/20/.test(d)?1.25:1));
+  if(/^Cabo de cobre nu/.test(d))return tab(PR_NU,S_);
+  if(/^Cabo de cobre/.test(d))return +(tab(PR_CABO,S_)*(/0,6\/1 kV/.test(d)?1.25:1)).toFixed(2);
+  if(/^Isolação das descidas/.test(d))return 25;
+  // ---- condutos e acessórios
+  if(/^Eletroduto de aço|aço galvanizado classe pesada/.test(d))return DN?tab(PR_ELETRODUTO.aco,DN):60;
+  if(/^Eletroduto (corrugado PEAD|PEAD)/.test(d))return DN?tab(PR_ELETRODUTO.pead,DN):18;
+  if(/^Eletroduto/.test(d))return tab(PR_ELETRODUTO.pvc,DN||25);
+  if(/^Eletrocalha/.test(d)){const m=d.match(/(\d+) × (\d+) mm/);return m?Math.round(20+0.3*(+m[1]+ +m[2])):50;}
+  if(/^Suporte para eletrocalha/.test(d))return Math.round(18+0.06*n(/de (\d+) mm/));
+  if(/^Tala de junção/.test(d))return 8;
+  if(/^Abraçadeira/.test(d))return +(2.5+0.05*DN).toFixed(2);
+  if(/^Curva 90°/.test(d))return +(1+0.12*DN).toFixed(2);
+  if(/^Luva de emenda para PEAD/.test(d))return +(2+0.15*DN).toFixed(2);
+  if(/^Luva/.test(d))return +(0.8+0.06*DN).toFixed(2);
+  if(/^Bucha e arruela/.test(d))return +(1+0.08*DN).toFixed(2);
+  if(/^Condulete/.test(d))return 22*(ex>1?6:1);
+  if(/^Caixa de derivação/.test(d))return 12*(ex>1?10:1);
+  if(/^Caixa de passagem/.test(d))return 160;
+  if(/^Anilha/.test(d))return 0.15;
+  if(/^Terminal tubular/.test(d))return +(0.15+0.03*S_).toFixed(2);
+  if(/^Terminal de compressão/.test(d))return +(2+0.25*S_).toFixed(2);
+  if(/^Prensa-cabos/.test(d))return 6;
+  // ---- pontos de utilização
+  if(/^Luminária de emergência/.test(d))return ex>1?900:ip==="20"?45:140;
+  if(/^Sinalização de saída/.test(d))return ip==="20"?45:120;
+  if(/^Luminária LED/.test(d)){const W=n(/LED (\d+) W/);return Math.round((W>=100?100+3*W:ip==="20"?60+2.5*W:90+3.2*W)*ex);}
+  if(/^Tomada industrial/.test(d))return In>=63?320:In>=32?110:75;
+  if(/^Plugue industrial/.test(d))return In>=63?260:In>=32?85:55;
+  if(/^Tomada 2P\+T/.test(d))return ip==="20"?18:55;
+  if(/^Interruptor bipolar/.test(d))return ex>1?600:ip==="20"?18:60;
+  // ---- proteção
+  if(/^Disjuntor termomagnético/.test(d)){const p=n(/(\d)P/)||1,icn=n(/≥ (\d+(?:,\d+)?) kA/);
+    let v=/caixa moldada/.test(d)?300+4.5*In:(p===1?(In<=32?14:24):p===2?(In<=32?55:75):(In<=32?75:115))*(/curva D/.test(d)?1.4:1);return Math.round(v*(icn>=10?1.5:1));}
+  if(/^Interruptor diferencial/.test(d)){const p=n(/\) (\d)P/)||n(/(\d)P/)||2;return Math.round((p>2?230:150)*(In>40?1.45:1)*(/tipo B/.test(d)?4:1));}
+  if(/^DPS/.test(d)){const ii=n(/Iimp ≥ (\d+(?:,\d+)?) kA/);return ii?Math.round(260*Math.max(1,ii/12.5)**0.7):70;}
+  if(/^Disjuntor-motor/.test(d)){const f=n(/–(\d+(?:,\d+)?) A/);return f<=10?280:f<=32?350:520;}
+  if(/^Fusível ultrarrápido/.test(d))return 30;
+  if(/^Fusível/.test(d))return /NH/.test(d)?Math.round(25+0.2*In):6;
+  if(/^Base (Diazed|NH)/.test(d))return /NH/.test(d)?60:22;
+  // ---- comando
+  if(/^Contator/.test(d)){const ie=n(/Ie (\d+) A/);return Math.round(60+8*ie);}
+  if(/^Relé de sobrecarga/.test(d)){const f=n(/–(\d+(?:,\d+)?) A/);return f<=25?160:260;}
+  const cvA=n(/motor (\d+(?:,\d+)?) cv/)||(kW?kW/0.7355:REF_ACION.cv),esc=Math.pow(Math.max(cvA,0.5)/REF_ACION.cv,REF_ACION.exp);
+  if(/^Inversor de frequência/.test(d))return Math.round(REF_ACION.inversor*esc);
+  if(/^Soft-starter/.test(d))return Math.round(REF_ACION.soft*esc);
+  if(/^Interruptor-seccionador rotativo/.test(d))return Math.round((150+3*n(/≥ (\d+) A/))*(ip==="65"?1.3:1));
+  if(/^Botoeira de emergência/.test(d))return 75;
+  // ---- quadros
+  if(/^Quadro /.test(d)){const mod=n(/(\d+) módulos/),bar=n(/barramento (\d+) A/),pt=n(/para (\d+) partida/);return Math.round((450+25*mod+2*bar+150*pt)*(ip==="65"?1.7:ip==="54"?1.4:1));}
+  if(/^Kit de montagem de quadro/.test(d))return 220;
+  if(/^Placa de advertência “Perigo/.test(d))return 40;
+  if(/^Placas de identificação/.test(d))return 120;
+  // ---- correção do fator de potência
+  if(/^Banco de capacitores/.test(d)){const kv=n(/(\d+(?:,\d+)?) kvar/);return Math.round(/automático/.test(d)?4000+250*kv:400+120*kv);}
+  // ---- aterramento, equipotencialização e SPDA
+  if(/^Haste/.test(d))return 95;
+  if(/^Conector haste-cabo/.test(d))return 18;
+  if(/^Caixa de inspeção/.test(d))return 85;
+  if(/^Barramento de equipotencialização principal/.test(d))return 180;
+  if(/^Barramento de equipotencialização local/.test(d))return 120;
+  if(/^Conector\/grampo de equipotencialização/.test(d))return 25;
+  if(/^Conector de medição/.test(d))return 35;
+  if(/^Conector de emenda/.test(d))return 18;
+  if(/^Fixadores para condutor de SPDA/.test(d))return 6;
+  if(/^Terminal de interligação da cobertura/.test(d))return 25;
+  if(/^Conexão do SPDA às armaduras/.test(d))return 60;
+  if(/^Brita/.test(d))return 140;
+  if(/^Barreira física/.test(d))return 150;
+  // ---- subestação
+  if(/^Transformador trifásico/.test(d)){const kva=n(/(\d+(?:,\d+)?) kVA/);return Math.round((9000+220*kva)*(/a seco/.test(d)?1.8:1)*(/classe 2[4-9]|classe 3/.test(d)?1.3:1));}
+  if(/^Para-raios/.test(d)){const ur=n(/Ur (\d+) kV/);return ur<=12?300:ur<=21?450:600;}
+  if(/^Chave fusível/.test(d))return /classe 15/.test(d)?500:900;
+  if(/^Elo fusível/.test(d))return 15;
+  if(/^Chave seccionadora tripolar/.test(d))return 4500;
+  if(/^Disjuntor de média tensão/.test(d))return /classe 15/.test(d)?45000:/classe 24/.test(d)?60000:80000;
+  if(/^Relé secundário/.test(d))return 9000;
+  if(/^Transformador de corrente/.test(d))return 2500;
+  if(/^Fonte capacitiva/.test(d))return 1800;
+  if(/^Fonte de alimentação reserva/.test(d))return 2500;
+  if(/^Terminação \(mufla\)/.test(d))return 650;
+  if(/^Fita de advertência/.test(d))return 2;
+  if(/^Poço de inspeção/.test(d))return 1800;
+  if(/^Iluminação de segurança/.test(d))return 150;
+  if(/^Placa de advertência "PERIGO DE MORTE"/.test(d))return 30;
+  if(/^Kit de segurança/.test(d))return 3500;
+  if(/^Porta metálica/.test(d))return 3500;
+  if(/^Tanque\/bacia de contenção/.test(d))return 6000;
+  if(/^Malha de aterramento da subestação/.test(d))return /em poste/.test(d)?2500:6000;
+  return 0;
+}
