@@ -1,2 +1,5 @@
 testes/saida/
 __pycache__/
+
+# Registro de software (hash/INPI) - nunca versionar
+registro/
