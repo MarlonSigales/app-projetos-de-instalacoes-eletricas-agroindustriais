@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sistema Fotovoltaico Off-grid</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="offgrid.css">
+<script src="../js/vendor/pdf-lib.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">UFPel · Engenharia Agrícola · Projeto de Instalações Elétricas Agroindustriais · módulo off-grid</div>
+      <h1>Sistema Fotovoltaico Off-grid</h1>
+      <p class="lead">Dimensionamento de sistema isolado pelo <b>pior caso</b>: irradiação do mês mais fraco (CRESESB/SunData), autonomia sem sol, banco de baterias, gerador fotovoltaico, controlador, inversor, transferência, proteções, esquema, materiais e custos. Projeto salvo em JSON e relatório em PDF.</p>
+      <div class="actions">
+        <button class="btn small primary" id="btnSave" type="button">Exportar projeto (.json)</button>
+        <button class="btn small" id="btnOpen" type="button">Importar projeto (.json)</button>
+        <button class="btn small ghost" id="btnSample" type="button">Carregar exemplo (sítio leiteiro)</button>
+        <button class="btn small ghost" id="btnNew" type="button">Projeto em branco</button>
+        <a class="btn small ghost" href="../index.html">← Projeto elétrico principal</a>
+        <input type="file" id="fileOpen" accept=".json,application/json">
+      </div>
+    </div>
+    <div class="stamp" id="stamp"></div>
+  </header>
+  <div class="layout">
+    <nav class="steps" aria-label="Etapas do projeto off-grid"><ol id="stepList"></ol></nav>
+    <main class="sheet" id="sheet"></main>
+    <aside class="summary" id="summary"></aside>
+  </div>
+  <p class="foot">Irradiação: CRESESB/CEPEL – SunData v3 (irradiação solar diária média mensal, kWh/m²·dia), consultado pelo proxy local <span class="mono">sundata.php</span>; alternativa automática: NASA POWER (climatologia mensal) com transposição para o plano inclinado (modelo isotrópico de Liu-Jordan e fração difusa de Erbs). Normas de referência: ABNT NBR 16690:2019 (arranjos fotovoltaicos), NBR 5410:2004 (baixa tensão), NBR 16274 (documentação e ensaios), NBR 14298 e IEC 62509 (controladores), IEC 62040/IEC 62109 (inversores), NBR 15389 e IEC 62619 (baterias), NBR 5419 (SPDA/DPS). Preços de referência de out/2026 (editáveis na etapa 10). Ferramenta didática: não substitui a verificação do responsável técnico nem os dados de catálogo dos equipamentos escolhidos.<br><b>Software de Apoio a Projetos de Instalações Elétricas Agroindustriais</b> — Laboratório de Instrumentação Agrícola, Engenharia Agrícola, CEng/UFPel. Responsáveis: Marlon Soares Sigales, Ádamo de Souza Araújo e Ricardo Scherer Pohndorf.</p>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script src="../js/logos.js"></script>
+<script src="offgrid.js"></script>
+</body>
+</html>

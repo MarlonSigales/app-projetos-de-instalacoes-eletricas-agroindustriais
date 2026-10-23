@@ -1,0 +1,20 @@
+/* módulo off-grid — complementos ao css/style.css do app */
+.chart{width:100%;height:auto;display:block;background:var(--sheet-2);border:1px solid var(--line)}
+.chart text{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+.chart .lbl{fill:var(--ink);font-weight:600}
+.schem{width:100%;height:auto;background:#fff;border:1px solid var(--line)}
+.rowsel td:first-child{font-weight:600}
+tr.crit td{background:var(--warn-soft)}
+tr.sel td{background:var(--accent-soft)}
+td.min{outline:2px solid var(--bad);outline-offset:-2px;font-weight:700}
+.step-hint{font-size:12.5px;color:var(--muted)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.res{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.res .card{padding:10px 12px}
+.res .card .t{font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.res .card .v{font-family:var(--display);font-size:24px;font-weight:600;line-height:1.1}
+.res .card .s{font-size:12px;color:var(--muted)}
+.prot td{white-space:normal}
+#mapa{font-size:12px}
+@media print{.steps,.summary,.top .actions,.nav{display:none}.layout{grid-template-columns:1fr}}
+.formula{white-space:pre-wrap;overflow-wrap:anywhere}
