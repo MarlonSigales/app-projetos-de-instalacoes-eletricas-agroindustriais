@@ -27,6 +27,8 @@ CONTEÚDO
                         gerar_logos_js.py, que regenera js/logos.js após trocar um PNG
   api.php               salva/abre/lista/exclui projetos na pasta projetos/
   projetos/             projetos salvos (.json); já vem com o exemplo da mini-indústria
+  offgrid/              módulo de sistema fotovoltaico isolado (off-grid):
+                        abra offgrid/index.html; documentação em offgrid/README.md
 
 COMO RODAR (recomendado — com PHP)
   1. Instale o PHP 7.4 ou superior (https://www.php.net/downloads) ou use XAMPP/Laragon.

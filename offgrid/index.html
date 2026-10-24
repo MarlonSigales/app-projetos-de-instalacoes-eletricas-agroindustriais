@@ -14,12 +14,12 @@
     <div>
       <div class="eyebrow">UFPel · Engenharia Agrícola · Projeto de Instalações Elétricas Agroindustriais · módulo off-grid</div>
       <h1>Sistema Fotovoltaico Off-grid</h1>
-      <p class="lead">Dimensionamento de sistema isolado pelo <b>pior caso</b>: irradiação do mês mais fraco (CRESESB/SunData), autonomia sem sol, banco de baterias, gerador fotovoltaico, controlador, inversor, transferência, proteções, esquema, materiais e custos. Projeto salvo em JSON e relatório em PDF.</p>
+      <p class="lead">Dimensionamento de sistema isolado pelo <b>pior caso</b>: irradiação do mês mais fraco (CRESESB/SunData), autonomia sem sol, banco de baterias, gerador fotovoltaico, controlador, inversor, transferência, proteções, esquema, materiais e custos. Projeto salvo em JSON e relatório em PDF. Passe o mouse (ou toque) nos campos com <b>?</b> para ver como preencher.</p>
       <div class="actions">
-        <button class="btn small primary" id="btnSave" type="button">Exportar projeto (.json)</button>
-        <button class="btn small" id="btnOpen" type="button">Importar projeto (.json)</button>
-        <button class="btn small ghost" id="btnSample" type="button">Carregar exemplo (sítio leiteiro)</button>
-        <button class="btn small ghost" id="btnNew" type="button">Projeto em branco</button>
+        <button class="btn small primary" id="btnSave" data-tip="Baixa o projeto em JSON (formato offgrid-agro) para guardar ou enviar. Reabra com Importar projeto." type="button">Exportar projeto (.json)</button>
+        <button class="btn small" id="btnOpen" data-tip="Abre um projeto .json exportado por esta ferramenta." type="button">Importar projeto (.json)</button>
+        <button class="btn small ghost" id="btnSample" data-tip="Carrega o sítio leiteiro de exemplo da aula (irradiação ilustrativa: consulte o CRESESB para um projeto real)." type="button">Carregar exemplo (sítio leiteiro)</button>
+        <button class="btn small ghost" id="btnNew" data-tip="Apaga o projeto atual da tela e começa em branco (exporte antes se quiser guardar)." type="button">Projeto em branco</button>
         <a class="btn small ghost" href="../index.html">← Projeto elétrico principal</a>
         <input type="file" id="fileOpen" accept=".json,application/json">
       </div>

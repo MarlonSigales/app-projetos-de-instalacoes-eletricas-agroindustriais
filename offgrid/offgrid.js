@@ -874,6 +874,156 @@ function vidaSVG(R) {
 /* ============================================================
    INTERFACE
    ============================================================ */
+/* ---------- balões de ajuda: aparecem ao passar o mouse ou ao focar o campo ---------- */
+const TIPS = {
+  "id.cliente": "Nome do proprietário ou da empresa. Vai para a capa e o carimbo do relatório.",
+  "id.obra": "Nome curto do sistema (ex.: “Off-grid da ordenha”). Aparece na capa, no rodapé e no nome do arquivo.",
+  "id.local": "Localidade, linha ou estrada de acesso da propriedade.",
+  "id.municipio": "Município e UF, ex.: Pelotas/RS.",
+  "id.rt": "Engenheiro ou técnico responsável pelo projeto (assina a ART/TRT).",
+  "id.crea": "Registro profissional do responsável (CREA ou CFT).",
+  "id.data": "Data de emissão do projeto ou da análise.",
+  "modo": "Sistema novo: a ferramenta dimensiona tudo. Sistema existente: você informa o que está instalado (etapa 05) e ela compara com o necessário e monta a lista de adequação.",
+  "local.lat": "Latitude em graus decimais; no hemisfério sul é negativa (ex.: −31,77). Pegue no Google Maps (clique com o botão direito no local) ou use “Usar localização atual”.",
+  "local.lon": "Longitude em graus decimais; a oeste de Greenwich é negativa (ex.: −52,34).",
+  "temp.tmin": "Menor temperatura do ar esperada no local (mínima absoluta de inverno). Eleva a tensão de circuito aberto (Voc) dos módulos e limita quantos cabem em série.",
+  "temp.tmax": "Maior temperatura do ar no verão. A célula fica ≈ 30 °C acima do ar e a tensão de máxima potência (Vmp) cai: define o mínimo de módulos em série.",
+  "telhado.usar": "“Sim” quando os módulos ficam rentes ao telhado: a irradiação passa a ser a de cada água. “Não” usa a inclinação ótima da linha selecionada do SunData (estrutura própria).",
+  "telhado.margem": "Faixa livre nas bordas, beiral e cumeeira (vento, fixação, circulação). Usual 0,3 a 0,5 m. Reduz o número de módulos que cabem.",
+  "telhado.medida": "Como a largura da água foi medida: no próprio telhado (do beiral à cumeeira) ou na planta (projeção horizontal). Na planta, a ferramenta divide pelo cosseno da inclinação.",
+  "entrada": "Cargas individuais: liste cada equipamento. Conta de energia: informe o kWh do mês de maior gasto (ou os 12 meses) quando não houver levantamento das cargas.",
+  "conta.pior": "Consumo em kWh do mês de maior gasto, lido na conta de energia (campo “consumo faturado” ou histórico de 12 meses).",
+  "conta.mesPior": "Mês em que ocorreu o maior consumo. Define o pico da curva anual prevista.",
+  "conta.amp": "Quanto o consumo varia ao longo do ano: (maior − menor)/maior. Sem histórico, use 20–40% no meio rural. Só vale para meses sem dado digitado.",
+  "conta.psim": "Maior potência ligada ao mesmo tempo, em W (demanda). Some os equipamentos que funcionam juntos no horário de pico; é o que dimensiona o inversor.",
+  "conta.pmotor": "Potência do maior motor ou compressor (W) que pode partir com os demais ligados. 1 cv ≈ 740 W no eixo, ≈ 900 W na rede.",
+  "conta.kp": "Relação corrente de partida / nominal desse motor: 6 em partida direta, 5 compressor, 3 com soft-starter, 1,5 com inversor de frequência.",
+  "conta.fcc": "Fração do consumo ligada direto em corrente contínua (cerca elétrica, LEDs 12 V, telemetria). Normalmente 0.",
+  "conta.fcrit": "Fração do consumo que precisa continuar durante falta da concessionária (sistema com rede como reserva). Ex.: 0,6 se só resfriamento e bomba são essenciais.",
+  "crit.aut": "Maior sequência de dias muito nublados que o banco deve atravessar sozinho. RS no inverno: 3–5 dias (série do INMET); com gerador automático, 1,5–2 dias bastam.",
+  "crit.fnub": "Quanto o gerador FV ainda produz num dia nublado, como fração do pior mês. 0 é conservador; dias encobertos costumam render 10–30%.",
+  "crit.nnub": "Quantas vezes por ano ocorre a sequência nublada. Entra no cálculo de vida útil (descargas profundas).",
+  "crit.hfalta": "Maior tempo contínuo sem energia da concessionária, em horas (sistemas com rede como reserva). Use o histórico do cliente ou os indicadores DEC/FEC da distribuidora.",
+  "crit.nfalta": "Número de faltas longas por ano. Cada uma é uma descarga profunda no cálculo de vida útil.",
+  "crit.drec": "Em quantos dias o FV deve recarregar o banco após o evento de autonomia. 0 = não considerar. Sem gerador, use 7–14: a ferramenta aumenta os módulos.",
+  "crit.tbat": "Temperatura média do abrigo das baterias. Cada 10 °C acima de 25 °C reduz a vida à metade. Abrigo sombreado e ventilado: 25–30 °C.",
+  "crit.tpart": "Duração do pico de corrente na partida do motor/compressor, em segundos. Partida direta: 0,3–1 s. Usado no banco capacitivo.",
+  "crit.kfrio": "Quanto a resistência interna da bateria aumenta a −18 °C em relação a 25 °C. Chumbo: 1,6–2,0 (padrão 1,8). Usado para converter resistência em CCA.",
+  "crit.bat": "Tecnologia do banco. Trocar recarrega a bateria padrão, a profundidade de descarga e o fator de temperatura.",
+  "crit.dod": "Profundidade máxima de descarga admitida no evento de autonomia (0 a 1). Lítio 0,8; chumbo 0,5. Quanto maior, menor o banco e menor a vida.",
+  "crit.ftemp": "Fração da capacidade disponível na temperatura do abrigo. Chumbo a 10 °C ≈ 0,9; lítio com aquecimento ≈ 1.",
+  "crit.vbanco": "Tensão do banco. Automática: até ~1,5 kW → 12 V; até ~3 kW → 24 V; acima → 48 V. Compare as três na etapa de proteções.",
+  "crit.pr": "Fator de desempenho do gerador FV: perdas por temperatura, sujeira, descasamento, cabos e MPPT. Use 0,75–0,85 (0,80 típico).",
+  "crit.etaInv": "Rendimento médio do inversor na faixa de uso (catálogo: 0,90–0,94).",
+  "crit.etaCabo": "Rendimento dos cabos e conexões do lado CC (0,97 ≈ 3% de perdas).",
+  "crit.vac": "Tensão da instalação CA alimentada pelo inversor.",
+  "crit.fases": "Número de fases da saída do inversor.",
+  "eq.mod.nome": "Modelo do módulo, como na folha de dados.",
+  "eq.mod.p": "Potência máxima (Pmáx) em STC, em W, da folha de dados.",
+  "eq.mod.voc": "Tensão de circuito aberto (Voc) em STC, em V.",
+  "eq.mod.vmp": "Tensão de máxima potência (Vmp) em STC, em V.",
+  "eq.mod.isc": "Corrente de curto-circuito (Isc) em STC, em A. Dimensiona cabos, fusíveis e seccionadora.",
+  "eq.mod.imp": "Corrente de máxima potência (Imp) em STC, em A.",
+  "eq.mod.bvoc": "Coeficiente de temperatura do Voc, em %/°C (negativo, ex.: −0,27).",
+  "eq.mod.fusmax": "Corrente máxima do fusível em série (maximum series fuse rating) da folha de dados.",
+  "eq.mod.comp": "Comprimento do módulo em metros (lado maior), da folha de dados. Usado para ver quantos cabem no telhado.",
+  "eq.mod.larg": "Largura do módulo em metros (lado menor).",
+  "eq.bat.nome": "Modelo da bateria ou do módulo de baterias.",
+  "eq.bat.v": "Tensão nominal de uma unidade (12 V, 25,6 V, 51,2 V…).",
+  "eq.bat.ah": "Capacidade de uma unidade em Ah, no regime de descarga do projeto (C10 ou C20 para chumbo; lítio: nominal).",
+  "eq.bat.ri": "Resistência interna de uma unidade nova, em mΩ (catálogo ou analisador com a bateria nova). Define queda de tensão no pico e CCA.",
+  "eq.bat.imax": "Corrente contínua máxima de descarga por unidade (limite do BMS no lítio).",
+  "eq.bat.ipico": "Corrente de pico admitida por unidade durante o tempo indicado (BMS/fabricante).",
+  "eq.bat.tpico": "Duração admitida do pico, em segundos.",
+  "eq.bat.cca": "CCA nominal (corrente de partida a frio) da etiqueta, para chumbo de 12 V. 0 = a ferramenta estima pela resistência interna. Use a mesma norma do analisador (SAE, EN, DIN, JIS).",
+  "eq.bat.bms": "Integrado: módulo rack com BMS próprio. Externo: células avulsas, exige BMS e balanceador ativo.",
+  "eq.ctrl.nome": "Modelo do controlador de carga MPPT.",
+  "eq.ctrl.imax": "Corrente máxima de carga entregue à bateria (A) — é a corrente de saída.",
+  "eq.ctrl.p48": "Potência FV máxima admitida com banco de 48 V (W), da folha de dados. Para 12 e 24 V a ferramenta reduz proporcionalmente.",
+  "eq.ctrl.vocmax": "Tensão máxima de entrada FV (V). O Voc da string no dia mais frio nunca pode ultrapassar.",
+  "eq.inv.nome": "Modelo do inversor off-grid (onda senoidal pura).",
+  "eq.inv.p": "Potência contínua nominal (W).",
+  "eq.inv.surto": "Quantas vezes a potência nominal o inversor aguenta por ~5 s (surto). Comum: 2.",
+  "eq.inv.eta": "Rendimento do inversor (catálogo).",
+  "eq.inv.carr": "Corrente do carregador interno quando há gerador/rede (A no lado CC). Define o tamanho do gerador.",
+  "eq.inv.vcorte": "Tensão CC em que o inversor desliga por bateria baixa. 0 = automático pela tecnologia.",
+  "backup.tipo": "Segunda fonte: gerador a combustível ou rede da concessionária. Define a chave de transferência e o gerador.",
+  "backup.chave": "Automática (ATS) para cargas que não podem esperar alguém (leite, água, aves). Manual (1-0-2) quando há pessoa no local.",
+  "exist.ns": "Quantos módulos estão ligados em série em cada string (conte na string box ou meça a tensão: Voc da string ÷ Voc do módulo).",
+  "exist.nstr": "Quantas strings estão em paralelo (pares de cabos + e − que chegam à string box).",
+  "exist.bns": "Quantas baterias estão em série (tensão do banco ÷ tensão de uma bateria).",
+  "exist.bnp": "Quantas fileiras de baterias estão em paralelo.",
+  "exist.nctrl": "Número de controladores de carga instalados.",
+  "exist.ninv": "Número de inversores instalados (mesmo modelo informado na etapa 04).",
+  "exist.sfv": "Seção do cabo das strings (mm²), impressa na capa do cabo.",
+  "exist.sctrl": "Seção do cabo do controlador até o barramento/bateria (mm²).",
+  "exist.sinv": "Seção do cabo do inversor até o barramento/bateria (mm²).",
+  "exist.sbat": "Seção do cabo principal do banco até o barramento (mm²).",
+  "exist.sca": "Seção do cabo da saída CA do inversor até o quadro (mm²).",
+  "exist.fusbat": "Corrente nominal do fusível ou disjuntor principal do banco (A). Deve ficar entre 1,25 × a corrente do banco e a capacidade do cabo.",
+  "estado.ocv": "Tensão de uma bateria (ou média) em repouso: sem carga nem recarga há pelo menos 2 h. Dá o SOC pela curva da tecnologia.",
+  "estado.cmed": "Capacidade medida num ensaio de descarga (Ah) até a tensão final. Dá o SOH por capacidade.",
+  "estado.rmed": "Resistência interna medida com analisador (1 kHz) ou pelo teste de carga, em mΩ por bateria.",
+  "estado.ccamed": "CCA medido por analisador de condutância (média das baterias). Use a mesma norma do valor nominal.",
+  "estado.vmax": "Maior tensão entre as células (BMS) ou entre as baterias da série, em repouso.",
+  "estado.vmin": "Menor tensão entre as células ou baterias, em repouso. A diferença mostra o desbalanceamento (SoB).",
+  "estado.nivel": "Diga se as tensões máx./mín. são de células (BMS) ou de baterias inteiras.",
+  "estado.idade": "Há quantos anos o banco está em operação. Com o SOH, dá a tendência de perda por ano.",
+  "estado.ciclos": "Ciclos registrados pelo BMS ou monitor de bateria.",
+  "estado.v0": "Tensão de uma bateria em repouso, logo antes de aplicar a carga de teste.",
+  "estado.v1": "Tensão da mesma bateria durante a carga de teste (após ~5–10 s, carga de 0,5–1 C).",
+  "estado.i1": "Corrente da carga de teste, medida com alicate amperímetro CC.",
+  "cabos.lfv": "Comprimento do trajeto dos módulos até o controlador (só ida, em metros).",
+  "cabos.lbat": "Comprimento do controlador/inversor até a bateria ou barramento (só ida). Mantenha curto: até 2–3 m.",
+  "cabos.lca": "Comprimento da saída do inversor até o quadro CA (só ida).",
+  "cabos.lger": "Comprimento do gerador ou da entrada da rede até a chave de transferência (só ida).",
+  "cabos.dvfv": "Queda de tensão máxima admitida no trecho FV (%). Usual 2–3%.",
+  "cabos.dvbat": "Queda de tensão máxima nos cabos da bateria (%). Usual 1%: em 48 V, 1% são só 0,48 V.",
+  "cabos.dvca": "Queda de tensão máxima na saída CA até o quadro (%). Usual 2% (total com circuitos ≤ 4%).",
+  "mo.heng": "Horas de engenharia: visita, levantamento, projeto, ART e comissionamento.",
+  "mo.peng": "Valor da hora de engenharia (R$/h) da sua região.",
+  "mo.hele": "Horas de eletricista com NR-10 para montagem e ligação.",
+  "mo.pele": "Valor da hora do eletricista (R$/h). Referência out/2026: R$ 150–250 com NR-10.",
+  "mo.haux": "Horas de auxiliar (estrutura, transporte, valas).",
+  "mo.paux": "Valor da hora do auxiliar (R$/h).",
+  "mo.km": "Distância total rodada (ida e volta de todas as visitas), em km.",
+  "mo.pkm": "Custo por km rodado (combustível + desgaste), R$/km.",
+  "mo.desp": "Outras despesas (hospedagem, alimentação, frete, aluguel de equipamento).",
+  "mo.bdi": "Benefícios e despesas indiretas + lucro (%). Usual 15–25%.",
+  "mo.imp": "Impostos sobre o serviço/venda (%), conforme o regime tributário (ex.: Simples Nacional)."
+};
+
+const TIPS_COL = {
+  c: { nome: "Nome do equipamento.", nat: "Tipo de carga: define o Ip/In e se entra no surto (só motores e compressores).", tipo: "CA: ligado na saída do inversor. CC: ligado direto no banco (cerca, LEDs 12/24 V).", q: "Quantidade de equipamentos iguais.", w: "Potência de cada um em W (placa do equipamento; motores: potência elétrica ≈ cv × 900 W).", h: "Horas de funcionamento por dia (média do mês crítico). Geladeiras/compressores: horas com o motor ligado (≈ 40–50% do dia).", fs: "Simultaneidade: fração que funciona junto no horário de pico (1 = todos).", kp: "Corrente de partida / nominal. Preenchido pelo tipo de carga; ajuste pela placa (código NEMA) ou medição.", crit: "Marque se o equipamento precisa funcionar durante falta da concessionária." },
+  tf: { nome: "Nome da água (ex.: Galpão – água norte).", az: "Para onde a água “olha”: N, NE, L, SE, S, SO, O, NO ou graus (N = 0°, L = 90°, S = 180°, O = 270°). Use a bússola do celular olhando para baixo da água.", inc: "Inclinação: graus (ex.: 17) ou caimento do telhado em % (ex.: 30%). Caimento = altura ÷ distância horizontal × 100.", comp: "Comprimento da água ao longo do beiral (m).", larg: "Largura da água do beiral à cumeeira (m), medida no telhado ou na planta (ver opção abaixo).", nmod: "Novo: limite de módulos nessa água (vazio = pela área). Existente: módulos instalados nela." },
+  u: { id: "Identificação da bateria (posição no banco).", v: "Tensão em repouso medida pelo analisador (V).", ri: "Resistência interna (mΩ) indicada pelo analisador.", cca: "CCA medido pelo analisador (A).", ccaNom: "CCA nominal da etiqueta, na mesma norma configurada no analisador.", soh: "SOH (%) calculado pelo analisador.", soc: "SOC (%) calculado pelo analisador." },
+  mes: "Consumo do mês em kWh, da conta de energia. Deixe em branco os meses sem dado: a ferramenta prevê pela curva anual.",
+  pu: "Preço unitário (R$) da sua cotação. O valor padrão é referência de out/2026 com a fonte indicada abaixo da tabela."
+};
+const tipI = () => `<span class="tipq" aria-hidden="true">?</span>`;
+const tipBox = Object.assign(document.createElement("div"), { className: "tipbox", id: "tipbox", hidden: true }); tipBox.setAttribute("role", "tooltip"); document.body.appendChild(tipBox);
+let tipAlvo = null;
+function tipDe(el) {
+  if (!el || !el.closest) return null;
+  const d = el.closest("[data-tip]"); if (d) return { el: d, t: d.dataset.tip };
+  const c = el.closest("[data-f],[data-tff],[data-uf],[data-mes],[data-pu]"); if (!c) return null;
+  let t = null;
+  if (c.dataset.c != null) t = TIPS_COL.c[c.dataset.f]; else if (c.dataset.tf != null) t = TIPS_COL.tf[c.dataset.tff]; else if (c.dataset.u != null) t = TIPS_COL.u[c.dataset.uf]; else if (c.dataset.mes != null) t = TIPS_COL.mes; else if (c.dataset.pu != null) t = TIPS_COL.pu;
+  return t ? { el: c, t } : null;
+}
+function mostrarTip(el, t) {
+  tipAlvo = el; tipBox.textContent = t; tipBox.hidden = false;
+  const r = el.getBoundingClientRect(), bw = tipBox.offsetWidth, bh = tipBox.offsetHeight;
+  const x = Math.min(Math.max(8, r.left), window.innerWidth - bw - 8); let y = r.top - bh - 8; if (y < 8) y = r.bottom + 8;
+  tipBox.style.left = x + "px"; tipBox.style.top = y + "px";
+}
+function esconderTip() { tipAlvo = null; tipBox.hidden = true; }
+document.addEventListener("mouseover", e => { const r = tipDe(e.target); if (r) { if (r.el !== tipAlvo) mostrarTip(r.el, r.t); } else if (!tipAlvo || !tipAlvo.contains(document.activeElement)) esconderTip(); });
+document.addEventListener("focusin", e => { const r = tipDe(e.target); r ? mostrarTip(r.el, r.t) : esconderTip(); });
+document.addEventListener("focusout", () => setTimeout(() => { if (!tipAlvo || !tipAlvo.contains(document.activeElement)) esconderTip(); }, 0));
+document.addEventListener("keydown", e => { if (e.key === "Escape") esconderTip(); });
+window.addEventListener("scroll", esconderTip, { passive: true, capture: true });
+
 const STEPS = [
   { k: "id", t: "Identificação", s: "Cliente, obra, RT" },
   { k: "irr", t: "Local e irradiação", s: "CRESESB · pior caso" },
@@ -895,7 +1045,8 @@ function fld(path, label, { type = "number", step = "any", opts = null, hint = "
   let inp;
   if (opts) inp = `<select data-bind="${path}">${opts.map(([k, t]) => `<option value="${esc(k)}" ${String(v) === String(k) ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
   else inp = `<input data-bind="${path}" type="${type}" ${type === "number" ? `step="${step}"` : ""} value="${esc(v)}" placeholder="${esc(ph)}">`;
-  return `<label class="f">${esc(label)}${inp}${hint ? `<span class="h">${hint}</span>` : ""}</label>`;
+  const t = TIPS[path];
+  return `<label class="f"${t ? ` data-tip="${esc(t)}"` : ""}><span>${esc(label)}${t ? tipI() : ""}</span>${inp}${hint ? `<span class="h">${hint}</span>` : ""}</label>`;
 }
 const card = (t, v, s = "") => `<div class="card"><div class="t">${t}</div><div class="v">${v}</div>${s ? `<div class="s">${s}</div>` : ""}</div>`;
 const avisos = () => R.avisos.length ? R.avisos.map(a => `<p class="note warn">${a}</p>`).join("") : "";
@@ -948,9 +1099,9 @@ const VIEWS = {
     const est = S._estacoes || [];
     return `<p class="intro">A irradiação vem do <b>CRESESB/SunData</b> (CEPEL). Para sistema isolado usamos o <b>pior caso</b>: a linha <b>“Maior mínimo mensal”</b> (inclinação que maximiza o mês mais fraco) e, nela, o <b>menor valor mensal</b>, nunca a média anual.</p>
     <div class="grid">${fld("local.lat", "Latitude (°, sul negativo)", { step: "0.0001", ph: "-31.7700" })}${fld("local.lon", "Longitude (°, oeste negativo)", { step: "0.0001", ph: "-52.3400" })}</div>
-    <div class="actions"><button class="btn small" type="button" id="btnGeo">Usar localização atual</button><button class="btn small primary" type="button" id="btnSun">Buscar no CRESESB (automático)</button><button class="btn small ghost" type="button" id="btnNasa">Alternativa: NASA POWER</button><a class="btn small ghost" href="${sunDataURL()}" target="_blank" rel="noopener">Abrir o SunData no navegador</a></div>
+    <div class="actions"><button class="btn small" type="button" id="btnGeo" data-tip="Pede ao navegador a posição do aparelho (GPS ou rede). Use no local da obra.">Usar localização atual</button><button class="btn small primary" type="button" id="btnSun" data-tip="Consulta o CRESESB/SunData pela coordenada através do sundata.php. Exige o app rodando com php -S; sem PHP, use a consulta manual.">Buscar no CRESESB (automático)</button><button class="btn small ghost" type="button" id="btnNasa" data-tip="Alternativa quando o CRESESB não responde: climatologia da NASA POWER, com as inclinações calculadas pela ferramenta. Confira com o SunData no projeto oficial.">Alternativa: NASA POWER</button><a class="btn small ghost" href="${sunDataURL()}" target="_blank" rel="noopener">Abrir o SunData no navegador</a></div>
     <p class="note" id="irrMsg">A busca automática usa o proxy <span class="mono">sundata.php</span> (requer o app rodando com <span class="mono">php -S localhost:8000</span>). Sem PHP, abra o SunData, consulte a coordenada, copie a tabela de resultado e cole abaixo.</p>
-    <details><summary>Consulta manual: colar a tabela do SunData</summary><p class="step-hint">No SunData: informe latitude (Sul) e longitude (Oeste) em graus decimais → Buscar → selecione o texto da estação (do nome até a linha “Maior mínimo mensal”) → copie e cole aqui.</p><textarea id="colar" placeholder="Estação: ...  Município: ...  Plano Horizontal 0° N 6,30 5,73 ... Maior mínimo mensal 52° N ..."></textarea><div class="actions"><button class="btn small primary" type="button" id="btnColar">Ler tabela colada</button></div></details>
+    <details><summary>Consulta manual: colar a tabela do SunData</summary><p class="step-hint">No SunData: informe latitude (Sul) e longitude (Oeste) em graus decimais → Buscar → selecione o texto da estação (do nome até a linha “Maior mínimo mensal”) → copie e cole aqui.</p><textarea id="colar" placeholder="Estação: ...  Município: ...  Plano Horizontal 0° N 6,30 5,73 ... Maior mínimo mensal 52° N ..."></textarea><div class="actions"><button class="btn small primary" type="button" id="btnColar" data-tip="Lê a tabela copiada da página de resultado do SunData (do nome da estação até a linha “Maior mínimo mensal”).">Ler tabela colada</button></div></details>
     ${est.length > 1 ? `<div class="block"><h3>Estações próximas</h3><div class="tbl"><table><thead><tr><th></th><th>Estação</th><th>Município</th><th>Distância</th></tr></thead><tbody>${est.map((e, i) => `<tr><td><button class="btn small ghost" type="button" data-est="${i}">Usar</button></td><td>${esc(e.estacao)}</td><td>${esc(e.municipio)}</td><td>${esc(e.dist)}</td></tr>`).join("")}</tbody></table></div></div>` : ""}
     ${rows.length ? `<div class="block"><h3>Irradiação solar diária média mensal [kWh/m²·dia]</h3><p class="step-hint">Fonte: ${esc(S.local.fonte)}${S.local.estacao ? " · " + esc(S.local.estacao) : ""}${S.local.dist && S.local.dist !== "—" ? " · " + esc(S.local.dist) : ""}</p>
     <div class="tbl"><table><thead><tr><th>Usar</th><th>Ângulo</th><th class="r">Incl.</th>${MESES.map(m => `<th class="r">${m}</th>`).join("")}<th class="r">Média</th><th class="r">Mínimo</th></tr></thead><tbody>${rows.map((r, i) => { const mi = Math.min(...r.m), im = r.m.indexOf(mi); return `<tr class="${i === S.local.sel ? "sel" : ""}"><td><input type="radio" name="rowsel" data-row="${i}" ${i === S.local.sel ? "checked" : ""} style="width:auto"></td><td>${esc(r.nome)}</td><td class="num">${r.ang}° ${r.dir || ""}</td>${r.m.map((v, j) => `<td class="num ${j === im && i === S.local.sel ? "min" : ""}">${fmt(v, 2)}</td>`).join("")}<td class="num">${fmt(r.media, 2)}</td><td class="num"><b>${fmt(mi, 2)}</b></td></tr>`; }).join("")}</tbody></table></div>
@@ -959,7 +1110,7 @@ const VIEWS = {
     ${rows.length ? (() => { const t = S.telhado, tel = R.tel; return `<div class="block"><h3>Telhado: águas, orientação e inclinação</h3>
     <div class="grid">${fld("telhado.usar", "Instalar sobre telhado com águas definidas", { opts: [["nao", "Não — estrutura na inclinação ótima (linha selecionada)"], ["sim", "Sim — módulos rentes às águas do telhado"]] })}</div>
     ${t.usar === "sim" ? `<div class="tbl ct cab"><table><thead><tr><th>Água</th><th>Orient.</th><th>Incl.</th><th class="r">Compr. (m)</th><th class="r">Largura (m)</th><th class="r">${S.modo === "existente" ? "Instalados" : "Limite"}</th><th></th></tr></thead><tbody>${t.faces.map((f, j) => `<tr><td><input class="w-l" type="text" data-tf="${j}" data-tff="nome" value="${esc(f.nome)}"></td><td><input class="w-s" type="text" data-tf="${j}" data-tff="az" value="${esc(f.az)}" title="N, NE, L, SE, S, SO, O, NO ou graus (N = 0, L = 90)"></td><td><input class="w-s" type="text" data-tf="${j}" data-tff="inc" value="${esc(f.inc)}" title="graus (ex.: 17) ou caimento em % (ex.: 30%)"></td><td><input class="w-s" type="number" step="0.01" data-tf="${j}" data-tff="comp" value="${esc(f.comp)}" placeholder="beiral"></td><td><input class="w-s" type="number" step="0.01" data-tf="${j}" data-tff="larg" value="${esc(f.larg)}" placeholder="caída"></td><td><input class="w-s" type="number" data-tf="${j}" data-tff="nmod" value="${esc(f.nmod)}" placeholder="${S.modo === "existente" ? "" : "área"}"></td><td><button class="btn small danger" type="button" data-fdel="${j}">×</button></td></tr>`).join("")}</tbody></table></div>
-    <div class="actions"><button class="btn small" type="button" id="addF">+ Água</button></div>
+    <div class="actions"><button class="btn small" type="button" id="addF" data-tip="Inclui outra água do telhado (orientação, inclinação e medidas).">+ Água</button></div>
     <div class="grid">${fld("telhado.margem", "Recuo das bordas e cumeeira (m)", { step: "0.05", hint: "afastamento livre para vento, fixação e manutenção: 0,3–0,5 m" })}${fld("telhado.medida", "Largura da água medida", { opts: [["plano", "No plano do telhado (do beiral à cumeeira)"], ["planta", "Na planta (projeção horizontal)"]] })}</div>
     <p class="step-hint">Orientação: para onde a água “olha” — N, NE, L, SE, S, SO, O, NO ou azimute em graus (N = 0°, L = 90°, S = 180°, O = 270°). Inclinação em graus (17) ou caimento do telhado em % (30% = 16,7°; 50% = 26,6°; 100% = 45°).</p>
     ${tel ? `<div class="tbl cab"><table><thead><tr><th>Água</th><th>Orient.</th><th class="r">Incl.</th><th class="r">HSP mín.</th><th class="r">HSP méd.</th><th class="r">Inverno</th><th class="r">Anual</th><th class="r">Mód.</th><th class="r">Str.</th></tr></thead><tbody>${tel.faces.map((f, j) => `<tr><td>${esc(f.nome)}</td><td>${dirNome(f.az)} (${fmt0(f.az)}°)</td><td class="num">${fmt(f.inc, 1)}°</td><td class="num">${fmt(f.min, 2)} ${MESES[f.mesMin]}</td><td class="num">${fmt(f.media, 2)}</td><td class="num"><b>${pct(f.efMin)}</b></td><td class="num">${pct(f.efMed)}</td><td class="num">${tel.sf ? tel.sf[j] * R.Ns : "—"}</td><td class="num">${tel.sf ? tel.sf[j] + "×" + R.Ns : "—"}</td></tr>`).join("")}<tr class="sub"><td colspan="3">Ótimo: ${esc(R.row.nome)} ${R.row.ang}°</td><td class="num">${fmt(R.hsp, 2)}</td><td class="num">${fmt(R.row.media, 2)}</td><td class="num">100%</td><td class="num">100%</td><td class="num">${R.Nmod}</td><td class="num">${R.Nstr}</td></tr></tbody></table></div>
@@ -975,7 +1126,7 @@ const VIEWS = {
     ${R.entrada === "lista" ? `<div class="tbl ct"><table><thead><tr><th>Equipamento</th><th>Tipo de carga</th><th>CA/CC</th><th class="r">Qtd</th><th class="r">W unit.</th><th class="r">h/dia</th><th class="r">Simult.</th><th class="r">Ip/In</th><th>Crítica</th><th class="r">Wh/dia</th><th></th></tr></thead><tbody>
     ${S.cargas.map((l, i) => `<tr><td><input class="w-l" data-c="${i}" data-f="nome" type="text" value="${esc(l.nome)}"></td><td><select data-c="${i}" data-f="nat">${Object.entries(NAT).map(([kk, v]) => `<option value="${kk}" ${(l.nat || (n(l.kp) > 1 ? "mot" : "res")) === kk ? "selected" : ""}>${v.t}</option>`).join("")}</select></td><td><select data-c="${i}" data-f="tipo"><option ${l.tipo === "CA" ? "selected" : ""}>CA</option><option ${l.tipo === "CC" ? "selected" : ""}>CC</option></select></td><td><input class="w-s" data-c="${i}" data-f="q" type="number" step="1" value="${l.q}"></td><td><input data-c="${i}" data-f="w" type="number" value="${l.w}"></td><td><input class="w-s" data-c="${i}" data-f="h" type="number" step="0.1" value="${l.h}"></td><td><input class="w-s" data-c="${i}" data-f="fs" type="number" step="0.1" value="${l.fs}"></td><td><input class="w-s" data-c="${i}" data-f="kp" type="number" step="0.5" value="${l.kp}"></td><td style="text-align:center"><input type="checkbox" style="width:auto" data-c="${i}" data-f="crit" ${critica(l) ? "checked" : ""} title="mantida durante falta da concessionária"></td><td class="num">${fmt0(R.cargas[i].e)}</td><td><button class="btn small danger" type="button" data-del="${i}">Remover</button></td></tr>`).join("")}
     <tr class="sub"><td colspan="9">Total (CA ${fmt0(R.ECA)} Wh · CC ${fmt0(R.ECC)} Wh)</td><td class="num">${fmt0(R.ECA + R.ECC)}</td><td></td></tr></tbody></table></div>
-    <div class="actions"><button class="btn small" type="button" id="addC">+ Equipamento</button></div>
+    <div class="actions"><button class="btn small" type="button" id="addC" data-tip="Inclui um equipamento. Escolha o tipo de carga para preencher o Ip/In.">+ Equipamento</button></div>
     <p class="note"><b>Tipo de carga</b> define o fator de partida Ip/In: resistiva e eletrônica 1 · motor em partida direta 6 · compressor 5 · motor com soft-starter 3 · motor com inversor de frequência 1,5 (editável). Só motores e compressores entram no surto.</p>` : `
     <div class="block"><h3>Conta de energia</h3><div class="grid">${fld("conta.pior", "Consumo do mês de maior gasto (kWh)", { hint: "da conta; ou preencha os 12 meses abaixo" })}${fld("conta.mesPior", "Mês de maior gasto", { opts: MESES.map((m, i) => [String(i), m]) })}${fld("conta.amp", "Variação anual prevista (%)", { step: "5", hint: "(maior − menor)/maior; rural típico 20–40%" })}${fld("conta.psim", "Potência simultânea máx. (W)", { hint: "demanda; necessária para o inversor" })}${fld("conta.pmotor", "Maior motor/compressor (W)", { hint: "0 se não houver" })}${fld("conta.kp", "Ip/In desse motor", { step: "0.5" })}${fld("conta.fcc", "Fração do consumo em CC (0–1)", { step: "0.05" })}${fld("conta.fcrit", "Fração crítica durante falta (0–1)", { step: "0.05" })}</div>
     <div class="tbl"><table><thead><tr><th>Mês</th>${MESES.map(m => `<th class="r">${m}</th>`).join("")}</tr></thead><tbody>
@@ -1011,7 +1162,7 @@ Mês de dimensionamento = máx(E_bat,mês / HSP_mês) → ${MESES[R.mesDim]}: ${
     ${fld("crit.tbat", "Temperatura média do abrigo das baterias (°C)", { step: "1", hint: "cada +10 °C acima de 25 °C reduz a vida à metade" })}
     ${fld("crit.tpart", "Duração do pico de partida (s)", { step: "0.1", hint: "compressor/motor direto: 0,3–1 s" })}${fld("crit.kfrio", "Fator R(−18 °C)/R(25 °C) para CCA", { step: "0.1", hint: "chumbo ≈ 1,6–2,0" })}</div></div>
     <div class="block"><h3>Módulo fotovoltaico</h3><div class="grid">${fld("eq.mod.nome", "Modelo", { type: "text" })}${fld("eq.mod.p", "Pmáx (W)")}${fld("eq.mod.voc", "Voc (V)")}${fld("eq.mod.vmp", "Vmp (V)")}${fld("eq.mod.isc", "Isc (A)")}${fld("eq.mod.imp", "Imp (A)")}${fld("eq.mod.bvoc", "Coef. temp. Voc (%/°C)", { step: "0.01" })}${fld("eq.mod.fusmax", "Fusível máx. em série (A)")}${fld("eq.mod.comp", "Comprimento do módulo (m)", { step: "0.001" })}${fld("eq.mod.larg", "Largura do módulo (m)", { step: "0.001" })}</div></div>
-    <div class="block"><h3>Bateria (unidade)</h3><div class="grid">${fld("eq.bat.nome", "Modelo", { type: "text" })}${fld("eq.bat.v", "Tensão nominal (V)", { step: "0.1" })}${fld("eq.bat.ah", "Capacidade (Ah, C20/C10)")}${fld("eq.bat.ri", "Resistência interna (mΩ)", { step: "0.1", hint: "catálogo ou medida com a bateria nova" })}${fld("eq.bat.imax", "Corrente máx. contínua de descarga (A)")}${fld("eq.bat.ipico", "Corrente de pico (A)", { hint: "limite do BMS/fabricante" })}${fld("eq.bat.tpico", "Duração do pico (s)", { step: "0.5" })}${fld("eq.bat.cca", "CCA (A, só chumbo; 0 = não informado)", { hint: "30 s a −18 °C até 7,2 V (12 V)" })}${S.crit.bat === "li" ? fld("eq.bat.bms", "BMS", { opts: [["integrado", "Integrado no módulo (rack)"], ["externo", "Externo (células avulsas)"]] }) : ""}</div><div class="actions"><button class="btn small ghost" type="button" id="batPadrao">Usar bateria padrão desta tecnologia</button></div></div>
+    <div class="block"><h3>Bateria (unidade)</h3><div class="grid">${fld("eq.bat.nome", "Modelo", { type: "text" })}${fld("eq.bat.v", "Tensão nominal (V)", { step: "0.1" })}${fld("eq.bat.ah", "Capacidade (Ah, C20/C10)")}${fld("eq.bat.ri", "Resistência interna (mΩ)", { step: "0.1", hint: "catálogo ou medida com a bateria nova" })}${fld("eq.bat.imax", "Corrente máx. contínua de descarga (A)")}${fld("eq.bat.ipico", "Corrente de pico (A)", { hint: "limite do BMS/fabricante" })}${fld("eq.bat.tpico", "Duração do pico (s)", { step: "0.5" })}${fld("eq.bat.cca", "CCA (A, só chumbo; 0 = não informado)", { hint: "30 s a −18 °C até 7,2 V (12 V)" })}${S.crit.bat === "li" ? fld("eq.bat.bms", "BMS", { opts: [["integrado", "Integrado no módulo (rack)"], ["externo", "Externo (células avulsas)"]] }) : ""}</div><div class="actions"><button class="btn small ghost" type="button" id="batPadrao" data-tip="Repõe a bateria de referência da tecnologia escolhida (modelo, tensão, Ah, resistência e limites).">Usar bateria padrão desta tecnologia</button></div></div>
     <div class="block"><h3>Controlador de carga MPPT</h3><div class="grid">${fld("eq.ctrl.nome", "Modelo", { type: "text" })}${fld("eq.ctrl.imax", "Corrente máx. de carga (A)")}${fld("eq.ctrl.vocmax", "Voc máx. de entrada (V)")}${fld("eq.ctrl.p48", "Potência FV máx. em 48 V (W)", { hint: "proporcional à tensão do banco" })}</div></div>
     <div class="block"><h3>Inversor off-grid</h3><div class="grid">${fld("eq.inv.nome", "Modelo", { type: "text" })}${fld("eq.inv.p", "Potência contínua (W)")}${fld("eq.inv.surto", "Fator de surto (× P, ~5 s)", { step: "0.1" })}${fld("eq.inv.eta", "Rendimento", { step: "0.01" })}${fld("eq.inv.carr", "Carregador CA (A)", { hint: "recarga pelo gerador" })}${fld("eq.inv.vcorte", "Corte por subtensão (V; 0 = automático)", { step: "0.1", hint: `automático: ${fmt(R.Vnom * R.T.vCorte, 1)} V` })}</div></div>`; },
   ex: () => { if (S.modo !== "existente") return `<p class="note">Esta etapa é usada para <b>analisar um sistema já instalado</b>. Mude o “Tipo de estudo” na etapa 01 para “Analisar sistema existente”.</p>`;
@@ -1071,8 +1222,8 @@ CCA equivalente = 5,4/(k_frio·R_12V) = 5,4/(${R.kfrio}·${fmt(R.r12(o.riTeste),
     <div class="block"><h3>Analisador de baterias (uma linha por bateria)</h3>
     <div class="tbl ct ana"><table><thead><tr><th>ID</th><th class="r">Tensão (V)</th><th class="r">Ri (mΩ)</th><th class="r">CCA medido</th><th class="r">CCA nominal</th><th class="r">SOH (%)</th><th class="r">SOC (%)</th><th></th></tr></thead><tbody>
     ${(S.analise || []).map((u, i) => { const r = o.units?.find(x => x.id === (u.id || "B" + (i + 1))); return `<tr class="${r?.fl.length ? "crit" : ""}"><td><input class="w-s" data-u="${i}" data-uf="id" type="text" value="${esc(u.id)}"></td>${["v", "ri", "cca", "ccaNom", "soh", "soc"].map(f => `<td><input class="w-s" data-u="${i}" data-uf="${f}" type="number" step="any" value="${esc(u[f])}"></td>`).join("")}<td><button class="btn small danger" type="button" data-udel="${i}">×</button></td></tr>${r ? `<tr class="${r.fl.length ? "crit" : ""}"><td></td><td colspan="7" class="step-hint" style="white-space:normal">SOH ${r.soh != null ? pct(r.soh) : "—"} · SOC ${r.soc != null ? pct(r.soc) : "—"} · CCA pela Ri ${fmt0(r.ccaRi)} A${r.fl.length ? " · <b>" + r.fl.join("; ") + "</b>" : " · ok"}</td></tr>` : ""}`; }).join("")}</tbody></table></div>
-    <div class="actions"><button class="btn small" type="button" id="addU">+ Bateria</button><button class="btn small ghost" type="button" id="limpaU">Limpar</button></div>
-    <details><summary>Colar exportação do analisador (CSV)</summary><p class="step-hint">Uma bateria por linha: <span class="mono">ID; tensão V; Ri mΩ; CCA medido; CCA nominal; SOH %; SOC %</span> (separador ; , ou tab). Funciona com o relatório de analisadores de condutância (Midtronics, Konnwei, Foxwell, Ancel e similares) depois de exportado para planilha.</p><textarea id="colarU" placeholder="B1;12,62;4,3;720;760;95;98"></textarea><div class="actions"><button class="btn small primary" type="button" id="btnColarU">Ler</button></div></details>
+    <div class="actions"><button class="btn small" type="button" id="addU" data-tip="Inclui uma linha para os dados de uma bateria medidos pelo analisador.">+ Bateria</button><button class="btn small ghost" type="button" id="limpaU">Limpar</button></div>
+    <details><summary>Colar exportação do analisador (CSV)</summary><p class="step-hint">Uma bateria por linha: <span class="mono">ID; tensão V; Ri mΩ; CCA medido; CCA nominal; SOH %; SOC %</span> (separador ; , ou tab). Funciona com o relatório de analisadores de condutância (Midtronics, Konnwei, Foxwell, Ancel e similares) depois de exportado para planilha.</p><textarea id="colarU" placeholder="B1;12,62;4,3;720;760;95;98"></textarea><div class="actions"><button class="btn small primary" type="button" id="btnColarU" data-tip="Importa as linhas coladas: ID; tensão; Ri; CCA; CCA nominal; SOH; SOC.">Ler</button></div></details>
     ${o.units ? `<p class="note ${o.trocar || o.riSpread > 0.25 ? "warn" : "ok"}">${o.units.length} bateria(s) · pior SOH ${pct(o.sohMin)} · SOH do banco ${pct(o.sohUnid)} (${R.bNs > 1 ? "série: vale a pior" : "paralelo: média"}) · dispersão de Ri ${pct(o.riSpread)}${o.trocar ? ` · <b>${o.trocar} para substituir</b> — ${R.bNs > 1 ? "em série a pior bateria limita a fileira: troque a fileira inteira ou reagrupe por Ri semelhante" : "em paralelo, substitua só a unidade ruim por outra do mesmo modelo (lítio: mesmo firmware; chumbo: mesma idade)"}` : ""}.</p>` : ""}</div>
     ${o.tem ? `<div class="res">
     ${o.soc != null ? card("SOC", pct(o.soc), `OCV ${fmt(o.vcel, 3)} V/célula`) + card("DoD atual", pct(o.dod), "1 − SOC") : ""}
@@ -1129,7 +1280,7 @@ Chave: In ≥ 1,25 × máx(I_inv ${fmt(R.iAc)} A; I_gerador ${fmt(R.iGer)} A) = 
     <div class="res">${card("Equipamentos", brl(C.eq))}${card("Serviços", brl(C.sv))}${card("Deslocamento e despesas", brl(C.desl))}${card("BDI + impostos", brl(C.bdi + C.imp))}${card("Total", brl(C.total))}${card("R$/Wp", fmt(R.indic.rsWp, 2))}${card("R$/kWh armazenado", fmt0(R.indic.rsKwh))}${card("Custo da energia (25 anos)", "R$ " + fmt(R.indic.lcoe, 2) + "/kWh", `${R.indic.trocas} troca(s) do banco`)}</div>
     <details><summary>Fontes dos preços de referência</summary><ul>${Object.values(S.precos).map(p => `<li>${esc(p.d)}: ${brl(n(p.pu))} — ${esc(p.f)}</li>`).join("")}</ul></details>`; },
   fim: () => `<p class="intro">Salve o projeto em JSON para editar depois e gere o relatório em PDF com memória de cálculo, esquema, lista de materiais e custos.</p>
-    <div class="actions"><button class="btn primary" type="button" id="btnPdf">Gerar relatório PDF</button><button class="btn" type="button" id="btnSave2">Exportar JSON</button></div><div class="progress"><div id="pdfProg"></div></div><p class="note" id="pdfMsg">O PDF inclui: identificação, irradiação (pior caso), cargas, banco de baterias e vida útil, gerador FV, controlador, inversor, transferência, proteções, cabos, diagrama unifilar, materiais e custos.</p>
+    <div class="actions"><button class="btn primary" type="button" id="btnPdf" data-tip="Gera o relatório com memória de cálculo, unifilar, materiais e custos.">Gerar relatório PDF</button><button class="btn" type="button" id="btnSave2" data-tip="Baixa o projeto em JSON para reabrir e editar depois (Importar projeto).">Exportar JSON</button></div><div class="progress"><div id="pdfProg"></div></div><p class="note" id="pdfMsg">O PDF inclui: identificação, irradiação (pior caso), cargas, banco de baterias e vida útil, gerador FV, controlador, inversor, transferência, proteções, cabos, diagrama unifilar, materiais e custos.</p>
     ${avisos() || '<p class="note ok">Sem alertas de cálculo.</p>'}`
 };
 
