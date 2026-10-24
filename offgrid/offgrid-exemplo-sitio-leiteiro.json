@@ -113,6 +113,7 @@
   },
   "cargas": [
     {
+      "nat": "mot",
       "nome": "Ordenhadeira (motor 1 cv)",
       "tipo": "CA",
       "q": 1,
@@ -123,6 +124,7 @@
       "crit": 1
     },
     {
+      "nat": "comp",
       "nome": "Resfriador de leite (compressor)",
       "tipo": "CA",
       "q": 1,
@@ -133,6 +135,7 @@
       "crit": 1
     },
     {
+      "nat": "mot",
       "nome": "Bomba d'água 1/2 cv",
       "tipo": "CA",
       "q": 1,
@@ -143,6 +146,7 @@
       "crit": 1
     },
     {
+      "nat": "ele",
       "nome": "Iluminação LED (galpão e casa)",
       "tipo": "CA",
       "q": 10,
@@ -153,6 +157,7 @@
       "crit": 1
     },
     {
+      "nat": "comp",
       "nome": "Geladeira residencial",
       "tipo": "CA",
       "q": 1,
@@ -163,6 +168,7 @@
       "crit": 1
     },
     {
+      "nat": "ele",
       "nome": "TV, roteador e carregadores",
       "tipo": "CA",
       "q": 1,
@@ -173,6 +179,7 @@
       "crit": 0
     },
     {
+      "nat": "ele",
       "nome": "Cerca elétrica (12 V CC)",
       "tipo": "CC",
       "q": 1,
@@ -193,6 +200,7 @@
     "drec": 0,
     "tbat": 25,
     "tpart": 0.5,
+    "kfrio": 1.8,
     "bat": "li",
     "dod": 0.8,
     "ftemp": 1,
@@ -248,6 +256,7 @@
     "lfv": 25,
     "lbat": 2,
     "lca": 20,
+    "lger": 15,
     "dvfv": 2,
     "dvbat": 1,
     "dvca": 2
@@ -263,6 +272,120 @@
     "idade": 1,
     "ciclos": 320
   },
+  "modo": "novo",
+  "entrada": "lista",
+  "conta": {
+    "meses": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "pior": "",
+    "mesPior": 0,
+    "amp": 25,
+    "fcc": 0,
+    "fcrit": 1,
+    "psim": "",
+    "pmotor": "",
+    "kp": 6
+  },
+  "exist": {
+    "ns": "",
+    "nstr": "",
+    "bns": "",
+    "bnp": "",
+    "nctrl": "",
+    "ninv": "",
+    "sfv": "",
+    "sctrl": "",
+    "sinv": "",
+    "sbat": "",
+    "sca": "",
+    "fusbat": ""
+  },
+  "analise": [
+    {
+      "id": "M1",
+      "v": 52.9,
+      "ri": 20.5,
+      "cca": "",
+      "ccaNom": "",
+      "soh": 97,
+      "soc": 74
+    },
+    {
+      "id": "M2",
+      "v": 52.9,
+      "ri": 21,
+      "cca": "",
+      "ccaNom": "",
+      "soh": 96,
+      "soc": 74
+    },
+    {
+      "id": "M3",
+      "v": 52.8,
+      "ri": 21.8,
+      "cca": "",
+      "ccaNom": "",
+      "soh": 95,
+      "soc": 73
+    },
+    {
+      "id": "M4",
+      "v": 52.9,
+      "ri": 20.2,
+      "cca": "",
+      "ccaNom": "",
+      "soh": 98,
+      "soc": 74
+    },
+    {
+      "id": "M5",
+      "v": 52.8,
+      "ri": 22.4,
+      "cca": "",
+      "ccaNom": "",
+      "soh": 95,
+      "soc": 73
+    },
+    {
+      "id": "M6",
+      "v": 52.6,
+      "ri": 29.5,
+      "cca": "",
+      "ccaNom": "",
+      "soh": 79,
+      "soc": 70
+    },
+    {
+      "id": "M7",
+      "v": 52.9,
+      "ri": 20.8,
+      "cca": "",
+      "ccaNom": "",
+      "soh": 97,
+      "soc": 74
+    },
+    {
+      "id": "M8",
+      "v": 52.8,
+      "ri": 21.5,
+      "cca": "",
+      "ccaNom": "",
+      "soh": 96,
+      "soc": 73
+    }
+  ],
   "precos": {
     "mod": {
       "d": "Módulo fotovoltaico 550 W monocristalino",
@@ -449,6 +572,26 @@
   },
   "exemplo": true,
   "resultados": {
+    "modo": "novo",
+    "entrada": "lista",
+    "mesDimensionamento": "Jun",
+    "consumoMensalWhDia": [
+      12165,
+      12165,
+      12165,
+      12165,
+      12165,
+      12165,
+      12165,
+      12165,
+      12165,
+      12165,
+      12165,
+      12165
+    ],
+    "ccaNecessario": 24.333005156521597,
+    "ccaEsperado": 400.00000000000006,
+    "itensAdequar": null,
     "hsp": 3.85,
     "mesCritico": "Jun",
     "consumoWh": 12165,
@@ -472,15 +615,15 @@
     "capacitorF": 0,
     "estado": {
       "soc": 0.7312500000000004,
-      "soh": 0.97,
-      "soeWh": 29053.440000000013,
+      "soh": 0.9412499999999999,
+      "soeWh": 28192.320000000014,
       "sopW": 52838.4,
       "dvBalanceamentoV": 0.02499999999999991,
-      "vidaRestanteAnos": 5.666666666666659
+      "vidaRestanteAnos": 2.404255319148931
     },
     "controladores": 3,
     "inversor": 5000,
-    "totalR$": 118994.04,
-    "geradoEm": "2026-10-24T00:06:47.527Z"
+    "totalR$": 120039.48000000001,
+    "geradoEm": "2026-10-24T00:38:21.115Z"
   }
 }

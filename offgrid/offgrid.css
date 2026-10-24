@@ -18,3 +18,5 @@ td.min{outline:2px solid var(--bad);outline-offset:-2px;font-weight:700}
 #mapa{font-size:12px}
 @media print{.steps,.summary,.top .actions,.nav{display:none}.layout{grid-template-columns:1fr}}
 .formula{white-space:pre-wrap;overflow-wrap:anywhere}
+.cab table{font-size:12px}.cab td,.cab th{padding:6px 6px}
+.ana input{width:62px;padding:6px}.ana td,.ana th{padding:5px 5px;font-size:12px}

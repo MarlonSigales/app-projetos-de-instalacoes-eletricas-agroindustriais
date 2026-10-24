@@ -30,6 +30,10 @@ const DISJ = [6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125, 160, 200, 250];
 const FUS_PV = [10, 12, 15, 16, 20, 25, 30, 32];
 const FUS_BAT = [63, 80, 100, 125, 160, 200, 250, 300, 355, 400, 500, 630];
 const SEC = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120, 150, 185, 240];
+const NAT = { res: { t: "Resistiva", kp: 1 }, ele: { t: "Eletrônica/LED", kp: 1 }, mot: { t: "Motor (partida direta)", kp: 6 }, comp: { t: "Compressor (refrigeração)", kp: 5 }, ss: { t: "Motor c/ soft-starter", kp: 3 }, vfd: { t: "Motor c/ inversor de frequência", kp: 1.5 } };
+const DM = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+// barras de cobre retangulares, nuas, 35 °C (DIN 43671) — usadas com fator 0,8 em quadro fechado
+const BARRAS = [["12×2", 24, 108], ["15×3", 45, 162], ["20×3", 60, 204], ["20×5", 100, 274], ["25×5", 125, 327], ["30×5", 150, 379], ["40×5", 200, 482], ["50×5", 250, 583], ["60×5", 300, 688]];
 const IZ = [17.5, 24, 32, 41, 57, 76, 101, 125, 151, 192, 232, 269, 309, 353, 415]; // NBR 5410 Tab. 36, B1, 2 condutores carregados, Cu/PVC
 
 /* --------- preços de referência (out/2026); editáveis --------- */
@@ -78,7 +82,7 @@ function novo() {
     local: { lat: "", lon: "", fonte: "", estacao: "", municipio: "", dist: "", rows: [], sel: 3, consultado: "", obs: "" },
     temp: { tmin: 0, tmax: 35 },
     cargas: [],
-    crit: { vbanco: "auto", aut: 2, fnub: 0, nnub: 6, hfalta: 0, nfalta: 0, drec: 0, tbat: 25, tpart: 0.5, bat: "li", dod: 0.8, ftemp: 1.0, etaInv: 0.92, etaCabo: 0.97, pr: 0.80, vac: 220, fases: 1 },
+    crit: { vbanco: "auto", aut: 2, fnub: 0, nnub: 6, hfalta: 0, nfalta: 0, drec: 0, tbat: 25, tpart: 0.5, kfrio: 1.8, bat: "li", dod: 0.8, ftemp: 1.0, etaInv: 0.92, etaCabo: 0.97, pr: 0.80, vac: 220, fases: 1 },
     eq: {
       mod: { nome: "Módulo 550 W mono (144 células)", p: 550, voc: 49.6, vmp: 41.96, isc: 14.0, imp: 13.11, bvoc: -0.27, fusmax: 25 },
       bat: Object.assign({}, TIPOS.li.unid),
@@ -86,8 +90,12 @@ function novo() {
       inv: { nome: "Inversor off-grid 5 kW 48 V senoidal pura", p: 5000, surto: 2.0, eta: 0.92, carr: 60, vcorte: 0 }
     },
     backup: { tipo: "gerador", chave: "auto", pger: 0 },
-    cabos: { lfv: 25, lbat: 2, lca: 20, dvfv: 2, dvbat: 1, dvca: 2 },
-    estado: { ocv: "", cmed: "", rmed: "", ccamed: "", vmax: "", vmin: "", nivel: "celula", idade: "", ciclos: "" },
+    cabos: { lfv: 25, lbat: 2, lca: 20, lger: 15, dvfv: 2, dvbat: 1, dvca: 2 },
+    estado: { ocv: "", cmed: "", rmed: "", ccamed: "", vmax: "", vmin: "", nivel: "celula", idade: "", ciclos: "", v0: "", v1: "", i1: "" },
+    modo: "novo", entrada: "lista",
+    conta: { meses: ["", "", "", "", "", "", "", "", "", "", "", ""], pior: "", mesPior: 0, amp: 25, fcc: 0, fcrit: 1, psim: "", pmotor: "", kp: 6 },
+    exist: { ns: "", nstr: "", bns: "", bnp: "", nctrl: "", ninv: "", sfv: "", sctrl: "", sinv: "", sbat: "", sca: "", fusbat: "" },
+    analise: [],
     precos: precosPadrao(), mo: moPadrao(), exemplo: false
   };
 }
@@ -104,17 +112,18 @@ function exemplo() {
   s.local.obs = "Substitua estes valores pela consulta ao CRESESB/SunData da coordenada da obra.";
   s.temp = { tmin: -2, tmax: 36 };
   s.cargas = [
-    { nome: "Ordenhadeira (motor 1 cv)", tipo: "CA", q: 1, w: 900, h: 2, fs: 1, kp: 5, crit: 1 },
-    { nome: "Resfriador de leite (compressor)", tipo: "CA", q: 1, w: 1100, h: 6, fs: 1, kp: 5, crit: 1 },
-    { nome: "Bomba d'água 1/2 cv", tipo: "CA", q: 1, w: 450, h: 1.5, fs: 1, kp: 4, crit: 1 },
-    { nome: "Iluminação LED (galpão e casa)", tipo: "CA", q: 10, w: 15, h: 5, fs: 1, kp: 1, crit: 1 },
-    { nome: "Geladeira residencial", tipo: "CA", q: 1, w: 150, h: 10, fs: 1, kp: 4, crit: 1 },
-    { nome: "TV, roteador e carregadores", tipo: "CA", q: 1, w: 120, h: 6, fs: 1, kp: 1, crit: 0 },
-    { nome: "Cerca elétrica (12 V CC)", tipo: "CC", q: 1, w: 5, h: 24, fs: 1, kp: 1, crit: 1 }
+    { nat: "mot", nome: "Ordenhadeira (motor 1 cv)", tipo: "CA", q: 1, w: 900, h: 2, fs: 1, kp: 5, crit: 1 },
+    { nat: "comp", nome: "Resfriador de leite (compressor)", tipo: "CA", q: 1, w: 1100, h: 6, fs: 1, kp: 5, crit: 1 },
+    { nat: "mot", nome: "Bomba d'água 1/2 cv", tipo: "CA", q: 1, w: 450, h: 1.5, fs: 1, kp: 4, crit: 1 },
+    { nat: "ele", nome: "Iluminação LED (galpão e casa)", tipo: "CA", q: 10, w: 15, h: 5, fs: 1, kp: 1, crit: 1 },
+    { nat: "comp", nome: "Geladeira residencial", tipo: "CA", q: 1, w: 150, h: 10, fs: 1, kp: 4, crit: 1 },
+    { nat: "ele", nome: "TV, roteador e carregadores", tipo: "CA", q: 1, w: 120, h: 6, fs: 1, kp: 1, crit: 0 },
+    { nat: "ele", nome: "Cerca elétrica (12 V CC)", tipo: "CC", q: 1, w: 5, h: 24, fs: 1, kp: 1, crit: 1 }
   ];
   s.backup = { tipo: "gerador", chave: "auto", pger: 0 };
   Object.assign(s.crit, { aut: 2, fnub: 0, nnub: 6, hfalta: 0, nfalta: 0, drec: 0, tbat: 25, tpart: 0.5 });
   s.estado = { ocv: 52.9, cmed: 97, rmed: 23, ccamed: "", vmax: 3.315, vmin: 3.29, nivel: "celula", idade: 1, ciclos: 320 };
+  s.analise = [[52.9, 20.5, 97, 74], [52.9, 21.0, 96, 74], [52.8, 21.8, 95, 73], [52.9, 20.2, 98, 74], [52.8, 22.4, 95, 73], [52.6, 29.5, 79, 70], [52.9, 20.8, 97, 74], [52.8, 21.5, 96, 73]].map(([v, ri, soh, soc], i) => ({ id: "M" + (i + 1), v, ri, cca: "", ccaNom: "", soh, soc }));
   return s;
 }
 
@@ -265,17 +274,62 @@ function secao(I, L, V, dv, min) {
   const dvReal = V > 0 ? 2 * L * I / (56 * s) / V * 100 : 0;
   return { s, sdv, sA, dv: dvReal, iz: IZ[SEC.indexOf(s)] ?? null };
 }
+const ex = k => S.modo === "existente" ? n(S.exist?.[k]) : 0;
+function cabEx(k, req, I, Lm, V) { const sE = ex(k); if (!sE) return req; const dv = V > 0 ? 2 * Lm * I / (56 * sE) / V * 100 : 0, iz = IZ[SEC.indexOf(sE)] ?? IZ[SEC.findIndex(x => x >= sE)] ?? null; return { ...req, s: sE, dv, iz, req: req.s, ok: sE >= req.s }; }
+function barra(I) { if (I <= 0) return { txt: "12×2 (mín.)", sec: 24, iz: 108, np: 1 }; for (let np = 1; np <= 3; np++) { const b = BARRAS.find(x => 0.8 * x[2] * np * (np > 1 ? 0.85 : 1) >= I); if (b) return { txt: (np > 1 ? np + "× " : "") + b[0] + " mm", sec: b[1] * np, iz: b[2] * np * (np > 1 ? 0.85 : 1), np }; } return { txt: "barra especial", sec: Math.ceil(I / 1.2), iz: I, np: 0 }; }
+function comparar(R) {
+  const C = [], m = S.eq.mod, ct = S.eq.ctrl, ub = S.eq.bat, Vreal = R.bNs * n(ub.v);
+  C.push(["Gerador FV", `${fmt(R.Pnec / 1000, 2)} kWp (${R.NmodDim} mód. ${R.NsDim}S×${R.NstrDim}P)`, `${fmt(R.Pfv / 1000, 2)} kWp (${R.Ns}S×${R.Nstr}P)`, R.Pfv >= R.Pnec * 0.98, `folga no mês crítico ${pct(R.sobra)}`]);
+  C.push(["Módulos em série", `${R.NsMin} a ${R.NsMax}`, String(R.Ns), R.Ns >= R.NsMin && R.Ns <= R.NsMax, `Voc,máx ${fmt0(R.vocArr)} V (limite ${ct.vocmax} V); Vmp quente ${fmt0(R.vmpQ * R.Ns)} V (mín. ${fmt0(R.vChg + 5)} V)`]);
+  C.push(["Tensão do banco", `${R.Vb} V`, `${fmt(Vreal, 1)} V (${R.bNs} × ${n(ub.v)} V)`, Math.abs(Vreal - R.Vb) / R.Vb < 0.15, "série coerente com a tensão do inversor/controlador"]);
+  C.push(["Capacidade do banco", `${fmt0(R.Cah)} Ah (${R.bNsDim}S×${R.bNpDim}P)`, `${fmt0(R.CinstAh)} Ah (${R.bNs}S×${R.bNp}P)`, R.CinstAh >= R.Cah * 0.98, `autonomia ${fmt(R.autReal, 1)} dias; DoD diário ${pct(R.dodDia)}; vida ${fmt(R.vida, 1)} anos`]);
+  const pk = R.strCtrl * R.Ns * n(m.p);
+  C.push(["Controladores", `${R.nCtrlDim}× ${ct.imax} A (p/ ${R.Nstr} strings instaladas)`, `${R.nCtrl}× ${ct.imax} A`, R.iCtrl <= n(ct.imax) * 1.001 && pk <= R.pCtrl * 1.001, `${fmt(R.iCtrl, 1)} A e ${fmt0(pk)} W por controlador (limites ${ct.imax} A, ${fmt0(R.pCtrl)} W)`]);
+  C.push(["Inversor", `${fmt0(R.PinvNec)} W; surto ${fmt0(R.surto)} W`, `${R.invN}× ${fmt0(n(S.eq.inv.p))} W; surto ${fmt0(R.surtoInv)} W`, R.Pinv >= R.PinvNec * 0.98 && R.surtoInv >= R.surto, "potência contínua e partida dos motores"]);
+  R.cabos.forEach(x => { if (x.c.req != null) C.push([`Cabo ${x.t}`, `${x.c.req} mm²`, `${x.c.s} mm²`, x.c.ok && x.c.iz >= x.I, `I = ${fmt(x.I, 1)} A; Iz ${x.c.iz ?? "—"} A; ΔV ${fmt(x.c.dv, 2)}%`]); });
+  const fe = ex("fusbat"); if (fe) C.push(["Fusível do banco", `${R.inFusBat} A`, `${fe} A`, fe >= 1.25 * R.iBat * 0.95 && (!R.cBat.iz || fe <= R.cBat.iz * 1.45), `entre 1,25·I (${fmt0(1.25 * R.iBat)} A) e a capacidade do cabo do banco`]);
+  C.push(["Pico de partida", `≥ ${fmt(R.vCorte + R.marg, 1)} V`, `${fmt(R.Vsag, 1)} V`, !R.capNec, R.capNec ? `banco capacitivo ${fmt(R.capC, 1)} F ou partida suave` : "banco sustenta a partida"]);
+  return C;
+}
 const critica = l => !(l.crit === 0 || l.crit === false || l.crit === "0");
 function ocvCel(T, soc) { const t = T.ocv; soc = Math.max(0, Math.min(1, soc)); for (let i = 1; i < t.length; i++) if (soc <= t[i][0]) { const [s0, v0] = t[i - 1], [s1, v1] = t[i]; return v0 + (v1 - v0) * (soc - s0) / (s1 - s0); } return t[t.length - 1][1]; }
 function socOcv(T, v) { const t = T.ocv; if (v <= t[0][1]) return 0; for (let i = 1; i < t.length; i++) if (v <= t[i][1]) { const [s0, v0] = t[i - 1], [s1, v1] = t[i]; return s0 + (s1 - s0) * (v - v0) / (v1 - v0); } return 1; }
 function estadoBat(R) {
-  const e = S.estado || {}, T = R.T, ub = S.eq.bat, o = { tem: false };
+  const e = Object.assign({}, S.estado || {}), T = R.T, ub = S.eq.bat, o = { tem: false };
+  const kf = R.kfrio, cca12 = r => r > 0 ? 5.4 / (kf * R.r12(r)) : 0;
+  /* analisador de baterias: uma linha por bateria/módulo */
+  const U = (S.analise || []).filter(u => n(u.v) > 0 || n(u.ri) > 0 || n(u.cca) > 0);
+  if (U.length) {
+    o.tem = true;
+    const med = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0, vs = U.map(u => n(u.v)).filter(v => v > 0), ris = U.map(u => n(u.ri)).filter(v => v > 0).sort((a, b) => a - b);
+    const riMed = ris.length ? ris[Math.floor(ris.length / 2)] : 0;
+    o.units = U.map((u, i) => {
+      const ccaRi = cca12(n(u.ri) / 1000), nom = n(u.ccaNom) || R.ccaNom;
+      const sohs = [n(u.soh) > 0 ? n(u.soh) / 100 : null, n(u.ri) > 0 && n(ub.ri) > 0 ? Math.max(0, Math.min(1, 1 - 0.2 * (n(u.ri) - n(ub.ri)) / n(ub.ri))) : null, n(u.cca) > 0 && nom > 0 ? Math.min(1, n(u.cca) / nom) : null].filter(x => x != null);
+      const soh = sohs.length ? Math.min(...sohs) : null, socU = n(u.soc) > 0 ? n(u.soc) / 100 : (n(u.v) > 0 ? socOcv(T, n(u.v) / R.ncelU) : null);
+      const fl = [];
+      if (soh != null && soh < 0.8) fl.push("substituir (SOH < 80%)");
+      if (riMed > 0 && n(u.ri) > 1.25 * riMed) fl.push("Ri 25% acima da mediana");
+      if (n(u.cca) > 0 && R.ccaReq > 0 && n(u.cca) < R.ccaReq) fl.push("CCA abaixo do necessário");
+      return { id: u.id || "B" + (i + 1), v: n(u.v), ri: n(u.ri), cca: n(u.cca), nom, ccaRi, soh, soc: socU, fl };
+    });
+    if (!n(e.ocv) && vs.length) e.ocv = med(vs);
+    if (!n(e.rmed) && ris.length) e.rmed = med(ris);
+    if (!n(e.ccamed)) { const cc = U.map(u => n(u.cca)).filter(v => v > 0); if (cc.length) e.ccamed = med(cc); }
+    if (!(n(e.vmax) > 0) && vs.length > 1) { e.vmax = Math.max(...vs); e.vmin = Math.min(...vs); e.nivel = "bateria"; }
+    const sU = o.units.map(u => u.soh ?? 1); o.sohUnid = R.bNs > 1 ? Math.min(...sU) : sU.reduce((a, b) => a + b, 0) / sU.length; o.sohMin = Math.min(...sU); o.trocar = o.units.filter(u => u.soh != null && u.soh < 0.8).length;
+    o.riSpread = ris.length > 1 ? (ris[ris.length - 1] - ris[0]) / ris[0] : 0;
+  }
+  /* teste de carga: tensão em repouso, tensão sob carga e corrente → Ri e CCA equivalente */
+  if (n(e.v0) > 0 && n(e.v1) > 0 && n(e.i1) > 0 && n(e.v0) > n(e.v1)) { o.tem = true; o.riTeste = (n(e.v0) - n(e.v1)) / n(e.i1); o.ccaTeste = cca12(o.riTeste); if (!n(e.rmed)) e.rmed = o.riTeste * 1000; }
   if (n(e.ocv) > 0) { o.tem = true; o.vcel = n(e.ocv) / R.ncelU; o.soc = socOcv(T, o.vcel); o.dod = 1 - o.soc; }
   if (n(e.cmed) > 0) { o.tem = true; o.sohC = n(e.cmed) / n(ub.ah); }
   if (n(e.rmed) > 0 && n(ub.ri) > 0) { o.tem = true; o.sohR = Math.max(0, Math.min(1, 1 - 0.2 * (n(e.rmed) - n(ub.ri)) / n(ub.ri))); }
-  if (n(e.ccamed) > 0 && n(ub.cca) > 0) { o.tem = true; o.sohCCA = Math.min(1, n(e.ccamed) / n(ub.cca)); }
+  if (n(e.ccamed) > 0 && R.ccaNom > 0) { o.tem = true; o.sohCCA = Math.min(1, n(e.ccamed) / R.ccaNom); }
   const sohs = [["capacidade", o.sohC], ["resistência interna", o.sohR], ["CCA", o.sohCCA]].filter(x => x[1] != null);
+  if (o.sohUnid != null) sohs.push([R.bNs > 1 ? "pior bateria da série (analisador)" : "média das baterias em paralelo (analisador)", o.sohUnid]);
   if (sohs.length) { const m = sohs.reduce((a, b) => b[1] < a[1] ? b : a); o.soh = Math.min(1, m[1]); o.sohFonte = m[0]; }
+  if (n(e.rmed) > 0) o.ccaRi = cca12(n(e.rmed) / 1000);
   if (o.soc != null) {
     const soh = o.soh ?? 1, rb = (n(e.rmed) || n(ub.ri)) / 1000 * R.bNs / R.bNp + R.Rcabo;
     o.soe = o.soc * soh * R.CinstWh;
@@ -306,13 +360,34 @@ function calcular() {
     R.hsp = Math.min(...row.m); R.mesCrit = row.m.indexOf(R.hsp); R.hspMed = row.media;
     if (row.nome !== "Maior mínimo mensal") R.avisos.push(`A linha selecionada é “${row.nome}”. Para off-grid, o critério é o pior caso: use a linha “Maior mínimo mensal”, que maximiza o mês mais fraco.`);
   } else { R.hsp = 0; R.avisos.push("Sem dados de irradiação: consulte o CRESESB na etapa 02."); }
-  /* cargas */
+  /* cargas: lista de equipamentos ou conta de energia (mês de maior consumo + variação anual) */
   let ECA = 0, ECC = 0, Psim = 0, Pinst = 0, Pmot = 0, Pcc = 0;
-  R.cargas = S.cargas.map(l => { const e = n(l.q) * n(l.w) * n(l.h); if (l.tipo === "CC") { ECC += e; Pcc += n(l.q) * n(l.w); } else { ECA += e; Psim += n(l.q) * n(l.w) * Math.min(1, Math.max(0, n(l.fs) || 1)); Pinst += n(l.q) * n(l.w); if (n(l.kp) > 1) Pmot = Math.max(Pmot, n(l.w) * (n(l.kp) - 1)); } return { ...l, e }; });
+  R.entrada = S.entrada === "conta" ? "conta" : "lista";
+  R.cargas = R.entrada === "lista" ? S.cargas.map(l => { const e = n(l.q) * n(l.w) * n(l.h), kp = n(l.kp) || NAT[l.nat]?.kp || 1; if (l.tipo === "CC") { ECC += e; Pcc += n(l.q) * n(l.w); } else { ECA += e; Psim += n(l.q) * n(l.w) * Math.min(1, Math.max(0, n(l.fs) || 1)); Pinst += n(l.q) * n(l.w); if (kp > 1) Pmot = Math.max(Pmot, n(l.w) * (kp - 1)); } return { ...l, e, kp }; }) : [];
+  if (R.entrada === "conta") {
+    const k = S.conta, dados = (k.meses || []).map(v => n(v));
+    let Ep = n(k.pior), mp = Math.max(0, Math.min(11, +k.mesPior || 0));
+    if (dados.some(v => v > 0) && (!Ep || Math.max(...dados) > Ep)) { Ep = Math.max(...dados); mp = dados.indexOf(Ep); }
+    const a = Math.min(0.9, Math.max(0, n(k.amp) / 100));
+    R.kwhMes = MESES.map((_, i) => dados[i] > 0 ? dados[i] : Ep * (1 - a * (1 - Math.cos(2 * Math.PI * (i - mp) / 12)) / 2));
+    R.kwhPrev = MESES.map((_, i) => !(dados[i] > 0)); R.mesPiorConta = mp;
+    const Emax = Math.max(...R.kwhMes.map((v, i) => v * 1000 / DM[i])), fcc = Math.min(1, Math.max(0, n(k.fcc)));
+    ECA = Emax * (1 - fcc); ECC = Emax * fcc;
+    R.psimEst = !n(k.psim); Psim = n(k.psim) || Emax / 6;
+    Pmot = n(k.pmotor) * (Math.max(1, n(k.kp) || 1) - 1); Pinst = Psim;
+    if (!Ep) R.avisos.push("Entrada pela conta: informe o consumo (kWh) do mês de maior gasto ou os 12 meses da conta.");
+    if (R.psimEst) R.avisos.push(`Potência simultânea não informada: estimada em ${fmt0(Psim)} W (consumo diário / 6 h). Informe a demanda real para dimensionar o inversor.`);
+  }
   Object.assign(R, { ECA, ECC, Psim, Pinst, Pcc });
   R.surto = Psim + Pmot;
-  R.Ebat = ECC / c.etaCabo + ECA / (c.etaInv * c.etaCabo);
-  R.Efv = R.Ebat / T.eta;
+  const Etot = ECA + ECC, kbat = Etot > 0 ? (ECC / c.etaCabo + ECA / (c.etaInv * c.etaCabo)) / Etot : 1 / (c.etaInv * c.etaCabo);
+  R.Emes = R.entrada === "conta" ? R.kwhMes.map((v, i) => v * 1000 / DM[i]) : MESES.map(() => Etot);
+  R.EbatMes = R.Emes.map(E => E * kbat);
+  R.Ebat = Math.max(...R.EbatMes);
+  /* mês de dimensionamento: maior razão consumo/irradiação (no verão a conta pode ser maior, mas o inverno gera menos) */
+  if (row) { const rz = R.EbatMes.map((E, i) => E / row.m[i]); R.mesDim = rz.indexOf(Math.max(...rz)); } else R.mesDim = 0;
+  R.hspDim = row ? row.m[R.mesDim] : 0; R.EbatDim = R.EbatMes[R.mesDim];
+  R.Efv = R.EbatDim / T.eta; R.EfvMes = R.EbatMes.map(E => E / T.eta);
   /* tensão do banco */
   const Pinv0 = 1.25 * Psim;
   let Vb = c.vbanco === "auto" ? (Pinv0 <= 1500 ? 12 : Pinv0 <= 3000 ? 24 : 48) : n(c.vbanco);
@@ -324,7 +399,7 @@ function calcular() {
   R.dod = dod; R.T = T;
   /* autonomia: o maior entre a sequência de dias nublados e a falta da concessionária (cargas críticas) */
   const ft = n(c.ftemp) || 1, Nn = Math.max(0, n(c.aut)), fn = Math.min(0.9, Math.max(0, n(c.fnub)));
-  R.EcritBat = R.cargas.filter(l => critica(l)).reduce((a, l) => a + (l.tipo === "CC" ? l.e / c.etaCabo : l.e / (c.etaInv * c.etaCabo)), 0);
+  R.EcritBat = R.entrada === "conta" ? R.Ebat * Math.min(1, Math.max(0, n(S.conta.fcrit))) : R.cargas.filter(l => critica(l)).reduce((a, l) => a + (l.tipo === "CC" ? l.e / c.etaCabo : l.e / (c.etaInv * c.etaCabo)), 0);
   R.EautNub = R.Ebat * Nn * (1 - fn);
   R.EautFalta = R.EcritBat * Math.max(0, n(c.hfalta)) / 24;
   R.Eaut = Math.max(R.EautNub, R.EautFalta, S.backup.tipo === "rede" ? 0 : R.Ebat) || R.Ebat * 0.5;
@@ -335,6 +410,8 @@ function calcular() {
   R.Cah = R.Cwh / Vb;
   R.bNs = Math.max(1, Math.round(Vb / n(eq.bat.v)));
   R.bNp = Math.max(1, Math.ceil(R.Cah / n(eq.bat.ah)));
+  R.bNsDim = R.bNs; R.bNpDim = R.bNp;
+  if (ex("bns") > 0) R.bNs = ex("bns"); if (ex("bnp") > 0) R.bNp = ex("bnp");
   R.bN = R.bNs * R.bNp;
   R.CinstAh = R.bNp * n(eq.bat.ah); R.CinstWh = R.CinstAh * R.bNs * n(eq.bat.v);
   R.dodDia = R.Ebat / R.CinstWh; R.dodAut = R.Eaut / R.CinstWh; R.dodNub = R.EautNub / R.CinstWh; R.dodFalta = R.EautFalta / R.CinstWh;
@@ -361,29 +438,34 @@ function calcular() {
   R.vmpQ = n(m.vmp) * (1 + n(m.bvoc) / 100 * (tmax + 30 - 25));
   R.vChg = Vb * T.vChg;
   R.Erec = n(c.drec) > 0 ? R.Eaut / n(c.drec) / T.eta : 0;
-  R.Pnec = R.hsp > 0 ? (R.Efv + R.Erec) / (R.hsp * n(c.pr)) : 0;
+  R.Pnec = R.hspDim > 0 ? (R.Efv + R.Erec) / (R.hspDim * n(c.pr)) : 0;
   R.Nnec = Math.ceil(R.Pnec / n(m.p));
   R.NsMin = Math.ceil((R.vChg + 5) / R.vmpQ); R.NsMax = Math.floor(n(ct.vocmax) / R.vocMax);
   if (R.NsMin > R.NsMax) { R.avisos.push(`Não há número de módulos em série que atenda o controlador: mínimo ${R.NsMin} (tensão de carga) e máximo ${R.NsMax} (Voc a ${tmin} °C ≤ ${ct.vocmax} V). Escolha controlador de Voc maior ou outro módulo.`); R.Ns = Math.max(1, R.NsMax); }
   else { let best = null; for (let k = R.NsMin; k <= R.NsMax; k++) { const tot = k * Math.ceil(Math.max(1, R.Nnec) / k); if (!best || tot < best.tot || (tot === best.tot && k > best.k)) best = { k, tot }; } R.Ns = best.k; }
   R.Nstr = Math.max(1, Math.ceil(Math.max(1, R.Nnec) / R.Ns)); R.Nmod = R.Ns * R.Nstr; R.Pfv = R.Nmod * n(m.p);
+  R.NsDim = R.Ns; R.NstrDim = R.Nstr; R.NmodDim = R.Nmod; R.PfvDim = R.Pfv;
+  if (ex("ns") > 0) R.Ns = ex("ns"); if (ex("nstr") > 0) R.Nstr = ex("nstr");
+  R.Nmod = R.Ns * R.Nstr; R.Pfv = R.Nmod * n(m.p);
   R.vocArr = R.vocMax * R.Ns; R.vmpArr = n(m.vmp) * R.Ns;
   R.pCtrl = n(ct.p48) * Vb / 48;
   R.nCtrl = R.Nstr;
   for (let k = 1; k <= R.Nstr; k++) { const sc = Math.ceil(R.Nstr / k), pk = sc * R.Ns * n(m.p); if (pk <= R.pCtrl * 1.001 && pk / Vb <= n(ct.imax) * 1.001) { R.nCtrl = k; break; } }
+  R.nCtrlDim = R.nCtrl; if (ex("nctrl") > 0) R.nCtrl = ex("nctrl");
   R.strCtrl = Math.ceil(R.Nstr / R.nCtrl);
   R.iCtrl = R.strCtrl * R.Ns * n(m.p) / Vb;
   if (R.iCtrl > n(ct.imax) * 1.001) R.avisos.push(`Cada controlador receberia ${fmt(R.iCtrl)} A, acima de ${ct.imax} A: aumente o número de controladores.`);
   R.iChgTot = R.Pfv / Vb;
   if (R.iChgTot > R.icMax * 1.05) R.avisos.push(`Corrente de carga do gerador FV (${fmt0(R.iChgTot)} A) acima do recomendado para o banco (${fmt0(R.icMax)} A = ${T.cCarga} C): limite a corrente no controlador ou aumente o banco.`);
   R.prodMes = row ? row.m.map(h => R.Pfv * h * n(c.pr)) : [];
-  R.sobra = R.hsp > 0 ? R.Pfv * R.hsp * n(c.pr) / R.Efv - 1 : 0;
-  R.excBat = (R.Pfv * R.hsp * n(c.pr) - R.Efv) * T.eta;
+  R.sobraMes = R.prodMes.map((v, i) => v / R.EfvMes[i] - 1);
+  R.sobra = R.sobraMes.length ? Math.min(...R.sobraMes) : 0;
+  R.excBat = R.prodMes.length ? Math.min(...R.prodMes.map((v, i) => (v - R.EfvMes[i]) * T.eta)) : 0;
   R.tRec = R.excBat > 1 ? R.Eaut / R.excBat : Infinity;
   if (R.tRec > 15 && S.backup.tipo === "nenhum") R.avisos.push(`No pior mês o gerador FV leva ${isFinite(R.tRec) ? fmt0(R.tRec) : "∞"} dias para recarregar o banco após o evento de autonomia; sem fonte reserva, um segundo evento nesse período derruba o sistema. Use “dias para recuperar” (etapa 04) ou uma fonte reserva.`);
   /* inversor */
   const iv = eq.inv;
-  R.PinvNec = Pinv0; R.invN = Math.max(1, Math.ceil(R.PinvNec / n(iv.p))); R.Pinv = R.invN * n(iv.p);
+  R.PinvNec = Pinv0; R.invN = Math.max(1, Math.ceil(R.PinvNec / n(iv.p))); R.invNDim = R.invN; if (ex("ninv") > 0) R.invN = ex("ninv"); R.Pinv = R.invN * n(iv.p);
   R.surtoInv = R.Pinv * n(iv.surto);
   if (R.surtoInv < R.surto) R.avisos.push(`Surto de partida estimado (${fmt0(R.surto)} W) maior que o suportado pelo inversor (${fmt0(R.surtoInv)} W): use inversor maior, partida suave nos motores ou não ligue motores simultaneamente.`);
   R.iDcInv = R.Pinv / (n(iv.eta) * Vb * T.vMin);
@@ -407,25 +489,26 @@ function calcular() {
   P.push(["String box", "Seccionadora CC sob carga", `${R.inSecFV} A · ≥ ${R.vocArr > 600 ? "1000" : "600"} Vcc`, `In ≥ 1,25·Isc·strings = ${fmt(1.25 * isc * R.strCtrl)} A; Ucc ≥ Voc,máx = ${fmt0(R.vocArr)} V`]);
   R.ucpv = R.vocArr <= 500 ? 600 : R.vocArr <= 950 ? 1000 : 1500;
   P.push(["String box", "DPS CC classe II (+, −, PE)", `Ucpv ${R.ucpv} V · In 20 kA`, `Ucpv ≥ Voc,máx do arranjo (${fmt0(R.vocArr)} V a ${tmin} °C)`]);
-  R.cFV = secao(1.25 * isc, n(S.cabos.lfv), R.vmpArr, n(S.cabos.dvfv), 4);
+  R.cFV = cabEx("sfv", secao(1.25 * isc, n(S.cabos.lfv), R.vmpArr, n(S.cabos.dvfv), 4), 1.25 * isc, n(S.cabos.lfv), R.vmpArr);
   if (R.strCtrl > 1) R.cArr = secao(1.25 * isc * R.strCtrl, 3, R.vmpArr, 0.5, 4);
   R.inDjCtrl = prox(DISJ, 1.25 * R.iCtrl);
   P.push(["Controlador → barramento CC", `Disjuntor CC 2P (${R.nCtrl}×)`, `${R.inDjCtrl} A · ≥ ${Vb * 1.5 >= 60 ? 125 : 60} Vcc`, `In ≥ 1,25·Ictrl = ${fmt(1.25 * R.iCtrl)} A`]);
-  R.cCtrl = secao(1.25 * R.iCtrl, n(S.cabos.lbat), Vb, n(S.cabos.dvbat), 6);
+  R.cCtrl = cabEx("sctrl", secao(1.25 * R.iCtrl, n(S.cabos.lbat), Vb, n(S.cabos.dvbat), 6), 1.25 * R.iCtrl, n(S.cabos.lbat), Vb);
   R.inDjInv = prox(DISJ, 1.25 * R.iDcInv / R.invN) ?? 250;
   P.push(["Inversor → barramento CC", `Disjuntor/fusível CC (${R.invN}×)`, `${R.inDjInv} A`, `Icc do inversor = P/(η·Vmín) = ${fmt0(R.iDcInv / R.invN)} A; In ≥ 1,25·I`]);
-  R.cInv = secao(1.25 * R.iDcInv / R.invN, n(S.cabos.lbat), Vb, n(S.cabos.dvbat), 10);
+  R.cInv = cabEx("sinv", secao(1.25 * R.iDcInv / R.invN, n(S.cabos.lbat), Vb, n(S.cabos.dvbat), 10), 1.25 * R.iDcInv / R.invN, n(S.cabos.lbat), Vb);
   R.iBat = Math.max(R.iDcInv + R.Pcc / Vb, R.iChgTot);
   R.inFusBat = prox(FUS_BAT, 1.25 * R.iBat) ?? 630;
   P.push(["Banco de baterias", "Fusível principal (NH gG ou classe T p/ lítio) + seccionadora", `${R.inFusBat} A · Icu ≥ Icc da bateria`, `In ≥ 1,25·máx(descarga ${fmt0(R.iDcInv + R.Pcc / Vb)} A; carga ${fmt0(R.iChgTot)} A)`]);
-  R.cBat = secao(1.25 * R.iBat, n(S.cabos.lbat), Vb, n(S.cabos.dvbat), 16);
+  R.cBat = cabEx("sbat", secao(1.25 * R.iBat, n(S.cabos.lbat), Vb, n(S.cabos.dvbat), 16), 1.25 * R.iBat, n(S.cabos.lbat), Vb);
   R.barra = Math.ceil(1.25 * R.iBat / 2);
-  P.push(["Barramento CC", "Barramentos + e − em cobre, isolados", `≥ ${R.barra} mm² (2 A/mm²)`, `Corrente ≥ ${fmt0(1.25 * R.iBat)} A; um único ponto de conexão para cada polo`]);
+  R.bCC = barra(1.25 * R.iBat);
+  P.push(["Barramento CC", "Barramentos + e − em cobre, isolados", `${R.bCC.txt} (${R.bCC.sec} mm²)`, `I ≥ 1,25 × ${fmt0(R.iBat)} = ${fmt0(1.25 * R.iBat)} A ≤ 0,8 × ${fmt0(R.bCC.iz)} A (DIN 43671); um ponto de conexão por polo`]);
   if (R.Pcc > 0) P.push(["Cargas CC", "Fusível/disjuntor CC por circuito", `${prox(DISJ, 1.25 * R.Pcc / Vb)} A`, `I = ${fmt(R.Pcc / Vb)} A`]);
   R.inDjAc = prox(DISJ, 1.25 * R.iAc / 1) ?? 125;
   P.push(["Saída CA do inversor", `Disjuntor ${R.polos}P curva C`, `${R.inDjAc} A`, `I saída = ${fmt(R.iAc)} A`]);
   P.push(["Quadro CA", `DR ${R.polos}P 30 mA tipo A + DPS CA classe II`, `${prox([25, 40, 63, 80, 100], R.inDjAc)} A · DPS 275 V 20 kA`, "Proteção de pessoas e de surtos nos circuitos de saída"]);
-  R.cAc = secao(1.25 * R.iAc, n(S.cabos.lca), R.vac, n(S.cabos.dvca), 2.5);
+  R.cAc = cabEx("sca", secao(1.25 * R.iAc, n(S.cabos.lca), R.vac, n(S.cabos.dvca), 2.5), 1.25 * R.iAc, n(S.cabos.lca), R.vac);
   if (b.tipo !== "nenhum") P.push(["Transferência", b.chave === "auto" ? `Chave de transferência automática (ATS) ${R.polos}P` : `Chave reversora manual 1-0-2 ${R.polos}P`, `${R.inChave} A`, `In ≥ 1,25·máx(I inversor ${fmt(R.iAc)} A; I ${b.tipo} ${fmt(R.iGer)} A); comuta fase e neutro; intertravamento mecânico`]);
   P.push(["Aterramento", "Equipotencialização de estruturas, carcaças e racks ao BEP", "PE ≥ 6 mm² Cu; aterramento ≥ 16 mm²", "Moldura dos módulos, estrutura, string box, controlador, inversor e rack de baterias no mesmo eletrodo"]);
   /* picos de partida: queda de tensão no banco, limite do BMS e banco capacitivo */
@@ -492,6 +575,33 @@ function calcular() {
     if (R.balN) R.bms.push(["warn", "Balanceador/equalizador", `${R.bNs} baterias de ${n(ub.v)} V em série: use ${R.balN} balanceador(es), um em cada ponto médio entre baterias, para que nenhuma fique sobrecarregada enquanto outra fica descarregada. Corrente necessária ≈ 0,03 × ${fmt0(R.CinstAh)} Ah / 4 h = ${fmt(R.balI, 1)} A.`]);
     if (c.bat === "pb") R.bms.push(["warn", "Carga de equalização", "Estacionária ventilada: programe carga de equalização (≈ 2,45–2,50 V/célula, 1–3 h) a cada 30 dias e confira densidade e nível do eletrólito."]);
   }
+  /* CCA: necessário (pelo pico e pela tensão mínima) e esperado (pela resistência interna) */
+  R.kfrio = n(c.kfrio) || 1.8;
+  R.RbReq = R.Ipk > 0 ? (R.Vref - R.vCorte - R.marg) / R.Ipk : Infinity;
+  R.riReq = (R.RbReq - R.Rcabo) * R.bNp / R.bNs;
+  R.r12 = r => r / R.ncelU * 6;
+  R.ccaReq = R.riReq > 0 ? 5.4 / (R.kfrio * R.r12(R.riReq)) : Infinity;
+  R.ccaCat = n(ub.ri) > 0 ? 5.4 / (R.kfrio * R.r12(n(ub.ri) / 1000)) : 0;
+  R.ccaNom = n(ub.cca) || R.ccaCat;
+  if (R.riReq <= 0) R.avisos.push(`Os cabos do banco (${fmt(R.Rcabo * 1000, 2)} mΩ) sozinhos já derrubam a tensão abaixo do mínimo no pico de partida: aumente a seção ou encurte os cabos.`);
+  else if (R.ccaNom < R.ccaReq) R.avisos.push(`CCA por bateria (${fmt0(R.ccaNom)} A) abaixo do necessário para o pico (${fmt0(R.ccaReq)} A, equivalente 12 V): o banco não sustenta a partida sem reforço.`);
+  /* cabos por trecho (corrente de cada trecho) e PE (NBR 5410 Tab. 58) */
+  const pe = sF => SEC.find(x => x >= (sF <= 16 ? sF : sF <= 35 ? 16 : sF / 2)) ?? sF / 2;
+  const L = [];
+  const addC = (t, I, Lm, V, cab) => L.push({ t, I, L: Lm, V, c: cab, pe: pe(cab.s) });
+  addC("String FV (cada)", 1.25 * isc, n(S.cabos.lfv), R.vmpArr, R.cFV);
+  if (R.cArr) addC("Arranjo (string box → MPPT)", 1.25 * isc * R.strCtrl, 3, R.vmpArr, R.cArr);
+  addC(`Controlador → barramento (${R.nCtrl}×)`, 1.25 * R.iCtrl, n(S.cabos.lbat), Vb, R.cCtrl);
+  addC(`Inversor → barramento (${R.invN}×)`, 1.25 * R.iDcInv / R.invN, n(S.cabos.lbat), Vb, R.cInv);
+  addC("Banco → barramento", 1.25 * R.iBat, n(S.cabos.lbat), Vb, R.cBat);
+  if (R.bN > 1) { R.cInt = secao(1.25 * R.iBat / R.bNp, 0.5, Vb, 0.5, 16); addC(`Interligação entre baterias (${R.bNs}S×${R.bNp}P)`, 1.25 * R.iBat / R.bNp, 0.5, Vb, R.cInt); }
+  if (R.Pcc > 0) addC("Barramento → cargas CC", 1.25 * R.Pcc / Vb, 10, Vb, secao(1.25 * R.Pcc / Vb, 10, Vb, 3, 2.5));
+  addC("Inversor → quadro CA", 1.25 * R.iAc, n(S.cabos.lca), R.vac, R.cAc);
+  if (b.tipo !== "nenhum") { R.cGer = secao(1.25 * R.iGer, n(S.cabos.lger) || 15, R.vac, n(S.cabos.dvca), 2.5); addC(`${b.tipo === "gerador" ? "Gerador" : "Rede"} → chave de transferência`, 1.25 * R.iGer, n(S.cabos.lger) || 15, R.vac, R.cGer); R.cChv = secao(R.iChave, 2, R.vac, 0.5, 2.5); addC("Chave → quadro CA", R.iChave, 2, R.vac, R.cChv); }
+  R.cabos = L;
+  /* barramentos */
+  const Ica = 1.25 * Math.max(R.iAc, b.tipo === "nenhum" ? 0 : R.iGer);
+  R.barras = [["Barramento CC +", 1.25 * R.iBat], ["Barramento CC −", 1.25 * R.iBat], [`Barramento CA fase${R.polos > 2 ? "s" : ""} (quadro)`, Ica], ["Barramento neutro (quadro)", Ica], ["Barramento PE / BEP", 0]].map(([t, I]) => ({ t, I, ...barra(I) }));
   R.prot = P;
   if (R.vocArr > n(ct.vocmax)) R.avisos.push(`Voc do arranjo a ${tmin} °C (${fmt0(R.vocArr)} V) acima do limite do controlador (${ct.vocmax} V).`);
   /* materiais e custos */
@@ -500,11 +610,27 @@ function calcular() {
   const pb = S.precos["bat_" + c.bat]; R.indic.custo25 = R.custo.total + R.indic.trocas * R.bN * (pb ? n(pb.pu) : 0);
   R.indic.lcoe = R.indic.custo25 / ((R.ECA + R.ECC) * 365 * 25 / 1000);
   R.est = estadoBat(R);
+  if (S.modo === "existente") R.cmp = comparar(R);
   return R;
 }
 function materiais(R) {
   const p = S.precos, b = S.crit.bat, L = [];
   const add = (g, k, q, extra) => { if (q > 0) L.push({ g, k, d: (p[k]?.d || k) + (extra ? " — " + extra : ""), un: p[k]?.un || "pç", q, pu: n(p[k]?.pu) }); };
+  if (S.modo === "existente") {
+    const mp = n(S.eq.mod.p);
+    if (R.Pfv < R.Pnec * 0.98) { const ns = R.Ns >= R.NsMin && R.Ns <= R.NsMax ? R.Ns : R.NsDim, extra = Math.ceil((R.Pnec - R.Pfv) / mp / ns) * ns; add("Adequação – geração", "mod", extra, `${extra / ns} string(s) de ${ns}`); add("Adequação – geração", "estr", extra); add("Adequação – geração", "mc4", 2 * extra / ns); }
+    const velho = R.est?.soh != null && R.est.soh < 0.8;
+    if (R.CinstAh < R.Cah * 0.98 || velho) {
+      if (b === "li" && S.eq.bat.bms !== "externo" && !velho && R.bNs === R.bNsDim) add("Adequação – armazenamento", "bat_" + b, Math.max(1, R.bNpDim - R.bNp), `ampliação em paralelo: mesmo modelo e firmware; confirmar com o fabricante e reconfigurar o BMS mestre`);
+      else add("Adequação – armazenamento", "bat_" + b, R.bNsDim * R.bNpDim, `banco novo ${R.bNsDim}S × ${R.bNpDim}P (não misturar baterias novas e antigas)`);
+    }
+    const pk = R.strCtrl * R.Ns * mp; if (R.iCtrl > n(S.eq.ctrl.imax) * 1.001 || pk > R.pCtrl * 1.001) add("Adequação – conversão", "ctrl", Math.max(1, R.nCtrlDim - R.nCtrl), "controlador(es) adicional(is)");
+    if (R.Pinv < R.PinvNec * 0.98 || R.surtoInv < R.surto) add("Adequação – conversão", "inv", R.invNDim, "substituição do inversor");
+    const kc = { "sfv": ["cabo_fv", 2 * n(S.cabos.lfv) * R.Nstr], "sctrl": ["cabo_bat", 2 * n(S.cabos.lbat) * R.nCtrl], "sinv": ["cabo_bat", 2 * n(S.cabos.lbat) * R.invN], "sbat": ["cabo_bat", 2 * n(S.cabos.lbat)], "sca": ["cabo_ca", 3 * n(S.cabos.lca)] };
+    [["sfv", R.cFV], ["sctrl", R.cCtrl], ["sinv", R.cInv], ["sbat", R.cBat], ["sca", R.cAc]].forEach(([k, cb]) => { if (cb.req != null && !cb.ok) add("Adequação – cabos", kc[k][0], kc[k][1] * cb.req, `trocar ${cb.s} → ${cb.req} mm²`); });
+    if (R.capNec) { add("Adequação – proteção CC", R.capKey, R.capNs * R.capNp, `${R.capNs}S × ${R.capNp}P = ${fmt(R.capC, 1)} F`); add("Adequação – proteção CC", "precarga", 1); }
+    return L;
+  }
   add("Geração", "mod", R.Nmod, `${R.Ns} em série × ${R.Nstr} strings`);
   add("Geração", "estr", R.Nmod);
   add("Geração", "mc4", R.Nstr * 2 + 2);
@@ -525,7 +651,7 @@ function materiais(R) {
   if (S.backup.tipo !== "nenhum") add("Quadro CA", S.backup.chave === "auto" ? "ats" : "rev", 1, `${R.inChave} A ${R.polos}P`);
   add("Cabos", "cabo_fv", 2 * n(S.cabos.lfv) * R.Nstr * R.cFV.s, `${R.Nstr}×2 condutores ${R.cFV.s} mm² × ${S.cabos.lfv} m`);
   add("Cabos", "cabo_bat", 2 * n(S.cabos.lbat) * (R.cBat.s + R.cInv.s * R.invN + R.cCtrl.s * R.nCtrl), `bateria ${R.cBat.s} · inversor ${R.cInv.s} · controlador ${R.cCtrl.s} mm²`);
-  add("Cabos", "cabo_ca", 3 * n(S.cabos.lca) * R.cAc.s, `F+N+PE ${R.cAc.s} mm² × ${S.cabos.lca} m`);
+  add("Cabos", "cabo_ca", 3 * n(S.cabos.lca) * R.cAc.s + (R.cGer ? 3 * (n(S.cabos.lger) || 15) * R.cGer.s : 0), `F+N+PE ${R.cAc.s} mm² × ${S.cabos.lca} m${R.cGer ? ` + ${R.cGer.s} mm² × ${n(S.cabos.lger) || 15} m (reserva)` : ""}`);
   add("Infraestrutura", "terra", 1);
   add("Infraestrutura", "abrigo", 1);
   return L;
@@ -538,6 +664,19 @@ function custos(L) {
   return { eq, sv, desl, bdi, imp, total: base + bdi + imp };
 }
 
+/* montagem em outras tensões: recalcula o projeto em 12, 24 e 48 V */
+function altTensoes() {
+  const base = JSON.stringify(Object.assign({}, S, { _estacoes: undefined })), bak = S, out = [];
+  for (const v of [12, 24, 48]) {
+    try {
+      S = JSON.parse(base); S.modo = "novo"; S.crit.vbanco = String(v);
+      if (S.crit.bat === "li") { const u = S.eq.bat, vu = v === 48 ? 51.2 : v === 24 ? 25.6 : 12.8, k = vu / n(u.v || 51.2); S.eq.bat = Object.assign({}, u, { nome: `LiFePO4 ${fmt(vu, 1)} V ${n(u.ah)} Ah`, v: vu, ri: n(u.ri) * k }); }
+      const r = calcular(), pb = S.precos["bat_" + S.crit.bat];
+      out.push({ v, r, avisos: r.avisos.length, inv12: v === 12 && r.Pinv / r.invN > 3000, custoBat: r.bN * n(pb?.pu) * (S.crit.bat === "li" ? r.Vnom / r.bNs / 51.2 : 1) });
+    } catch (e) { console.error(e); } finally { S = bak; }
+  }
+  return out;
+}
 /* ============================================================
    ESQUEMA ELÉTRICO (primitivas → SVG e PDF)
    ============================================================ */
@@ -643,6 +782,7 @@ const STEPS = [
   { k: "irr", t: "Local e irradiação", s: "CRESESB · pior caso" },
   { k: "carg", t: "Cargas", s: "Consumo diário e picos" },
   { k: "crit", t: "Critérios e equipamentos", s: "Autonomia, DoD, catálogos" },
+  { k: "ex", t: "Sistema existente", s: "Análise e adequação" },
   { k: "bat", t: "Banco de baterias", s: "Autonomia, vida, picos, BMS" },
   { k: "sta", t: "Estado da bateria", s: "SOC, SOH, SoE, SoP, SoB, CCA" },
   { k: "fv", t: "Gerador FV e controlador", s: "Módulos, strings, MPPT" },
@@ -670,6 +810,7 @@ function stepStatus(k) {
     case "carg": return S.cargas.length ? "done" : "";
     case "crit": return "done";
     case "sta": return R.est?.tem ? "done" : "";
+    case "ex": return S.modo === "existente" ? (R.cmp?.some(x => !x[3]) ? "part" : "done") : "";
     case "bat": case "fv": case "inv": case "prot": case "esq": case "cus": return S.local.rows?.length && S.cargas.length ? (R.avisos.length ? "part" : "done") : "";
     default: return "";
   }
@@ -686,7 +827,9 @@ function resumo() {
   const ok = S.local.rows?.length && S.cargas.length;
   return `<div class="card"><h3>Pior caso</h3><div class="big">${ok ? fmt(R.hsp, 2) : "—"}</div><p class="step-hint">kWh/m²·dia em ${ok ? MESES[R.mesCrit] : "—"} (${esc(R.row?.nome || "sem dados")}${R.row ? ", " + R.row.ang + "°" : ""})</p></div>
   <div class="card"><h3>Sistema</h3><dl class="kv">
+  <dt>Estudo</dt><dd>${S.modo === "existente" ? "análise existente" : "sistema novo"}</dd>
   <dt>Consumo</dt><dd>${fmt((R.ECA + R.ECC) / 1000, 2)} kWh/dia</dd>
+  <dt>Mês crítico</dt><dd>${MESES[R.mesDim]}</dd>
   <dt>Gerador FV</dt><dd>${ok ? fmt(R.Pfv / 1000, 2) + " kWp" : "—"}</dd>
   <dt>Módulos</dt><dd>${ok ? R.Nmod + " (" + R.Ns + "S×" + R.Nstr + "P)" : "—"}</dd>
   <dt>Banco</dt><dd>${ok ? R.Vb + " V · " + fmt0(R.CinstAh) + " Ah" : "—"}</dd>
@@ -700,7 +843,8 @@ function resumo() {
   <div class="card"><h3>Pendências</h3><ul class="pend">${[["Coordenada da obra", n(S.local.lat) && n(S.local.lon)], ["Irradiação do CRESESB", /CRESESB/.test(S.local.fonte)], ["Linha “Maior mínimo mensal”", R.row?.nome === "Maior mínimo mensal"], ["Cargas cadastradas", S.cargas.length > 0], ["Sem alertas de cálculo", !R.avisos.length]].map(([t, b]) => `<li class="${b ? "ok" : ""}">${t}</li>`).join("")}</ul></div>`;
 }
 const VIEWS = {
-  id: () => `<p class="intro">Dados que vão para o carimbo e para a capa do relatório.</p><div class="grid">${fld("id.cliente", "Cliente / proprietário", { type: "text" })}${fld("id.obra", "Obra / finalidade", { type: "text" })}${fld("id.local", "Localidade", { type: "text" })}${fld("id.municipio", "Município/UF", { type: "text" })}${fld("id.rt", "Responsável técnico", { type: "text" })}${fld("id.crea", "CREA/CFT", { type: "text" })}${fld("id.data", "Data", { type: "date" })}</div>
+  id: () => `<p class="intro">Dados que vão para o carimbo e para a capa do relatório.</p><div class="grid">${fld("id.cliente", "Cliente / proprietário", { type: "text" })}${fld("id.obra", "Obra / finalidade", { type: "text" })}${fld("id.local", "Localidade", { type: "text" })}${fld("id.municipio", "Município/UF", { type: "text" })}${fld("id.rt", "Responsável técnico", { type: "text" })}${fld("id.crea", "CREA/CFT", { type: "text" })}${fld("id.data", "Data", { type: "date" })}${fld("modo", "Tipo de estudo", { opts: [["novo", "Dimensionar sistema novo"], ["existente", "Analisar sistema existente"]] })}</div>
+  ${S.modo === "existente" ? `<p class="note warn"><b>Análise de sistema existente:</b> informe o que está instalado na etapa 05 (módulos, baterias, controladores, inversor, cabos). A ferramenta compara com o necessário, aponta o que está subdimensionado e monta a lista de adequação.</p>` : ""}
   <p class="note">Off-grid é para onde a rede não chega ou é cara de estender: bombeamento, ordenha, cercas, telemetria e moradias isoladas. O sistema precisa fechar a conta <b>no pior mês do ano</b>, sem ajuda da rede.</p>`,
   irr: () => {
     const rows = S.local.rows || [];
@@ -718,15 +862,25 @@ const VIEWS = {
     <div class="block"><h3>Temperaturas de projeto (correção de tensão dos módulos)</h3><div class="grid">${fld("temp.tmin", "Temperatura mínima do ar (°C)", { hint: "eleva o Voc: limite do controlador" })}${fld("temp.tmax", "Temperatura máxima do ar (°C)", { hint: "célula ≈ ar + 30 °C: reduz o Vmp" })}</div></div>
     ${S.local.obs ? `<p class="note warn">${esc(S.local.obs)}</p>` : ""}`;
   },
-  carg: () => `<p class="intro">Liste cada equipamento com potência, horas de uso por dia e fator de partida (Ip/In para motores e compressores). A energia diária define bateria e gerador FV; a potência simultânea e o surto definem o inversor.</p>
-    <div class="tbl ct"><table><thead><tr><th>Equipamento</th><th>CA/CC</th><th class="r">Qtd</th><th class="r">W unit.</th><th class="r">h/dia</th><th class="r">Simult.</th><th class="r">Ip/In</th><th>Crítica</th><th class="r">Wh/dia</th><th></th></tr></thead><tbody>
-    ${S.cargas.map((l, i) => `<tr><td><input class="w-l" data-c="${i}" data-f="nome" type="text" value="${esc(l.nome)}"></td><td><select data-c="${i}" data-f="tipo"><option ${l.tipo === "CA" ? "selected" : ""}>CA</option><option ${l.tipo === "CC" ? "selected" : ""}>CC</option></select></td><td><input class="w-s" data-c="${i}" data-f="q" type="number" step="1" value="${l.q}"></td><td><input data-c="${i}" data-f="w" type="number" value="${l.w}"></td><td><input class="w-s" data-c="${i}" data-f="h" type="number" step="0.1" value="${l.h}"></td><td><input class="w-s" data-c="${i}" data-f="fs" type="number" step="0.1" value="${l.fs}"></td><td><input class="w-s" data-c="${i}" data-f="kp" type="number" step="0.5" value="${l.kp}"></td><td style="text-align:center"><input type="checkbox" style="width:auto" data-c="${i}" data-f="crit" ${critica(l) ? "checked" : ""} title="mantida durante falta da concessionária"></td><td class="num">${fmt0(R.cargas[i].e)}</td><td><button class="btn small danger" type="button" data-del="${i}">Remover</button></td></tr>`).join("")}
-    <tr class="sub"><td colspan="8">Total (CA ${fmt0(R.ECA)} Wh · CC ${fmt0(R.ECC)} Wh)</td><td class="num">${fmt0(R.ECA + R.ECC)}</td><td></td></tr></tbody></table></div>
+  carg: () => { const k = S.conta; return `<p class="intro">Entre com as cargas <b>uma a uma</b> (dizendo quais são motores) ou pela <b>conta de energia</b> (mês de maior gasto ou os 12 meses). O mês que dimensiona o sistema é o de <b>maior consumo por irradiação</b>: uma conta alta no verão pode não ser o pior caso, porque o inverno gera menos.</p>
+    <div class="grid">${fld("entrada", "Entrada de consumo", { opts: [["lista", "Cargas individuais"], ["conta", "Conta de energia (kWh/mês)"]] })}</div>
+    ${R.entrada === "lista" ? `<div class="tbl ct"><table><thead><tr><th>Equipamento</th><th>Tipo de carga</th><th>CA/CC</th><th class="r">Qtd</th><th class="r">W unit.</th><th class="r">h/dia</th><th class="r">Simult.</th><th class="r">Ip/In</th><th>Crítica</th><th class="r">Wh/dia</th><th></th></tr></thead><tbody>
+    ${S.cargas.map((l, i) => `<tr><td><input class="w-l" data-c="${i}" data-f="nome" type="text" value="${esc(l.nome)}"></td><td><select data-c="${i}" data-f="nat">${Object.entries(NAT).map(([kk, v]) => `<option value="${kk}" ${(l.nat || (n(l.kp) > 1 ? "mot" : "res")) === kk ? "selected" : ""}>${v.t}</option>`).join("")}</select></td><td><select data-c="${i}" data-f="tipo"><option ${l.tipo === "CA" ? "selected" : ""}>CA</option><option ${l.tipo === "CC" ? "selected" : ""}>CC</option></select></td><td><input class="w-s" data-c="${i}" data-f="q" type="number" step="1" value="${l.q}"></td><td><input data-c="${i}" data-f="w" type="number" value="${l.w}"></td><td><input class="w-s" data-c="${i}" data-f="h" type="number" step="0.1" value="${l.h}"></td><td><input class="w-s" data-c="${i}" data-f="fs" type="number" step="0.1" value="${l.fs}"></td><td><input class="w-s" data-c="${i}" data-f="kp" type="number" step="0.5" value="${l.kp}"></td><td style="text-align:center"><input type="checkbox" style="width:auto" data-c="${i}" data-f="crit" ${critica(l) ? "checked" : ""} title="mantida durante falta da concessionária"></td><td class="num">${fmt0(R.cargas[i].e)}</td><td><button class="btn small danger" type="button" data-del="${i}">Remover</button></td></tr>`).join("")}
+    <tr class="sub"><td colspan="9">Total (CA ${fmt0(R.ECA)} Wh · CC ${fmt0(R.ECC)} Wh)</td><td class="num">${fmt0(R.ECA + R.ECC)}</td><td></td></tr></tbody></table></div>
     <div class="actions"><button class="btn small" type="button" id="addC">+ Equipamento</button></div>
-    <div class="res">${card("Consumo diário", fmt((R.ECA + R.ECC) / 1000, 2) + " kWh", "Σ qtd × W × h")}${card("Retirado da bateria", fmt(R.Ebat / 1000, 2) + " kWh", "inclui perdas de inversor e cabos")}${card("Potência simultânea", fmt0(R.Psim) + " W", "cargas CA × simultaneidade")}${card("Surto de partida", fmt0(R.surto) + " W", "simultânea + maior motor × (Ip/In − 1)")}</div>
-    ${formula(`E_bat = E_CC/η_cabos + E_CA/(η_inv·η_cabos) = ${fmt0(R.ECC)}/${S.crit.etaCabo} + ${fmt0(R.ECA)}/(${S.crit.etaInv}·${S.crit.etaCabo}) = ${fmt0(R.Ebat)} Wh/dia`)}
-    <p class="note"><b>Crítica:</b> carga que precisa continuar ligada durante falta da concessionária (sistemas com rede como reserva) — define a energia da autonomia por falta. Consumo crítico retirado da bateria: <b>${fmt0(R.EcritBat)} Wh/dia</b>.</p>
-    <p class="note">Ip/In típico: resistivo 1 · geladeira/freezer 3–5 · compressor e motor de indução 5–7 · bomba submersa 4–6. Na dúvida, meça a corrente de partida ou consulte a placa (código de letra NEMA).</p>`,
+    <p class="note"><b>Tipo de carga</b> define o fator de partida Ip/In: resistiva e eletrônica 1 · motor em partida direta 6 · compressor 5 · motor com soft-starter 3 · motor com inversor de frequência 1,5 (editável). Só motores e compressores entram no surto.</p>` : `
+    <div class="block"><h3>Conta de energia</h3><div class="grid">${fld("conta.pior", "Consumo do mês de maior gasto (kWh)", { hint: "da conta; ou preencha os 12 meses abaixo" })}${fld("conta.mesPior", "Mês de maior gasto", { opts: MESES.map((m, i) => [String(i), m]) })}${fld("conta.amp", "Variação anual prevista (%)", { step: "5", hint: "(maior − menor)/maior; rural típico 20–40%" })}${fld("conta.psim", "Potência simultânea máx. (W)", { hint: "demanda; necessária para o inversor" })}${fld("conta.pmotor", "Maior motor/compressor (W)", { hint: "0 se não houver" })}${fld("conta.kp", "Ip/In desse motor", { step: "0.5" })}${fld("conta.fcc", "Fração do consumo em CC (0–1)", { step: "0.05" })}${fld("conta.fcrit", "Fração crítica durante falta (0–1)", { step: "0.05" })}</div>
+    <div class="tbl"><table><thead><tr><th>Mês</th>${MESES.map(m => `<th class="r">${m}</th>`).join("")}</tr></thead><tbody>
+    <tr><td>kWh/mês (conta)</td>${MESES.map((m, i) => `<td><input class="w-s" type="number" data-mes="${i}" value="${esc(k.meses?.[i] ?? "")}" placeholder="${fmt0(R.kwhMes?.[i] || 0)}"></td>`).join("")}</tr>
+    <tr><td>usado (${"<i>previsto</i>"})</td>${MESES.map((m, i) => `<td class="num">${R.kwhPrev?.[i] ? "<i>" + fmt0(R.kwhMes[i]) + "</i>" : fmt0(R.kwhMes?.[i] || 0)}</td>`).join("")}</tr>
+    <tr><td>kWh/dia</td>${MESES.map((m, i) => `<td class="num ${i === R.mesDim ? "min" : ""}">${fmt(R.Emes[i] / 1000, 1)}</td>`).join("")}</tr>
+    ${R.row ? `<tr><td>HSP</td>${MESES.map((m, i) => `<td class="num">${fmt(R.row.m[i], 2)}</td>`).join("")}</tr><tr><td>consumo/HSP</td>${MESES.map((m, i) => `<td class="num ${i === R.mesDim ? "min" : ""}">${fmt(R.Emes[i] / 1000 / R.row.m[i], 2)}</td>`).join("")}</tr>` : ""}</tbody></table></div>
+    <p class="step-hint">Meses em branco são previstos por uma curva anual (cosseno) com pico no mês de maior gasto e a variação informada. Valor em itálico = previsto.</p></div>`}
+    ${R.row ? `<div class="block"><h3>Consumo mensal × irradiação: mês que dimensiona</h3>${barrasSVG(R.Emes.map(v => v / 1000), { destacar: R.mesDim, un: "kWh/dia por mês (vermelho = mês de dimensionamento)", cor: "#7a4fd0", dec: 1 })}<p class="step-hint">Mês de dimensionamento: <b>${MESES[R.mesDim]}</b> (maior consumo/HSP). ${R.mesDim !== R.mesCrit ? `Não coincide com o mês de menor irradiação (${MESES[R.mesCrit]}): o consumo pesa mais que a irradiação.` : `Coincide com o mês de menor irradiação.`} ${R.entrada === "conta" && R.mesPiorConta !== R.mesDim ? `A maior conta (${MESES[R.mesPiorConta]}) sobra energia nos painéis.` : ""}</p></div>` : ""}
+    <div class="res">${card("Consumo (mês máx.)", fmt((R.ECA + R.ECC) / 1000, 2) + " kWh/dia", R.entrada === "conta" ? "da conta" : "Σ qtd × W × h")}${card("Retirado da bateria", fmt(R.Ebat / 1000, 2) + " kWh", "inclui perdas de inversor e cabos")}${card("Mês de dimensionamento", MESES[R.mesDim], `${fmt(R.EbatDim / 1000, 2)} kWh com HSP ${fmt(R.hspDim, 2)}`)}${card("Potência simultânea", fmt0(R.Psim) + " W", R.psimEst ? "ESTIMADA" : "cargas CA × simultaneidade")}${card("Surto de partida", fmt0(R.surto) + " W", "simultânea + maior motor × (Ip/In − 1)")}</div>
+    ${formula(`E_bat = E_CC/η_cabos + E_CA/(η_inv·η_cabos) = ${fmt0(R.ECC)}/${S.crit.etaCabo} + ${fmt0(R.ECA)}/(${S.crit.etaInv}·${S.crit.etaCabo}) = ${fmt0(R.Ebat)} Wh/dia
+Mês de dimensionamento = máx(E_bat,mês / HSP_mês) → ${MESES[R.mesDim]}: ${fmt0(R.EbatDim)} / ${fmt(R.hspDim, 2)}`)}
+    <p class="note"><b>Crítica:</b> carga que precisa continuar ligada durante falta da concessionária (sistemas com rede como reserva). Consumo crítico retirado da bateria: <b>${fmt0(R.EcritBat)} Wh/dia</b>.</p>`; },
   crit: () => { const T = R.T; return `<p class="intro">Critérios do pior caso e dados de catálogo. Os valores padrão vêm de equipamentos reais pesquisados em out/2026 – troque pelos do fabricante escolhido.</p>
     <div class="block"><h3>Critérios</h3><div class="grid">
     ${fld("crit.bat", "Tecnologia da bateria", { opts: Object.entries(TIPOS).map(([k, v]) => [k, v.nome]) })}
@@ -747,11 +901,19 @@ const VIEWS = {
     ${fld("crit.nfalta", "Faltas longas por ano", { step: "1", hint: "DEC/FEC da distribuidora ou histórico" })}
     ${fld("crit.drec", "Dias para recuperar o banco (0 = não considerar)", { step: "1", hint: "sobredimensiona o FV para recarregar após o evento; usual 7–14" })}
     ${fld("crit.tbat", "Temperatura média do abrigo das baterias (°C)", { step: "1", hint: "cada +10 °C acima de 25 °C reduz a vida à metade" })}
-    ${fld("crit.tpart", "Duração do pico de partida (s)", { step: "0.1", hint: "compressor/motor direto: 0,3–1 s" })}</div></div>
+    ${fld("crit.tpart", "Duração do pico de partida (s)", { step: "0.1", hint: "compressor/motor direto: 0,3–1 s" })}${fld("crit.kfrio", "Fator R(−18 °C)/R(25 °C) para CCA", { step: "0.1", hint: "chumbo ≈ 1,6–2,0" })}</div></div>
     <div class="block"><h3>Módulo fotovoltaico</h3><div class="grid">${fld("eq.mod.nome", "Modelo", { type: "text" })}${fld("eq.mod.p", "Pmáx (W)")}${fld("eq.mod.voc", "Voc (V)")}${fld("eq.mod.vmp", "Vmp (V)")}${fld("eq.mod.isc", "Isc (A)")}${fld("eq.mod.imp", "Imp (A)")}${fld("eq.mod.bvoc", "Coef. temp. Voc (%/°C)", { step: "0.01" })}${fld("eq.mod.fusmax", "Fusível máx. em série (A)")}</div></div>
     <div class="block"><h3>Bateria (unidade)</h3><div class="grid">${fld("eq.bat.nome", "Modelo", { type: "text" })}${fld("eq.bat.v", "Tensão nominal (V)", { step: "0.1" })}${fld("eq.bat.ah", "Capacidade (Ah, C20/C10)")}${fld("eq.bat.ri", "Resistência interna (mΩ)", { step: "0.1", hint: "catálogo ou medida com a bateria nova" })}${fld("eq.bat.imax", "Corrente máx. contínua de descarga (A)")}${fld("eq.bat.ipico", "Corrente de pico (A)", { hint: "limite do BMS/fabricante" })}${fld("eq.bat.tpico", "Duração do pico (s)", { step: "0.5" })}${fld("eq.bat.cca", "CCA (A, só chumbo; 0 = não informado)", { hint: "30 s a −18 °C até 7,2 V (12 V)" })}${S.crit.bat === "li" ? fld("eq.bat.bms", "BMS", { opts: [["integrado", "Integrado no módulo (rack)"], ["externo", "Externo (células avulsas)"]] }) : ""}</div><div class="actions"><button class="btn small ghost" type="button" id="batPadrao">Usar bateria padrão desta tecnologia</button></div></div>
     <div class="block"><h3>Controlador de carga MPPT</h3><div class="grid">${fld("eq.ctrl.nome", "Modelo", { type: "text" })}${fld("eq.ctrl.imax", "Corrente máx. de carga (A)")}${fld("eq.ctrl.vocmax", "Voc máx. de entrada (V)")}${fld("eq.ctrl.p48", "Potência FV máx. em 48 V (W)", { hint: "proporcional à tensão do banco" })}</div></div>
     <div class="block"><h3>Inversor off-grid</h3><div class="grid">${fld("eq.inv.nome", "Modelo", { type: "text" })}${fld("eq.inv.p", "Potência contínua (W)")}${fld("eq.inv.surto", "Fator de surto (× P, ~5 s)", { step: "0.1" })}${fld("eq.inv.eta", "Rendimento", { step: "0.01" })}${fld("eq.inv.carr", "Carregador CA (A)", { hint: "recarga pelo gerador" })}${fld("eq.inv.vcorte", "Corte por subtensão (V; 0 = automático)", { step: "0.1", hint: `automático: ${fmt(R.Vnom * R.T.vCorte, 1)} V` })}</div></div>`; },
+  ex: () => { if (S.modo !== "existente") return `<p class="note">Esta etapa é usada para <b>analisar um sistema já instalado</b>. Mude o “Tipo de estudo” na etapa 01 para “Analisar sistema existente”.</p>`;
+    const C = R.cmp || [], ruins = C.filter(x => !x[3]);
+    return `<p class="intro">Informe o que está instalado. Campos em branco usam o valor dimensionado. Cargas (etapa 03), local (02) e catálogos (04) devem descrever o sistema real.</p>
+    <div class="block"><h3>Instalado</h3><div class="grid">${fld("exist.ns", "Módulos em série por string", { step: "1", hint: `dimensionado: ${R.NsDim}` })}${fld("exist.nstr", "Strings em paralelo", { step: "1", hint: `dimensionado: ${R.NstrDim}` })}${fld("exist.bns", "Baterias em série", { step: "1", hint: `dimensionado: ${R.bNsDim}` })}${fld("exist.bnp", "Fileiras de baterias em paralelo", { step: "1", hint: `dimensionado: ${R.bNpDim}` })}${fld("exist.nctrl", "Controladores", { step: "1", hint: `dimensionado: ${R.nCtrlDim}` })}${fld("exist.ninv", "Inversores", { step: "1", hint: `dimensionado: ${R.invNDim}` })}${fld("exist.sfv", "Cabo das strings (mm²)", { opts: [["", "—"], ...SEC.map(x => [String(x), x + " mm²"])] })}${fld("exist.sctrl", "Cabo controlador → barramento (mm²)", { opts: [["", "—"], ...SEC.map(x => [String(x), x + " mm²"])] })}${fld("exist.sinv", "Cabo inversor → barramento (mm²)", { opts: [["", "—"], ...SEC.map(x => [String(x), x + " mm²"])] })}${fld("exist.sbat", "Cabo do banco (mm²)", { opts: [["", "—"], ...SEC.map(x => [String(x), x + " mm²"])] })}${fld("exist.sca", "Cabo inversor → quadro CA (mm²)", { opts: [["", "—"], ...SEC.map(x => [String(x), x + " mm²"])] })}${fld("exist.fusbat", "Fusível do banco (A)", { step: "1" })}</div></div>
+    <div class="res">${card("Itens verificados", C.length)}${card("Adequados", C.length - ruins.length)}${card("Subdimensionados", ruins.length, ruins.length ? "ver tabela" : "sistema atende")}${card("Custo de adequação", brl(R.custo.total), "lista na etapa 11")}</div>
+    <div class="tbl prot"><table><thead><tr><th>Item</th><th>Necessário</th><th>Existente</th><th>Situação</th><th>Observação</th></tr></thead><tbody>${C.map(x => `<tr class="${x[3] ? "" : "crit"}"><td><b>${esc(x[0])}</b></td><td>${esc(x[1])}</td><td>${esc(x[2])}</td><td>${x[3] ? "✓ atende" : "✗ adequar"}</td><td>${esc(x[4])}</td></tr>`).join("")}</tbody></table></div>
+    ${ruins.length ? `<div class="block"><h3>Recomendações</h3><ul class="pend">${ruins.map(x => `<li>${esc(x[0])}: ${esc(x[4])} — necessário ${esc(x[1])}.</li>`).join("")}</ul></div>` : `<p class="note ok">O sistema existente atende ao consumo e ao pior caso informados.</p>`}
+    ${R.est?.tem ? `<p class="note">Estado medido das baterias: SOH ${R.est.soh != null ? pct(R.est.soh) : "—"}${R.est.trocar ? ` · ${R.est.trocar} bateria(s) para substituir` : ""} (etapa 07).</p>` : `<p class="note">Registre as medições do analisador de baterias na etapa 07 para incluir a saúde do banco na análise.</p>`}${avisos()}`; },
   bat: () => { const c = S.crit, gov = { nub: "dias nublados", falta: "falta da concessionária", min: "mínimo de meio dia" }[R.autGov]; return `<p class="intro">O banco cobre o <b>maior</b> de dois eventos: <b>${fmt(n(c.aut), 1)} dia(s) nublado(s)</b> seguidos${n(c.fnub) > 0 ? ` (gerando ${pct(n(c.fnub))} do pior mês)` : ""} ou <b>${fmt0(n(c.hfalta))} h sem a concessionária</b> alimentando só as cargas críticas, descendo no máximo até o DoD de projeto. Governa: <b>${gov}</b>.</p>
     ${formula(`E_nublado = E_bat × N_nub × (1 − f_nub) = ${fmt0(R.Ebat)} × ${fmt(n(c.aut), 1)} × (1 − ${fmt(n(c.fnub), 2)}) = ${fmt0(R.EautNub)} Wh
 E_falta   = E_crít × h_falta / 24 = ${fmt0(R.EcritBat)} × ${fmt0(n(c.hfalta))} / 24 = ${fmt0(R.EautFalta)} Wh
@@ -774,6 +936,14 @@ I_bateria,máx = mín[(V_ref − V_corte − 2%·V_nom)/R_banco; Np·I_pico,BMS]
 C_cap ≥ I_exc·t/(ΔV − I_exc·ESR) = ${fmt0(R.Iexc)}·${R.tPart}/(${fmt(R.dVadm, 2)} − ${fmt0(R.Iexc)}·${fmt(R.capEsrB, 4)}) = ${fmt(R.Ccap, 1)} F     (regra do som automotivo: 1 F/kW em 12 V → ${fmt(R.Cregra, 2)} F em ${fmt0(R.Vref)} V)`)}
     <div class="res">${card("Pico no banco", fmt0(R.Ipk) + " A", `${fmt0(R.Iunid)} A por bateria`)}${card("Tensão no pico", fmt(R.Vsag, 1) + " V", `corte ${fmt(R.vCorte, 1)} V`)}${card("Pico do BMS/bateria", fmt0(n(S.eq.bat.ipico)) + " A", `por ${n(S.eq.bat.tpico)} s`)}${card("Banco capacitivo", R.capNec ? fmt(R.capC, 1) + " F" : "não necessário", R.capNec ? `${R.capNs}S × ${R.capNp}P · 16 V ${R.capMod} F` : "o banco segura o pico")}${R.cca ? card("CCA do banco", fmt0(R.cca.banco) + " A", R.cca.ok ? "atende o pico" : "abaixo do pico") : ""}</div>
     <p class="note ${R.capNec ? "warn" : "ok"}">${R.capNec ? `Supercapacitor em paralelo com o banco fornece o excedente durante a partida (como no som automotivo). Exige <b>pré-carga</b> (≈ ${fmt(R.Rpre, 1)} Ω, ${fmt0(R.tPre)} s) antes de fechar — ligar descarregado equivale a um curto —, ESR baixa (a ESR do banco capacitivo precisa ser bem menor que a resistência do banco de baterias, senão ele não assume corrente), fusível próprio e tensão nominal ≥ ${fmt0(R.vChgMax * 1.05)} V (tensão de carga). Antes, avalie partida suave ou inversor de frequência no motor: costuma ser mais barato.` : `Banco de ${R.bNp} ${R.bNp > 1 ? "baterias em paralelo" : "bateria"} com ${fmt(R.Rbanco * 1000, 2)} mΩ segura o pico com folga: capacitor dispensável. Em sistemas de 12 V com chumbo e motores grandes (alta corrente, baixa tensão), o capacitor costuma ser necessário — é a lógica do som automotivo.`}</p></div>
+    <div class="block"><h3>CCA: quanto o banco precisa e quanto as baterias têm</h3>
+    ${formula(`R_banco,máx = (V_ref − V_corte − 2%)/I_pico = (${fmt(R.Vref, 2)} − ${fmt(R.vCorte, 2)} − ${fmt(R.marg, 2)})/${fmt0(R.Ipk)} = ${fmt(R.RbReq * 1000, 2)} mΩ
+R_i,máx por bateria = (R_banco,máx − R_cabos)·Np/Ns = (${fmt(R.RbReq * 1000, 2)} − ${fmt(R.Rcabo * 1000, 2)})·${R.bNp}/${R.bNs} = ${fmt(R.riReq * 1000, 2)} mΩ
+R equivalente 12 V = R_i/n_células × 6 = ${fmt(R.r12(Math.max(0, R.riReq)) * 1000, 2)} mΩ
+CCA_necessário = (12,6 − 7,2)/(k_frio·R_12V) = 5,4/(${R.kfrio}·${fmt(R.r12(Math.max(0, R.riReq)), 5)}) = ${isFinite(R.ccaReq) ? fmt0(R.ccaReq) : "∞"} A
+CCA_esperado (R_i catálogo ${n(S.eq.bat.ri)} mΩ) = 5,4/(${R.kfrio}·${fmt(R.r12(n(S.eq.bat.ri) / 1000), 5)}) = ${fmt0(R.ccaCat)} A`)}
+    <div class="res">${card("CCA necessário", isFinite(R.ccaReq) ? fmt0(R.ccaReq) + " A" : "—", "por bateria, equivalente 12 V, −18 °C")}${card("CCA esperado", fmt0(R.ccaCat) + " A", "pela resistência interna de catálogo")}${card("CCA nominal", n(S.eq.bat.cca) ? fmt0(n(S.eq.bat.cca)) + " A" : "não informado", n(S.eq.bat.cca) ? "catálogo" : "usado o esperado")}${card("Situação", R.ccaNom >= R.ccaReq ? "atende" : "insuficiente", `margem ${isFinite(R.ccaReq) ? pct(R.ccaNom / R.ccaReq - 1) : "—"}`)}</div>
+    <p class="step-hint">CCA (SAE J537): corrente que uma bateria de 12 V entrega por 30 s a −18 °C mantendo ≥ 7,2 V. Como os analisadores, a ferramenta relaciona CCA e resistência interna: CCA ≈ (12,6 − 7,2)/(k_frio·R). ${R.T === TIPOS.li ? "LiFePO4 não tem CCA normalizado: o valor é um equivalente pela resistência." : "Compare CCA medido e nominal na mesma norma do analisador (SAE, EN, DIN, IEC, JIS)."}</p></div>
     <div class="block"><h3>BMS e balanceamento</h3>${R.bms.map(([st, t, x]) => `<p class="note ${st}"><b>${t}:</b> ${x}</p>`).join("")}</div>
     <div class="block"><h3>Comparação das tecnologias para este consumo</h3><div class="tbl"><table><thead><tr><th>Tecnologia</th><th class="r">DoD</th><th class="r">kWh</th><th class="r">DoD/dia</th><th class="r">Vida</th><th class="r">Trocas/25 a</th></tr></thead><tbody>${Object.entries(TIPOS).map(([k, T]) => { const cw = R.Eaut / (T.dod * T.ftemp), dd = R.Ebat / cw, v = Math.min(ciclos(dd, T.curva) / 365 / R.fT, T.vidaCal / R.fT); return `<tr class="${k === S.crit.bat ? "sel" : ""}"><td>${esc(T.nome)}</td><td class="num">${pct(T.dod)}</td><td class="num">${fmt(cw / 1000, 1)}</td><td class="num">${pct(dd)}</td><td class="num">${fmt(v, 1)}</td><td class="num">${Math.max(0, Math.ceil(25 / v) - 1)}</td></tr>`; }).join("")}</tbody></table></div></div>${avisos()}`; },
   sta: () => { const o = R.est, ub = S.eq.bat; return `<p class="intro">Diagnóstico do banco instalado a partir de medições de campo: <b>SOC</b>, <b>SOH</b>, <b>SoE</b>, <b>SoP</b>, <b>SoB</b> e <b>CCA</b>, e a vida útil restante. Deixe em branco o que não foi medido.</p>
@@ -787,12 +957,21 @@ C_cap ≥ I_exc·t/(ΔV − I_exc·ESR) = ${fmt0(R.Iexc)}·${R.tPart}/(${fmt(R.d
     ${fld("estado.nivel", "Medição feita em", { opts: [["celula", "Células"], ["bateria", "Baterias/módulos"]] })}
     ${fld("estado.idade", "Idade do banco (anos)", { step: "0.1" })}
     ${fld("estado.ciclos", "Ciclos registrados (BMS/monitor)", { step: "1" })}</div></div>
+    <div class="block"><h3>Teste de carga (tensão e corrente)</h3><div class="grid">${fld("estado.v0", "Tensão em repouso V₀ (V)", { step: "0.01" })}${fld("estado.v1", "Tensão sob carga V₁ (V)", { step: "0.01" })}${fld("estado.i1", "Corrente de carga I (A)", { step: "0.1" })}</div>
+    ${o.riTeste ? formula(`R_i = (V₀ − V₁)/I = (${fmt(n(S.estado.v0), 2)} − ${fmt(n(S.estado.v1), 2)})/${fmt(n(S.estado.i1), 1)} = ${fmt(o.riTeste * 1000, 2)} mΩ
+CCA equivalente = 5,4/(k_frio·R_12V) = 5,4/(${R.kfrio}·${fmt(R.r12(o.riTeste), 5)}) = ${fmt0(o.ccaTeste)} A   (necessário ${isFinite(R.ccaReq) ? fmt0(R.ccaReq) : "—"} A)`) : `<p class="step-hint">Aplique uma carga conhecida (ex.: 0,5–1 C por 10 s) e anote a tensão antes e durante. Valores por bateria.</p>`}</div>
+    <div class="block"><h3>Analisador de baterias (uma linha por bateria)</h3>
+    <div class="tbl ct ana"><table><thead><tr><th>ID</th><th class="r">Tensão (V)</th><th class="r">Ri (mΩ)</th><th class="r">CCA medido</th><th class="r">CCA nominal</th><th class="r">SOH (%)</th><th class="r">SOC (%)</th><th></th></tr></thead><tbody>
+    ${(S.analise || []).map((u, i) => { const r = o.units?.find(x => x.id === (u.id || "B" + (i + 1))); return `<tr class="${r?.fl.length ? "crit" : ""}"><td><input class="w-s" data-u="${i}" data-uf="id" type="text" value="${esc(u.id)}"></td>${["v", "ri", "cca", "ccaNom", "soh", "soc"].map(f => `<td><input class="w-s" data-u="${i}" data-uf="${f}" type="number" step="any" value="${esc(u[f])}"></td>`).join("")}<td><button class="btn small danger" type="button" data-udel="${i}">×</button></td></tr>${r ? `<tr class="${r.fl.length ? "crit" : ""}"><td></td><td colspan="7" class="step-hint" style="white-space:normal">SOH ${r.soh != null ? pct(r.soh) : "—"} · SOC ${r.soc != null ? pct(r.soc) : "—"} · CCA pela Ri ${fmt0(r.ccaRi)} A${r.fl.length ? " · <b>" + r.fl.join("; ") + "</b>" : " · ok"}</td></tr>` : ""}`; }).join("")}</tbody></table></div>
+    <div class="actions"><button class="btn small" type="button" id="addU">+ Bateria</button><button class="btn small ghost" type="button" id="limpaU">Limpar</button></div>
+    <details><summary>Colar exportação do analisador (CSV)</summary><p class="step-hint">Uma bateria por linha: <span class="mono">ID; tensão V; Ri mΩ; CCA medido; CCA nominal; SOH %; SOC %</span> (separador ; , ou tab). Funciona com o relatório de analisadores de condutância (Midtronics, Konnwei, Foxwell, Ancel e similares) depois de exportado para planilha.</p><textarea id="colarU" placeholder="B1;12,62;4,3;720;760;95;98"></textarea><div class="actions"><button class="btn small primary" type="button" id="btnColarU">Ler</button></div></details>
+    ${o.units ? `<p class="note ${o.trocar || o.riSpread > 0.25 ? "warn" : "ok"}">${o.units.length} bateria(s) · pior SOH ${pct(o.sohMin)} · SOH do banco ${pct(o.sohUnid)} (${R.bNs > 1 ? "série: vale a pior" : "paralelo: média"}) · dispersão de Ri ${pct(o.riSpread)}${o.trocar ? ` · <b>${o.trocar} para substituir</b> — ${R.bNs > 1 ? "em série a pior bateria limita a fileira: troque a fileira inteira ou reagrupe por Ri semelhante" : "em paralelo, substitua só a unidade ruim por outra do mesmo modelo (lítio: mesmo firmware; chumbo: mesma idade)"}` : ""}.</p>` : ""}</div>
     ${o.tem ? `<div class="res">
     ${o.soc != null ? card("SOC", pct(o.soc), `OCV ${fmt(o.vcel, 3)} V/célula`) + card("DoD atual", pct(o.dod), "1 − SOC") : ""}
     ${o.soh != null ? card("SOH", pct(o.soh), "pior indicador: " + o.sohFonte) : ""}
     ${o.sohC != null ? card("SOH capacidade", pct(o.sohC), `${fmt(n(S.estado.cmed), 1)} / ${n(ub.ah)} Ah`) : ""}
     ${o.sohR != null ? card("SOH resistência", pct(o.sohR), `${fmt(n(S.estado.rmed), 1)} mΩ (fim de vida em ${fmt(2 * n(ub.ri), 1)} mΩ)`) : ""}
-    ${o.sohCCA != null ? card("SOH CCA", pct(o.sohCCA), `${fmt0(n(S.estado.ccamed))} / ${fmt0(n(ub.cca))} A`) : ""}
+    ${o.sohCCA != null ? card("SOH CCA", pct(o.sohCCA), `CCA médio / nominal${n(ub.cca) ? "" : " (estimado pela Ri)"}: ${fmt0(R.ccaNom)} A`) : ""}${o.ccaRi ? card("CCA pela Ri", fmt0(o.ccaRi) + " A", `necessário ${isFinite(R.ccaReq) ? fmt0(R.ccaReq) : "—"} A`) : ""}
     ${o.soe != null ? card("SoE", fmt(o.soe / 1000, 1) + " kWh", "energia armazenada agora") + card("Energia utilizável", fmt(o.util / 1000, 1) + " kWh", `até o DoD de projeto · ${fmt0(o.autH)} h de consumo`) : ""}
     ${o.sop != null ? card("SoP", fmt(o.sop / 1000, 1) + " kW", `limitado por ${o.sopLim} · surto exigido ${fmt(R.surto / 1000, 1)} kW`) : ""}
     ${o.dv != null ? card("SoB (ΔV)", fmt(o.dv * 1000, 0) + " mV", `${o.balOk ? "equilibrado" : "desbalanceado"} · limite ${fmt(o.dvLim * 1000, 0)} mV`) : ""}
@@ -806,13 +985,13 @@ SoE = SOC × SOH × E_nominal          SoP = mín[V_corte·(V_ocv − V_corte)/R
 SoB: ΔV = V_máx − V_mín ≤ ΔV_lim     Vida restante = mín(vida_projeto − idade; (SOH − 0,8)/perda_anual)`)}` : `<p class="note">Informe ao menos uma medição para ver o diagnóstico.</p>`}
     <div class="block"><h3>Indicadores de estado da bateria</h3><div class="tbl prot"><table><thead><tr><th>Sigla</th><th>Significado</th><th>Como medir / usar</th></tr></thead><tbody>
     ${[["SOC", "State of Charge — estado de carga (% da capacidade atual)", "Contagem de Ah (shunt ou BMS); tensão em repouso (OCV) no chumbo. Base do controle de carga e do corte."], ["DoD", "Depth of Discharge — profundidade de descarga = 1 − SOC", "Define ciclos e vida; projeto: lítio 80%, chumbo 50%."], ["SOH", "State of Health — capacidade atual / nominal", "Ensaio de descarga, resistência interna ou CCA; fim de vida em 80%."], ["SoE", "State of Energy — energia disponível (Wh)", "SOC × SOH × energia nominal; autonomia real hoje."], ["SoP", "State of Power — potência máxima que o banco entrega sem cair abaixo da tensão de corte", "V_corte·(OCV − V_corte)/R_i; compara com o surto dos motores."], ["SoB", "State of Balance — equilíbrio entre células/baterias em série", "Diferença de tensão em repouso; LiFePO4 ≤ 30 mV/célula, chumbo ≤ 50 mV/célula."], ["CCA", "Cold Cranking Amps — corrente por 30 s a −18 °C até 7,2 V (bateria de 12 V)", "Testador de condutância; indica resistência interna e sulfatação do chumbo."], ["Ri", "Resistência interna", "Medidor AC 1 kHz ou degrau de corrente ΔV/ΔI; dobrar o valor de nova ≈ fim de vida."], ["Ciclos eq.", "Ciclos equivalentes = Ah descarregados / capacidade nominal", "Registrados pelo BMS; somam o dano real de uso."]].map(r => `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("")}</tbody></table></div></div>`; },
-  fv: () => `<p class="intro">O gerador FV precisa repor, <b>no mês de menor irradiação</b>, a energia retirada da bateria mais as perdas de carga e descarga.</p>
-    ${formula(`E_FV = E_bat / η_bat = ${fmt0(R.Ebat)} / ${R.T.eta} = ${fmt0(R.Efv)} Wh/dia
-P_FV = E_FV / (HSP_mín × PR) = ${fmt0(R.Efv)} / (${fmt(R.hsp, 2)} × ${S.crit.pr}) = ${fmt0(R.Pnec)} W  →  ${R.Nnec} módulos de ${S.eq.mod.p} W
+  fv: () => `<p class="intro">O gerador FV precisa repor, <b>no mês de dimensionamento (${MESES[R.mesDim]}, maior consumo/irradiação)</b>, a energia retirada da bateria mais as perdas de carga e descarga.</p>
+    ${formula(`E_FV = E_bat,${MESES[R.mesDim]} / η_bat = ${fmt0(R.EbatDim)} / ${R.T.eta} = ${fmt0(R.Efv)} Wh/dia${R.Erec ? `   (+ recuperação ${fmt0(R.Erec)} Wh/dia)` : ""}
+P_FV = E_FV / (HSP_${MESES[R.mesDim]} × PR) = ${fmt0(R.Efv + R.Erec)} / (${fmt(R.hspDim, 2)} × ${S.crit.pr}) = ${fmt0(R.Pnec)} W  →  ${R.Nnec} módulos de ${S.eq.mod.p} W
 Voc,máx = Voc·[1 + β·(T_mín − 25)] = ${S.eq.mod.voc}·[1 + ${S.eq.mod.bvoc}%·(${S.temp.tmin} − 25)] = ${fmt(R.vocMax, 2)} V  →  Ns ≤ ${S.eq.ctrl.vocmax}/${fmt(R.vocMax, 2)} = ${R.NsMax}
 Vmp,quente = Vmp·[1 + β·(T_máx + 30 − 25)] = ${fmt(R.vmpQ, 2)} V  →  Ns ≥ (V_carga ${fmt(R.vChg, 1)} + 5)/${fmt(R.vmpQ, 2)} = ${R.NsMin}`)}
-    <div class="res">${card("Módulos", R.Nmod, `${R.Ns} em série × ${R.Nstr} strings`)}${card("Potência instalada", fmt(R.Pfv / 1000, 2) + " kWp", `necessário ${fmt(R.Pnec / 1000, 2)} kWp`)}${card("Voc,máx do arranjo", fmt0(R.vocArr) + " V", `a ${S.temp.tmin} °C (limite ${S.eq.ctrl.vocmax} V)`)}${card("Controladores", R.nCtrl + "×", `${R.strCtrl} string(s) cada · ${fmt(R.iCtrl)} A de ${S.eq.ctrl.imax} A`)}${card("Folga no pior mês", pct(R.sobra), "produção / necessidade − 1")}${card("Área aprox.", fmt(R.Nmod * 2.6, 0) + " m²", "≈ 2,6 m² por módulo de 550 W")}</div>
-    <div class="block"><h3>Produção mensal estimada × necessidade</h3>${barrasSVG(R.prodMes.map(v => v / 1000), { destacar: R.mesCrit, alvo: R.Efv / 1000, alvoTxt: "necessidade " + fmt(R.Efv / 1000, 2) + " kWh/dia", un: "kWh/dia gerados (P_FV × HSP × PR)" })}<p class="step-hint">Nos meses fortes sobra energia (o controlador corta a carga quando a bateria enche). Esse é o preço do off-grid: dimensionar pelo pior mês.</p></div>${avisos()}`,
+    <div class="res">${card("Módulos", R.Nmod, `${R.Ns} em série × ${R.Nstr} strings`)}${card("Potência instalada", fmt(R.Pfv / 1000, 2) + " kWp", `necessário ${fmt(R.Pnec / 1000, 2)} kWp`)}${card("Voc,máx do arranjo", fmt0(R.vocArr) + " V", `a ${S.temp.tmin} °C (limite ${S.eq.ctrl.vocmax} V)`)}${card("Controladores", R.nCtrl + "×", `${R.strCtrl} string(s) cada · ${fmt(R.iCtrl)} A de ${S.eq.ctrl.imax} A`)}${card("Folga no mês crítico", pct(R.sobra), "menor produção/necessidade − 1")}${card("Área aprox.", fmt(R.Nmod * 2.6, 0) + " m²", "≈ 2,6 m² por módulo de 550 W")}</div>
+    <div class="block"><h3>Produção mensal estimada × necessidade</h3>${barrasSVG(R.prodMes.map(v => v / 1000), { destacar: R.mesDim, outra: R.EfvMes.map(v => v / 1000), un: "kWh/dia gerados (barras) × necessidade do mês (linha)" })}<p class="step-hint">Nos meses fortes sobra energia (o controlador corta a carga quando a bateria enche). Esse é o preço do off-grid: dimensionar pelo pior mês.</p></div>${avisos()}`,
   inv: () => { const b = S.backup; return `<p class="intro">O inversor alimenta as cargas CA a partir do banco. Ele é dimensionado pela potência simultânea com folga e precisa suportar o surto de partida dos motores.</p>
     ${formula(`P_inv ≥ 1,25 × P_simultânea = 1,25 × ${fmt0(R.Psim)} = ${fmt0(R.PinvNec)} W  →  ${R.invN}× ${fmt0(n(S.eq.inv.p))} W
 Surto: P_sim + maior motor × (Ip/In − 1) = ${fmt0(R.surto)} W ≤ ${fmt0(R.surtoInv)} W (${S.eq.inv.surto} × P)
@@ -826,9 +1005,12 @@ Chave: In ≥ 1,25 × máx(I_inv ${fmt(R.iAc)} A; I_gerador ${fmt(R.iGer)} A) = 
   prot: () => `<p class="intro">Proteções e seções no padrão do projeto elétrico: cada trecho com dispositivo e critério. Lado CC conforme NBR 16690; lado CA conforme NBR 5410.</p>
     <div class="tbl prot"><table><thead><tr><th>Trecho</th><th>Dispositivo</th><th>Especificação</th><th>Critério</th></tr></thead><tbody>${R.prot.map(p => `<tr><td><b>${esc(p[0])}</b></td><td>${esc(p[1])}</td><td class="mono">${esc(p[2])}</td><td>${esc(p[3])}</td></tr>`).join("")}</tbody></table></div>
     <div class="block"><h3>Cabos (capacidade NBR 5410 Tab. 36 B1 e queda de tensão)</h3><div class="grid">${fld("cabos.lfv", "Módulos → controlador (m)")}${fld("cabos.lbat", "Controlador/inversor → bateria (m)")}${fld("cabos.lca", "Inversor → quadro CA (m)")}${fld("cabos.dvfv", "Queda máx. FV (%)", { step: "0.5" })}${fld("cabos.dvbat", "Queda máx. bateria (%)", { step: "0.5" })}${fld("cabos.dvca", "Queda máx. CA (%)", { step: "0.5" })}</div>
-    <div class="tbl"><table><thead><tr><th>Trecho</th><th class="r">I projeto (A)</th><th class="r">L (m)</th><th class="r">V</th><th class="r">S por queda</th><th class="r">S por capacidade</th><th class="r">Seção</th><th class="r">ΔV real</th></tr></thead><tbody>
-    ${[["String FV", 1.25 * n(S.eq.mod.isc), S.cabos.lfv, R.vmpArr, R.cFV], R.cArr ? ["Arranjo (string box → MPPT)", 1.25 * n(S.eq.mod.isc) * R.strCtrl, 3, R.vmpArr, R.cArr] : null, ["Controlador → barramento", 1.25 * R.iCtrl, S.cabos.lbat, R.Vb, R.cCtrl], ["Inversor → barramento", 1.25 * R.iDcInv / R.invN, S.cabos.lbat, R.Vb, R.cInv], ["Banco → barramento", 1.25 * R.iBat, S.cabos.lbat, R.Vb, R.cBat], ["Inversor → quadro CA", 1.25 * R.iAc, S.cabos.lca, R.vac, R.cAc]].filter(Boolean).map(([t, i, l, v, c]) => `<tr><td>${t}</td><td class="num">${fmt(i)}</td><td class="num">${fmt(n(l), 1)}</td><td class="num">${fmt0(v)}</td><td class="num">${fmt(c.sdv, 1)}</td><td class="num">${fmt(c.sA, 1)}</td><td class="num"><b>${c.s} mm²</b></td><td class="num">${fmt(c.dv, 2)}%</td></tr>`).join("")}</tbody></table></div>
-    ${formula("S_queda = 2·L·I / (56·ΔV)   (cobre, ida e volta)        S_capacidade: menor seção com Iz ≥ I")}</div>
+    <div class="grid">${fld("cabos.lger", "Gerador/rede → chave (m)")}</div>
+    <div class="tbl cab"><table><thead><tr><th>Trecho</th><th class="r">I (A)</th><th class="r">L (m)</th><th class="r">V</th><th class="r">S queda</th><th class="r">S capac.</th><th class="r">Seção</th><th class="r">Iz (A)</th><th class="r">ΔV</th><th class="r">PE</th></tr></thead><tbody>
+    ${R.cabos.map(x => `<tr class="${x.c.req != null && !x.c.ok ? "crit" : ""}"><td>${esc(x.t)}</td><td class="num">${fmt(x.I, 1)}</td><td class="num">${fmt(x.L, 1)}</td><td class="num">${fmt0(x.V)}</td><td class="num">${fmt(x.c.sdv, 1)}</td><td class="num">${fmt(x.c.sA, 1)}</td><td class="num"><b>${x.c.s} mm²</b>${x.c.req != null && !x.c.ok ? `<br><small>precisa ${x.c.req}</small>` : ""}</td><td class="num">${x.c.iz ?? "—"}</td><td class="num">${fmt(x.c.dv, 2)}%</td><td class="num">${x.pe} mm²</td></tr>`).join("")}</tbody></table></div>
+    ${formula("S_queda = 2·L·I / (56·ΔV)   (cobre, ida e volta)        S_capacidade: menor seção com Iz ≥ I\nPE (NBR 5410 Tab. 58): S ≤ 16 → PE = S; 16 < S ≤ 35 → 16 mm²; S > 35 → S/2")}</div>
+    <div class="block"><h3>Barramentos</h3><div class="tbl"><table><thead><tr><th>Barramento</th><th class="r">I projeto (A)</th><th>Barra de cobre</th><th class="r">Seção (mm²)</th><th class="r">Iz DIN 43671 (A)</th><th class="r">0,8·Iz (A)</th></tr></thead><tbody>${R.barras.map(x => `<tr><td>${esc(x.t)}</td><td class="num">${x.I ? fmt0(x.I) : "—"}</td><td>${esc(x.txt)}</td><td class="num">${fmt0(x.sec)}</td><td class="num">${fmt0(x.iz)}</td><td class="num">${fmt0(0.8 * x.iz)}</td></tr>`).join("")}</tbody></table></div><p class="step-hint">Barras nuas a 35 °C (DIN 43671) com fator 0,8 para quadro fechado; barras em paralelo com fator 0,85. Barramento CC: corrente total do banco (inversor + cargas CC ou carga do FV, o maior) × 1,25. Isolar e cobrir os barramentos CC.</p></div>
+    ${(() => { const A = altTensoes(); if (!A.length) return ""; const best = A.filter(x => !x.inv12).reduce((a, b) => (b.r.custo.total < a.r.custo.total ? b : a)); return `<div class="block"><h3>Montagem em outras tensões de banco</h3><div class="tbl"><table><thead><tr><th>Banco</th><th class="r">Baterias</th><th class="r">I inversor CC</th><th class="r">I banco</th><th class="r">Cabo banco</th><th class="r">Cabo inversor</th><th class="r">Fusível</th><th>Barramento CC</th><th class="r">Controladores</th><th class="r">Queda no pico</th><th class="r">Total</th></tr></thead><tbody>${A.map(x => `<tr class="${x.v === R.Vb ? "sel" : ""}"><td><b>${x.v} V</b>${x.inv12 ? " ⚠" : ""}</td><td class="num">${x.r.bNs}S×${x.r.bNp}P</td><td class="num">${fmt0(x.r.iDcInv)} A</td><td class="num">${fmt0(x.r.iBat)} A</td><td class="num">${x.r.cBat.s} mm²</td><td class="num">${x.r.cInv.s} mm²</td><td class="num">${x.r.inFusBat} A</td><td>${esc(x.r.bCC.txt)}</td><td class="num">${x.r.nCtrl}×</td><td class="num">${fmt(x.r.Vref - x.r.Vsag, 2)} V${x.r.capNec ? " (cap.)" : ""}</td><td class="num">${brl(x.r.custo.total)}</td></tr>`).join("")}</tbody></table></div><p class="step-hint">Mesmo consumo, mesmos catálogos; ${S.crit.bat === "li" ? "lítio em módulos de 12,8/25,6/51,2 V com o mesmo Ah" : "baterias de 12 V em série"}. Corrente cai pela metade a cada dobro de tensão: cabo, fusível e barramento menores. ⚠ inversor de 12 V acima de 3 kW é raro no mercado. Menor custo viável: <b>${best.v} V</b>.</p></div>`; })()}
     <div class="block"><h3>Seguranças obrigatórias</h3><ul class="pend">${["Fusível no polo positivo do banco o mais perto possível da bateria (curto em bateria de lítio passa de vários kA)", "Seccionadora CC do banco e da string box para manutenção sem arco", "DPS CC na string box e DPS CA no quadro, aterrados no mesmo BEP", "Barramentos CC isolados com tampa; polaridade identificada (vermelho +, preto/azul −)", "Banco em abrigo ventilado (chumbo: hidrogênio), longe de faíscas, com sinalização de risco elétrico e químico", "DR 30 mA nos circuitos CA de tomadas e áreas molhadas (ordenha, lavagem)", "Intertravamento mecânico entre inversor e fonte reserva", "Equipotencialização das molduras, estruturas e racks; SPDA se a análise de risco (NBR 5419) indicar"].map(t => `<li class="ok">${t}</li>`).join("")}</ul></div>${avisos()}`,
   esq: () => `<p class="intro">Diagrama unifilar gerado a partir dos cálculos (vermelho: positivo CC; azul: negativo CC; verde: proteção/terra). Vai para o PDF em página A4 paisagem.</p>${esquemaSVG(R)}
     <p class="note">Convenções: as cores e a numeração seguem o projeto elétrico principal. Para o projeto executivo, detalhe a string box, o quadro CC e o quadro CA em pranchas próprias (NBR 5444).</p>`,
@@ -848,9 +1030,15 @@ document.addEventListener("click", e => {
   if (b.dataset.step != null) { cur = +b.dataset.step; render(); window.scrollTo({ top: 0 }); return; }
   if (b.dataset.nav) { cur = Math.max(0, Math.min(STEPS.length - 1, cur + +b.dataset.nav)); render(); window.scrollTo({ top: 0 }); return; }
   if (b.dataset.del != null) { S.cargas.splice(+b.dataset.del, 1); persist(); render(); return; }
+  if (b.dataset.udel != null) { S.analise.splice(+b.dataset.udel, 1); persist(); render(); return; }
   if (b.dataset.est != null) { aplicarEstacao(+b.dataset.est, S.local.fonte); render(); return; }
   switch (b.id) {
-    case "addC": S.cargas.push({ nome: "Novo equipamento", tipo: "CA", q: 1, w: 100, h: 1, fs: 1, kp: 1, crit: 1 }); break;
+    case "addC": S.cargas.push({ nat: "res", nome: "Novo equipamento", tipo: "CA", q: 1, w: 100, h: 1, fs: 1, kp: 1, crit: 1 }); break;
+    case "addU": (S.analise = S.analise || []).push({ id: "B" + (S.analise.length + 1), v: "", ri: "", cca: "", ccaNom: "", soh: "", soc: "" }); break;
+    case "limpaU": S.analise = []; break;
+    case "btnColarU": { const rows = ($("#colarU").value || "").split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => l.split(/\t|;/).map(x => x.trim()));
+      const lid = rows.map(c => { const num = c.map(x => x.replace(",", ".")); const hasId = isNaN(parseFloat(num[0])); const o = hasId ? num.slice(1) : num; return { id: hasId ? c[0] : "", v: n(o[0]) || "", ri: n(o[1]) || "", cca: n(o[2]) || "", ccaNom: n(o[3]) || "", soh: n(o[4]) || "", soc: n(o[5]) || "" }; }).filter(u => u.v || u.ri || u.cca);
+      if (!lid.length) { toast("Nada reconhecido. Use: ID; V; mΩ; CCA; CCA nominal; SOH; SOC"); return; } S.analise = lid; toast(lid.length + " bateria(s) importada(s)."); break; }
     case "btnGeo": usarLocalizacao(); return;
     case "btnSun": buscarSunData(); return;
     case "btnNasa": buscarNASA(); return;
@@ -870,7 +1058,9 @@ document.addEventListener("change", e => {
   const t = e.target;
   if (t.dataset.bind) { const old = getP(t.dataset.bind); setP(t.dataset.bind, t.type === "number" ? (t.value === "" ? "" : n(t.value)) : t.value);
     if (t.dataset.bind === "crit.bat" && old !== t.value) { S.eq.bat = Object.assign({}, TIPOS[t.value].unid); S.crit.dod = TIPOS[t.value].dod; S.crit.ftemp = TIPOS[t.value].ftemp; } }
-  else if (t.dataset.c != null) { const l = S.cargas[+t.dataset.c]; l[t.dataset.f] = t.type === "checkbox" ? (t.checked ? 1 : 0) : t.type === "number" ? n(t.value) : t.value; }
+  else if (t.dataset.c != null) { const l = S.cargas[+t.dataset.c]; l[t.dataset.f] = t.type === "checkbox" ? (t.checked ? 1 : 0) : t.type === "number" ? n(t.value) : t.value; if (t.dataset.f === "nat") l.kp = NAT[t.value]?.kp ?? 1; }
+  else if (t.dataset.mes != null) { S.conta.meses[+t.dataset.mes] = t.value === "" ? "" : n(t.value); }
+  else if (t.dataset.u != null) { const u = S.analise[+t.dataset.u]; u[t.dataset.uf] = t.type === "number" ? (t.value === "" ? "" : n(t.value)) : t.value; }
   else if (t.dataset.row != null) S.local.sel = +t.dataset.row;
   else if (t.dataset.pu) S.precos[t.dataset.pu].pu = n(t.value);
   else if (t.id === "fileOpen") { abrirJSON(t.files[0]); return; }
@@ -879,7 +1069,7 @@ document.addEventListener("change", e => {
 });
 function salvarJSON() {
   const o = Object.assign({}, S); delete o._estacoes;
-  o.resultados = { hsp: R.hsp, mesCritico: MESES[R.mesCrit], consumoWh: R.ECA + R.ECC, ebatWh: R.Ebat, pfvW: R.Pfv, modulos: R.Nmod, serie: R.Ns, strings: R.Nstr, bancoV: R.Vb, bancoAh: R.CinstAh, baterias: R.bN, dodDiario: R.dodDia, autonomiaDias: R.autReal, faltaHoras: R.faltaReal, recargaDias: isFinite(R.tRec) ? R.tRec : null, vidaAnos: R.vida, vidaCiclosAnos: R.vidaCic, vidaCalendarioAnos: R.vidaCal, picoA: R.Ipk, quedaV: R.Vsag, capacitorF: R.capNec ? R.capC : 0, estado: { soc: R.est.soc ?? null, soh: R.est.soh ?? null, soeWh: R.est.soe ?? null, sopW: R.est.sop ?? null, dvBalanceamentoV: R.est.dv ?? null, vidaRestanteAnos: isFinite(R.est.anosRest) ? R.est.anosRest : null }, controladores: R.nCtrl, inversor: R.Pinv, totalR$: R.custo.total, geradoEm: new Date().toISOString() };
+  o.resultados = { modo: S.modo, entrada: R.entrada, mesDimensionamento: MESES[R.mesDim], consumoMensalWhDia: R.Emes, ccaNecessario: isFinite(R.ccaReq) ? R.ccaReq : null, ccaEsperado: R.ccaCat, itensAdequar: R.cmp ? R.cmp.filter(x => !x[3]).map(x => x[0]) : null, hsp: R.hsp, mesCritico: MESES[R.mesCrit], consumoWh: R.ECA + R.ECC, ebatWh: R.Ebat, pfvW: R.Pfv, modulos: R.Nmod, serie: R.Ns, strings: R.Nstr, bancoV: R.Vb, bancoAh: R.CinstAh, baterias: R.bN, dodDiario: R.dodDia, autonomiaDias: R.autReal, faltaHoras: R.faltaReal, recargaDias: isFinite(R.tRec) ? R.tRec : null, vidaAnos: R.vida, vidaCiclosAnos: R.vidaCic, vidaCalendarioAnos: R.vidaCal, picoA: R.Ipk, quedaV: R.Vsag, capacitorF: R.capNec ? R.capC : 0, estado: { soc: R.est.soc ?? null, soh: R.est.soh ?? null, soeWh: R.est.soe ?? null, sopW: R.est.sop ?? null, dvBalanceamentoV: R.est.dv ?? null, vidaRestanteAnos: isFinite(R.est.anosRest) ? R.est.anosRest : null }, controladores: R.nCtrl, inversor: R.Pinv, totalR$: R.custo.total, geradoEm: new Date().toISOString() };
   const blob = new Blob([JSON.stringify(o, null, 2)], { type: "application/json" });
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "offgrid-" + (S.id.obra || "projeto").toLowerCase().normalize("NFD").replace(/[^\w]+/g, "-").replace(/-+/g, "-").slice(0, 50) + ".json"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
@@ -946,7 +1136,7 @@ async function gerarPDF() {
       ["Controlador de carga", `${R.nCtrl}× ${S.eq.ctrl.nome}`],
       ["Inversor", `${R.invN}× ${S.eq.inv.nome}`],
       ["Transferência", S.backup.tipo === "nenhum" ? "Sem fonte reserva" : `${S.backup.chave === "auto" ? "ATS" : "Reversora manual"} ${R.inChave} A ${R.polos}P — ${S.backup.tipo} ≥ ${fmt(R.sGerRec / 1000, 1)} kVA`],
-      ["Investimento estimado", brl(R.custo.total) + ` (${fmt(R.indic.rsWp, 2)} R$/Wp)`]], { size: 9 });
+      [S.modo === "existente" ? "Custo de adequação" : "Investimento estimado", brl(R.custo.total) + (S.modo === "existente" ? ` (${R.cmp.filter(x => !x[3]).length} item(ns) a adequar)` : ` (${fmt(R.indic.rsWp, 2)} R$/Wp)`)]], { size: 9 });
     text(`Responsável técnico: ${S.id.rt || "-"} ${S.id.crea ? "· " + S.id.crea : ""} · Data: ${S.id.data}`, { color: MUT });
     try { if (typeof LOGOS === "object") { let x = M; for (const k of ["ufpel", "ceng", "ea", "lia"]) { if (!LOGOS[k]) continue; const img = await doc.embedPng(Uint8Array.from(atob(LOGOS[k]), c => c.charCodeAt(0))); const s = 44 / img.height; pg.drawImage(img, { x, y: 50, width: img.width * s, height: 44 }); x += img.width * s + 16; } } } catch (e) {}
     P_(20);
@@ -961,8 +1151,11 @@ async function gerarPDF() {
     P_(35);
     /* cargas */
     h1("2. Cargas e consumo");
-    table([{ h: "Equipamento", w: 4 }, { h: "CA/CC", w: 0.8 }, { h: "Qtd", w: 0.6, a: "r" }, { h: "W", w: 0.9, a: "r" }, { h: "h/dia", w: 0.8, a: "r" }, { h: "Simult.", w: 0.8, a: "r" }, { h: "Ip/In", w: 0.8, a: "r" }, { h: "Wh/dia", w: 1, a: "r" }],
-      [...R.cargas.map(l => [l.nome, l.tipo, String(l.q), fmt0(n(l.w)), fmt(n(l.h), 1), fmt(n(l.fs), 1), fmt(n(l.kp), 1), fmt0(l.e)]), ["Total", "", "", "", "", "", "", fmt0(R.ECA + R.ECC)]], { bold: [R.cargas.length] });
+    if (R.entrada === "lista") table([{ h: "Equipamento", w: 3.4 }, { h: "Tipo", w: 1.6 }, { h: "CA/CC", w: 0.7 }, { h: "Qtd", w: 0.5, a: "r" }, { h: "W", w: 0.8, a: "r" }, { h: "h/dia", w: 0.7, a: "r" }, { h: "Simult.", w: 0.7, a: "r" }, { h: "Ip/In", w: 0.6, a: "r" }, { h: "Crít.", w: 0.5 }, { h: "Wh/dia", w: 0.9, a: "r" }],
+      [...R.cargas.map(l => [l.nome, NAT[l.nat]?.t || "-", l.tipo, String(l.q), fmt0(n(l.w)), fmt(n(l.h), 1), fmt(n(l.fs), 1), fmt(l.kp, 1), critica(l) ? "sim" : "-", fmt0(l.e)]), ["Total", "", "", "", "", "", "", "", "", fmt0(R.ECA + R.ECC)]], { bold: [R.cargas.length], size: 7.5 });
+    else { text(`Entrada pela conta de energia: maior gasto ${fmt0(Math.max(...R.kwhMes))} kWh em ${MESES[R.mesPiorConta]}; variação anual ${S.conta.amp}% (meses sem dado previstos); potência simultânea ${fmt0(R.Psim)} W${R.psimEst ? " (estimada)" : ""}; maior motor ${fmt0(n(S.conta.pmotor))} W, Ip/In ${S.conta.kp}.`); }
+    if (R.row) table([{ h: "", w: 1.6 }, ...MESES.map(m => ({ h: m, w: 0.7, a: "r" }))], [["kWh/dia", ...R.Emes.map(v => fmt(v / 1000, 1))], ["HSP", ...R.row.m.map(v => fmt(v, 2))], ["consumo/HSP", ...R.Emes.map((v, i) => fmt(v / 1000 / R.row.m[i], 2))]], { size: 7 });
+    text(`Mês de dimensionamento (maior consumo/irradiação): ${MESES[R.mesDim]}. Mês de menor irradiação: ${MESES[R.mesCrit]}.`, { font: FB, size: 8.5 });
     mono(`E_bat = E_CC/eta_cabos + E_CA/(eta_inv x eta_cabos) = ${fmt0(R.ECC)}/${S.crit.etaCabo} + ${fmt0(R.ECA)}/(${S.crit.etaInv} x ${S.crit.etaCabo}) = ${fmt0(R.Ebat)} Wh/dia
 Potência simultânea CA = ${fmt0(R.Psim)} W ; surto de partida = ${fmt0(R.surto)} W`);
     /* banco */
@@ -985,7 +1178,10 @@ Vida útil = ${fmt(R.vida, 1)} anos (fim de vida: SOH 80%)`);
 R_banco = ${S.eq.bat.ri} x ${R.bNs}/${R.bNp} + cabos ${fmt(R.Rcabo * 1000, 2)} = ${fmt(R.Rbanco * 1000, 2)} mOhm ; V no pico = ${fmt(R.Vsag, 1)} V (corte ${fmt(R.vCorte, 1)} V)
 ${R.capNec ? `C >= I_exc x t / (dV - I_exc x ESR) = ${fmt0(R.Iexc)} x ${R.tPart} / (${fmt(R.dVadm, 2)} - ${fmt0(R.Iexc)} x ${fmt(R.capEsrB, 4)}) = ${fmt(R.Ccap, 1)} F -> ${R.capNs}S x ${R.capNp}P de 16 V ${R.capMod} F = ${fmt(R.capC, 1)} F ; pré-carga ${fmt(R.Rpre, 1)} Ohm` : "Banco capacitivo dispensável: o banco entrega o pico sem atingir o corte nem o limite do BMS."}
 Regra do som automotivo (1 F/kW em 12 V) equivalente: ${fmt(R.Cregra, 2)} F em ${fmt0(R.Vref)} V`);
-    h2("3.3 BMS e balanceamento");
+    h2("3.3 CCA necessário e esperado");
+    mono(`R_banco,max = (${fmt(R.Vref, 2)} - ${fmt(R.vCorte, 2)} - ${fmt(R.marg, 2)}) / ${fmt0(R.Ipk)} = ${fmt(R.RbReq * 1000, 2)} mOhm ; R_i,max por bateria = ${fmt(R.riReq * 1000, 2)} mOhm
+CCA necessário = 5,4/(k_frio x R_12V) = ${isFinite(R.ccaReq) ? fmt0(R.ccaReq) : "inf."} A ; CCA esperado (Ri catálogo) = ${fmt0(R.ccaCat)} A ; nominal ${n(S.eq.bat.cca) ? fmt0(n(S.eq.bat.cca)) + " A" : "não informado"}`);
+    h2("3.3.1 BMS e balanceamento");
     R.bms.forEach(([st, t, x]) => text(`${t}: ${x}`, { color: st === "bad" ? RED : st === "warn" ? WARN : INK, size: 8.5 }));
     if (R.est.tem) {
       const o = R.est; h2("3.4 Estado da bateria (medições)");
@@ -995,14 +1191,18 @@ Regra do som automotivo (1 F/kW em 12 V) equivalente: ${fmt(R.Cregra, 2)} F em $
         o.soe != null ? ["SoE / utilizável", `${fmt(o.soe / 1000, 1)} / ${fmt(o.util / 1000, 1)} kWh`, `${fmt0(o.autH)} h de consumo até o DoD de projeto`] : null,
         o.sop != null ? ["SoP", fmt(o.sop / 1000, 1) + " kW", `limitado por ${o.sopLim}; surto exigido ${fmt(R.surto / 1000, 1)} kW`] : null,
         o.dv != null ? ["SoB (dV)", fmt(o.dv * 1000, 0) + " mV", `${o.balOk ? "equilibrado" : "desbalanceado"}; limite ${fmt(o.dvLim * 1000, 0)} mV`] : null,
+        o.ccaRi ? ["CCA pela Ri", fmt0(o.ccaRi) + " A", `necessário ${isFinite(R.ccaReq) ? fmt0(R.ccaReq) : "-"} A`] : null,
+        o.riTeste ? ["Teste de carga", `${fmt(o.riTeste * 1000, 2)} mOhm`, `CCA equivalente ${fmt0(o.ccaTeste)} A`] : null,
         ["Vida restante", isFinite(o.anosRest) ? fmt(o.anosRest, 1) + " anos" : "-", o.anosTend != null ? `projeto ${fmt(o.anosProj, 1)}; tendência do SOH ${fmt(o.anosTend, 1)}` : "pelo projeto"]].filter(Boolean), { size: 8 });
+      if (o.units) table([{ h: "ID", w: 0.8 }, { h: "V", w: 0.8, a: "r" }, { h: "Ri mOhm", w: 0.9, a: "r" }, { h: "CCA", w: 0.8, a: "r" }, { h: "CCA nom.", w: 0.8, a: "r" }, { h: "CCA pela Ri", w: 1, a: "r" }, { h: "SOH", w: 0.7, a: "r" }, { h: "Resultado", w: 3 }],
+        o.units.map(u => [u.id, fmt(u.v, 2), fmt(u.ri, 2), fmt0(u.cca), fmt0(u.nom), fmt0(u.ccaRi), u.soh != null ? pct(u.soh) : "-", u.fl.join("; ") || "ok"]), { size: 7.5 });
     }
     text(R.T.obs, { color: MUT });
     P_(50);
     /* FV */
     h1("4. Gerador fotovoltaico e controlador");
-    mono(`E_FV = E_bat / eta_bat = ${fmt0(R.Ebat)} / ${R.T.eta} = ${fmt0(R.Efv)} Wh/dia
-P_FV = E_FV / (HSP_min x PR) = ${fmt0(R.Efv)} / (${fmt(R.hsp, 2)} x ${S.crit.pr}) = ${fmt0(R.Pnec)} W  ->  ${R.Nnec} módulos de ${S.eq.mod.p} W
+    mono(`E_FV = E_bat(${MESES[R.mesDim]}) / eta_bat = ${fmt0(R.EbatDim)} / ${R.T.eta} = ${fmt0(R.Efv)} Wh/dia${R.Erec ? ` (+ recuperação ${fmt0(R.Erec)})` : ""}
+P_FV = E_FV / (HSP_${MESES[R.mesDim]} x PR) = ${fmt0(R.Efv + R.Erec)} / (${fmt(R.hspDim, 2)} x ${S.crit.pr}) = ${fmt0(R.Pnec)} W  ->  ${R.Nnec} módulos de ${S.eq.mod.p} W
 Voc,max = ${S.eq.mod.voc} x [1 + (${S.eq.mod.bvoc}/100) x (${S.temp.tmin} - 25)] = ${fmt(R.vocMax, 2)} V  ->  Ns <= ${S.eq.ctrl.vocmax}/${fmt(R.vocMax, 2)} = ${R.NsMax}
 Vmp,quente = ${S.eq.mod.vmp} x [1 + (${S.eq.mod.bvoc}/100) x (${S.temp.tmax} + 30 - 25)] = ${fmt(R.vmpQ, 2)} V  ->  Ns >= (${fmt(R.vChg, 1)} + 5)/${fmt(R.vmpQ, 2)} = ${R.NsMin}
 Adotado: ${R.Ns} em série x ${R.Nstr} strings = ${R.Nmod} módulos = ${fmt(R.Pfv / 1000, 2)} kWp ; Voc,max arranjo = ${fmt0(R.vocArr)} V
@@ -1015,11 +1215,15 @@ ${S.backup.tipo === "nenhum" ? "Sem fonte reserva." : `Fonte reserva: ${S.backup
     P_(60);
     h1("6. Proteções, barramentos e cabos");
     table([{ h: "Trecho", w: 1.6 }, { h: "Dispositivo", w: 2.2 }, { h: "Especificação", w: 1.8 }, { h: "Critério", w: 3 }], R.prot.map(p => p.map(String)), { size: 7.5 });
-    table([{ h: "Trecho", w: 2.4 }, { h: "I (A)", w: 0.8, a: "r" }, { h: "L (m)", w: 0.7, a: "r" }, { h: "V", w: 0.7, a: "r" }, { h: "Seção", w: 1, a: "r" }, { h: "dV", w: 0.8, a: "r" }],
-      [["String FV", 1.25 * n(S.eq.mod.isc), S.cabos.lfv, R.vmpArr, R.cFV], ["Controlador -> barramento", 1.25 * R.iCtrl, S.cabos.lbat, R.Vb, R.cCtrl], ["Inversor -> barramento", 1.25 * R.iDcInv / R.invN, S.cabos.lbat, R.Vb, R.cInv], ["Banco -> barramento", 1.25 * R.iBat, S.cabos.lbat, R.Vb, R.cBat], ["Inversor -> quadro CA", 1.25 * R.iAc, S.cabos.lca, R.vac, R.cAc]].map(([t, i, l, v, c]) => [t, fmt(i), fmt(n(l), 1), fmt0(v), c.s + " mm²", fmt(c.dv, 2) + "%"]), { size: 8 });
+    table([{ h: "Trecho", w: 2.8 }, { h: "I (A)", w: 0.7, a: "r" }, { h: "L (m)", w: 0.6, a: "r" }, { h: "V", w: 0.6, a: "r" }, { h: "Seção", w: 1.1, a: "r" }, { h: "Iz", w: 0.6, a: "r" }, { h: "dV", w: 0.7, a: "r" }, { h: "PE", w: 0.7, a: "r" }],
+      R.cabos.map(x => [x.t, fmt(x.I, 1), fmt(x.L, 1), fmt0(x.V), x.c.s + " mm²" + (x.c.req != null && !x.c.ok ? ` (precisa ${x.c.req})` : ""), String(x.c.iz ?? "-"), fmt(x.c.dv, 2) + "%", x.pe + " mm²"]), { size: 7.5 });
+    table([{ h: "Barramento", w: 2.6 }, { h: "I (A)", w: 0.8, a: "r" }, { h: "Barra de cobre", w: 1.6 }, { h: "mm²", w: 0.7, a: "r" }, { h: "Iz DIN 43671", w: 1, a: "r" }], R.barras.map(x => [x.t, x.I ? fmt0(x.I) : "-", x.txt, fmt0(x.sec), fmt0(x.iz)]), { size: 7.5 });
+    { const A = altTensoes(); if (A.length) { h2("Montagem em outras tensões de banco"); table([{ h: "Banco", w: 0.7 }, { h: "Baterias", w: 0.9, a: "r" }, { h: "I inv. CC", w: 0.9, a: "r" }, { h: "Cabo banco", w: 0.9, a: "r" }, { h: "Fusível", w: 0.8, a: "r" }, { h: "Barramento", w: 1.1 }, { h: "Controladores", w: 0.9, a: "r" }, { h: "Total", w: 1.2, a: "r" }],
+      A.map(x => [x.v + " V" + (x.inv12 ? " (*)" : ""), `${x.r.bNs}S x ${x.r.bNp}P`, fmt0(x.r.iDcInv) + " A", x.r.cBat.s + " mm²", x.r.inFusBat + " A", x.r.bCC.txt, x.r.nCtrl + "x", brl(x.r.custo.total)]), { size: 7.5 }); if (A.some(x => x.inv12)) text("(*) inversor de 12 V acima de 3 kW é raro no mercado.", { size: 7, color: MUT }); } }
     text("Seguranças: fusível no positivo junto ao banco; seccionadoras CC; DPS CC e CA no mesmo BEP; barramentos isolados; abrigo ventilado e sinalizado; DR 30 mA; intertravamento entre fontes; equipotencialização de estruturas e racks.", { color: MUT });
     if (R.avisos.length) { h2("Alertas"); R.avisos.forEach(a => text("• " + a, { color: WARN })); }
     P_(75);
+    if (S.modo === "existente" && R.cmp) { h1("Análise do sistema existente"); table([{ h: "Item", w: 2 }, { h: "Necessário", w: 2 }, { h: "Existente", w: 2 }, { h: "Situação", w: 0.9 }, { h: "Observação", w: 3 }], R.cmp.map(x => [x[0], x[1], x[2], x[3] ? "atende" : "ADEQUAR", x[4]]), { size: 7.5 }); }
     /* esquema (paisagem) */
     newPage(true);
     pg.drawText(pt("7. Diagrama unifilar"), { x: M, y: H - M - 4, size: 15, font: FB, color: INK });
@@ -1035,7 +1239,7 @@ ${S.backup.tipo === "nenhum" ? "Sem fonte reserva." : `Fonte reserva: ${S.backup
     }
     P_(85);
     /* materiais */
-    h1("8. Lista de materiais e custos");
+    h1(S.modo === "existente" ? "8. Adequação: materiais e custos" : "8. Lista de materiais e custos");
     table([{ h: "Grupo", w: 1.3 }, { h: "Item", w: 4.6 }, { h: "Qtd", w: 0.7, a: "r" }, { h: "Un.", w: 0.7 }, { h: "Unit.", w: 1.1, a: "r" }, { h: "Total", w: 1.3, a: "r" }],
       [...R.mat.map(m => [m.g, m.d, fmt(m.q, m.q % 1 ? 1 : 0), m.un, brl(m.pu), brl(m.q * m.pu)]), ["", "Equipamentos e materiais", "", "", "", brl(R.custo.eq)]], { size: 7.5, bold: [R.mat.length] });
     const mo = S.mo, C2 = R.custo;
