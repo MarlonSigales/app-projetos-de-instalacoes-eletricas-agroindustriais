@@ -84,7 +84,7 @@ function novo() {
     cargas: [],
     crit: { vbanco: "auto", aut: 2, fnub: 0, nnub: 6, hfalta: 0, nfalta: 0, drec: 0, tbat: 25, tpart: 0.5, kfrio: 1.8, bat: "li", dod: 0.8, ftemp: 1.0, etaInv: 0.92, etaCabo: 0.97, pr: 0.80, vac: 220, fases: 1 },
     eq: {
-      mod: { nome: "Módulo 550 W mono (144 células)", p: 550, voc: 49.6, vmp: 41.96, isc: 14.0, imp: 13.11, bvoc: -0.27, fusmax: 25 },
+      mod: { nome: "Módulo 550 W mono (144 células)", p: 550, voc: 49.6, vmp: 41.96, isc: 14.0, imp: 13.11, bvoc: -0.27, fusmax: 25, comp: 2.278, larg: 1.134 },
       bat: Object.assign({}, TIPOS.li.unid),
       ctrl: { nome: "Controlador MPPT 60 A (Voc 250 V)", imax: 60, vocmax: 250, p48: 3200 },
       inv: { nome: "Inversor off-grid 5 kW 48 V senoidal pura", p: 5000, surto: 2.0, eta: 0.92, carr: 60, vcorte: 0 }
@@ -96,6 +96,7 @@ function novo() {
     conta: { meses: ["", "", "", "", "", "", "", "", "", "", "", ""], pior: "", mesPior: 0, amp: 25, fcc: 0, fcrit: 1, psim: "", pmotor: "", kp: 6 },
     exist: { ns: "", nstr: "", bns: "", bnp: "", nctrl: "", ninv: "", sfv: "", sctrl: "", sinv: "", sbat: "", sca: "", fusbat: "" },
     analise: [],
+    telhado: { usar: "nao", margem: 0.4, medida: "plano", faces: [{ nome: "Água norte", az: "N", inc: "30%", comp: "", larg: "", nmod: "" }, { nome: "Água sul", az: "S", inc: "30%", comp: "", larg: "", nmod: "" }] },
     precos: precosPadrao(), mo: moPadrao(), exemplo: false
   };
 }
@@ -192,6 +193,55 @@ function inclinado(H, latDeg, beta, rho = 0.2) {
     const Rb = (Math.cos(pb) * Math.cos(dec) * Math.sin(wsl) + wsl * Math.sin(pb) * Math.sin(dec)) / (Math.cos(phi) * Math.cos(dec) * Math.sin(ws) + ws * Math.sin(phi) * Math.sin(dec));
     return h * ((1 - fd) * Math.max(0, Rb) + fd * (1 + Math.cos(b)) / 2 + rho * (1 - Math.cos(b)) / 2);
   });
+}
+/* plano com qualquer orientação: integração horária no dia médio do mês
+   (perfis de Collares-Pereira & Rabl para global e difusa, fração difusa de Erbs, Liu-Jordan isotrópico, albedo 0,2).
+   az = orientação da face (bússola: N = 0°, L = 90°, S = 180°, O = 270°); beta = inclinação (°). */
+function planoMensal(H, latDeg, beta, az, rho = 0.2) {
+  const r = Math.PI / 180, phi = latDeg * r, b = beta * r, g = (az - 180) * r, NP = 96;
+  return H.map((h, i) => {
+    const d = DIAS_MES[i], dec = 23.45 * r * Math.sin(2 * Math.PI * (284 + d) / 365);
+    const ws = Math.acos(Math.max(-1, Math.min(1, -Math.tan(phi) * Math.tan(dec))));
+    const H0 = 24 * 3600 * 1367 / Math.PI * (1 + 0.033 * Math.cos(2 * Math.PI * d / 365)) * (Math.cos(phi) * Math.cos(dec) * Math.sin(ws) + ws * Math.sin(phi) * Math.sin(dec)) / 3.6e6;
+    const kt = Math.min(0.8, Math.max(0.1, h / H0));
+    const fd = ws <= 81.4 * r ? 1.391 - 3.560 * kt + 4.189 * kt * kt - 2.137 * kt ** 3 : 1.311 - 3.022 * kt + 3.427 * kt * kt - 1.821 * kt ** 3;
+    const a = 0.409 + 0.5016 * Math.sin(ws - Math.PI / 3), bb = 0.6609 - 0.4767 * Math.sin(ws - Math.PI / 3);
+    const pts = []; let St = 0, Sd = 0;
+    for (let k = 0; k < NP; k++) { const w = -ws + (k + 0.5) * 2 * ws / NP, rt = (a + bb * Math.cos(w)) * (Math.cos(w) - Math.cos(ws)), rd = Math.cos(w) - Math.cos(ws); St += rt; Sd += rd; pts.push([w, rt, rd]); }
+    let HT = 0;
+    for (const [w, rt, rd] of pts) {
+      const I = h * rt / St, Id = Math.min(I, h * fd * rd / Sd), Ib = Math.max(0, I - Id);
+      const cz = Math.cos(phi) * Math.cos(dec) * Math.cos(w) + Math.sin(phi) * Math.sin(dec);
+      const ct = Math.sin(dec) * Math.sin(phi) * Math.cos(b) - Math.sin(dec) * Math.cos(phi) * Math.sin(b) * Math.cos(g) + Math.cos(dec) * Math.cos(phi) * Math.cos(b) * Math.cos(w) + Math.cos(dec) * Math.sin(phi) * Math.sin(b) * Math.cos(g) * Math.cos(w) + Math.cos(dec) * Math.sin(b) * Math.sin(g) * Math.sin(w);
+      HT += (cz > 0.05 ? Ib * Math.max(0, ct) / cz : 0) + Id * (1 + Math.cos(b)) / 2 + I * rho * (1 - Math.cos(b)) / 2;
+    }
+    return HT;
+  });
+}
+const AZ = { N: 0, NNE: 22.5, NE: 45, ENE: 67.5, L: 90, E: 90, ESE: 112.5, LSE: 112.5, SE: 135, SSE: 157.5, S: 180, SSO: 202.5, SSW: 202.5, SO: 225, SW: 225, OSO: 247.5, WSW: 247.5, O: 270, W: 270, ONO: 292.5, WNW: 292.5, NO: 315, NW: 315, NNO: 337.5, NNW: 337.5 };
+const lerAz = v => { const t = String(v ?? "").trim().toUpperCase(); if (t in AZ) return AZ[t]; const x = n(t); return ((x % 360) + 360) % 360; };
+const lerInc = v => { const t = String(v ?? "").trim(); const x = n(t.replace("%", "")); return Math.max(0, Math.min(90, t.endsWith("%") ? Math.atan(x / 100) * 180 / Math.PI : x)); };
+const dirNome = az => ["N", "NE", "L", "SE", "S", "SO", "O", "NO"][Math.round(((az % 360) + 360) % 360 / 45) % 8];
+function telhado(R, row) {
+  const t = S.telhado; if (!t || t.usar !== "sim" || !(t.faces || []).length || !row) return null;
+  const hor = (S.local.rows || []).find(r => r.nome === "Plano Horizontal"), lat = n(S.local.lat);
+  if (!hor || !lat) { R.avisos.push("Telhado: é preciso a coordenada e a linha “Plano Horizontal” do SunData para calcular cada água."); return null; }
+  const ref = row.ang > 0 ? planoMensal(hor.m, lat, row.ang, lat < 0 ? 0 : 180) : hor.m.slice();
+  const cal = row.m.map((v, i) => ref[i] > 0 ? v / ref[i] : 1);
+  const mc = n(S.eq.mod.comp) || 2.278, ml = n(S.eq.mod.larg) || 1.134, gap = 0.02, mg = t.margem === "" || t.margem == null ? 0.4 : Math.max(0, n(t.margem));
+  const faces = t.faces.map((f, j) => { const az = lerAz(f.az), inc = lerInc(f.inc), mm = planoMensal(hor.m, lat, inc, az).map((v, i) => v * cal[i]), mn = Math.min(...mm);
+    const o = { cfg: f, nome: f.nome || "Água " + (j + 1), az, inc, m: mm, min: mn, mesMin: mm.indexOf(mn), media: media(mm), efMin: mn / Math.min(...row.m), efMed: media(mm) / row.media, cap: n(f.nmod) > 0 ? n(f.nmod) : Infinity };
+    const L = n(f.comp), Wd = n(f.larg);
+    if (L > 0 && Wd > 0) {
+      const Wpl = t.medida === "planta" ? Wd / Math.cos(inc * Math.PI / 180) : Wd, ok = x => Math.max(0, Math.floor((x + gap) / 1));
+      const fit = (a, b) => Math.max(0, Math.floor((L - 2 * mg + gap) / (a + gap))) * Math.max(0, Math.floor((Wpl - 2 * mg + gap) / (b + gap)));
+      const ret = fit(ml, mc), pai = fit(mc, ml);
+      Object.assign(o, { L, Wpl, area: L * Wpl, nRet: ret, nPai: pai, nArea: Math.max(ret, pai), orient: ret >= pai ? "retrato" : "paisagem", amod: mc * ml });
+      o.cap = Math.min(o.cap, o.nArea);
+      if (S.modo === "existente" && n(f.nmod) > o.nArea) R.avisos.push(`${o.nome}: ${n(f.nmod)} módulos instalados, mas a área comporta ${o.nArea} com recuo de ${fmt(mg, 2)} m — confira as medidas.`);
+    }
+    return o; });
+  return { faces, cal };
 }
 function linhasInclinadas(H, lat) {
   const lin = (nome, ang, m) => ({ nome, ang, dir: lat < 0 ? "N" : "S", m: m.map(v => Math.round(v * 100) / 100), media: Math.round(media(m) * 100) / 100, delta: Math.round((Math.max(...m) - Math.min(...m)) * 100) / 100 });
@@ -440,24 +490,61 @@ function calcular() {
   R.Erec = n(c.drec) > 0 ? R.Eaut / n(c.drec) / T.eta : 0;
   R.Pnec = R.hspDim > 0 ? (R.Efv + R.Erec) / (R.hspDim * n(c.pr)) : 0;
   R.Nnec = Math.ceil(R.Pnec / n(m.p));
+  R.tel = telhado(R, row);
+  if (R.tel) {
+    const F = R.tel.faces, pm = n(m.p), pr = n(c.pr), alvo = R.EfvMes.map(E => E + R.Erec);
+    let nf;
+    if (S.modo === "existente" && F.some(f => n(f.cfg.nmod) > 0)) nf = F.map(f => n(f.cfg.nmod));
+    else {
+      nf = F.map(() => 0); const cap = F.map(f => f.cap);
+      for (let it = 0; it < 3000; it++) {
+        const prod = MESES.map((_, i) => F.reduce((a, f, j) => a + nf[j] * pm * f.m[i] * pr, 0)), def = alvo.map((A, i) => (A - prod[i]) / A), mx = Math.max(...def);
+        if (mx <= 0) break;
+        const mi = def.indexOf(mx); let bj = -1; F.forEach((f, j) => { if (nf[j] < cap[j] && (bj < 0 || f.m[mi] > F[bj].m[mi])) bj = j; });
+        if (bj < 0) { R.avisos.push(`As águas do telhado comportam só ${nf.reduce((a, b) => a + b, 0)} módulos e não atendem ${MESES[mi]}: falta ${pct(mx)} da energia. Use outra área (solo, outra cobertura) ou reduza o consumo.`); break; }
+        nf[bj]++;
+      }
+    }
+    R.tel.nf = nf; R.Nnec = nf.reduce((a, b) => a + b, 0); R.Pnec = R.Nnec * pm;
+    F.forEach((f, j) => { if (f.nArea != null && nf[j] > 0) { f.usoArea = Math.ceil(nf[j] / 1) * f.amod; } });
+    R.hspArr = MESES.map((_, i) => R.Nnec ? F.reduce((a, f, j) => a + nf[j] * f.m[i], 0) / R.Nnec : 0);
+    const rz = R.EbatMes.map((E, i) => E / R.hspArr[i]); R.mesDim = rz.indexOf(Math.max(...rz));
+    R.hspDim = R.hspArr[R.mesDim]; R.EbatDim = R.EbatMes[R.mesDim]; R.Efv = R.EbatDim / T.eta;
+  }
   R.NsMin = Math.ceil((R.vChg + 5) / R.vmpQ); R.NsMax = Math.floor(n(ct.vocmax) / R.vocMax);
   if (R.NsMin > R.NsMax) { R.avisos.push(`Não há número de módulos em série que atenda o controlador: mínimo ${R.NsMin} (tensão de carga) e máximo ${R.NsMax} (Voc a ${tmin} °C ≤ ${ct.vocmax} V). Escolha controlador de Voc maior ou outro módulo.`); R.Ns = Math.max(1, R.NsMax); }
+  else if (R.tel) {
+    /* módulos em série que melhor aproveitam as águas: cobre o mês crítico com o menor número de módulos, respeitando a área */
+    const F = R.tel.faces, pm = n(m.p), pr = n(c.pr), alvo = R.EfvMes.map(E => E + R.Erec); let best = null;
+    for (let k = R.NsMin; k <= R.NsMax; k++) {
+      const sf = R.tel.nf.map((g, j) => g > 0 ? Math.min(S.modo === "existente" ? Math.max(1, Math.round(g / k)) : Math.ceil(g / k), Math.floor(F[j].cap / k)) : 0), tot = sf.reduce((a, x) => a + x * k, 0);
+      const cov = Math.min(1, ...MESES.map((_, i) => F.reduce((a, f, j) => a + sf[j] * k * pm * f.m[i] * pr, 0) / alvo[i]));
+      if (!best || cov > best.cov + 1e-6 || (Math.abs(cov - best.cov) <= 1e-6 && (tot < best.tot || (tot === best.tot && k > best.k)))) best = { k, tot, cov };
+    }
+    R.Ns = best.k;
+  }
   else { let best = null; for (let k = R.NsMin; k <= R.NsMax; k++) { const tot = k * Math.ceil(Math.max(1, R.Nnec) / k); if (!best || tot < best.tot || (tot === best.tot && k > best.k)) best = { k, tot }; } R.Ns = best.k; }
-  R.Nstr = Math.max(1, Math.ceil(Math.max(1, R.Nnec) / R.Ns)); R.Nmod = R.Ns * R.Nstr; R.Pfv = R.Nmod * n(m.p);
+  const strFaces = () => R.tel.nf.map(x => x > 0 ? (S.modo === "existente" ? Math.max(1, Math.round(x / R.Ns)) : Math.ceil(x / R.Ns)) : 0);
+  if (R.tel) { R.tel.sf = strFaces(); R.tel.faces.forEach((f, j) => { const nm = R.tel.sf[j] * R.Ns; if (nm > f.cap) { R.tel.sf[j] = Math.floor(f.cap / R.Ns); R.avisos.push(`${f.nome}: cabem ${f.cap} módulo(s), menos que uma string completa de ${R.Ns}${R.tel.sf[j] ? "" : "; a água ficou sem módulos"}.`); } }); R.Nstr = Math.max(1, R.tel.sf.reduce((a, b) => a + b, 0)); }
+  else R.Nstr = Math.max(1, Math.ceil(Math.max(1, R.Nnec) / R.Ns));
+  R.Nmod = R.Ns * R.Nstr; R.Pfv = R.Nmod * n(m.p);
   R.NsDim = R.Ns; R.NstrDim = R.Nstr; R.NmodDim = R.Nmod; R.PfvDim = R.Pfv;
-  if (ex("ns") > 0) R.Ns = ex("ns"); if (ex("nstr") > 0) R.Nstr = ex("nstr");
+  if (ex("ns") > 0) R.Ns = ex("ns"); if (!R.tel && ex("nstr") > 0) R.Nstr = ex("nstr");
+  if (R.tel && ex("ns") > 0) { R.tel.sf = strFaces(); R.Nstr = Math.max(1, R.tel.sf.reduce((a, b) => a + b, 0)); }
   R.Nmod = R.Ns * R.Nstr; R.Pfv = R.Nmod * n(m.p);
   R.vocArr = R.vocMax * R.Ns; R.vmpArr = n(m.vmp) * R.Ns;
   R.pCtrl = n(ct.p48) * Vb / 48;
-  R.nCtrl = R.Nstr;
-  for (let k = 1; k <= R.Nstr; k++) { const sc = Math.ceil(R.Nstr / k), pk = sc * R.Ns * n(m.p); if (pk <= R.pCtrl * 1.001 && pk / Vb <= n(ct.imax) * 1.001) { R.nCtrl = k; break; } }
+  const ctrlPara = ns => { if (ns <= 0) return 0; for (let k = 1; k <= ns; k++) { const sc = Math.ceil(ns / k), pk = sc * R.Ns * n(m.p); if (pk <= R.pCtrl * 1.001 && pk / Vb <= n(ct.imax) * 1.001) return k; } return ns; };
+  if (R.tel) { R.tel.nc = R.tel.sf.map(ctrlPara); R.nCtrl = Math.max(1, R.tel.nc.reduce((a, b) => a + b, 0)); }
+  else R.nCtrl = ctrlPara(R.Nstr);
   R.nCtrlDim = R.nCtrl; if (ex("nctrl") > 0) R.nCtrl = ex("nctrl");
-  R.strCtrl = Math.ceil(R.Nstr / R.nCtrl);
+  R.strCtrl = R.tel && !ex("nctrl") ? Math.max(...R.tel.sf.map((x, j) => R.tel.nc[j] ? Math.ceil(x / R.tel.nc[j]) : 0)) : Math.ceil(R.Nstr / R.nCtrl);
+  if (R.tel && ex("nctrl") > 0 && ex("nctrl") < R.tel.sf.filter(x => x > 0).length) R.avisos.push("Águas com orientações diferentes no mesmo MPPT: cada água deve ter seu próprio controlador (ou entrada MPPT); strings de orientações diferentes em paralelo perdem energia.");
   R.iCtrl = R.strCtrl * R.Ns * n(m.p) / Vb;
   if (R.iCtrl > n(ct.imax) * 1.001) R.avisos.push(`Cada controlador receberia ${fmt(R.iCtrl)} A, acima de ${ct.imax} A: aumente o número de controladores.`);
   R.iChgTot = R.Pfv / Vb;
   if (R.iChgTot > R.icMax * 1.05) R.avisos.push(`Corrente de carga do gerador FV (${fmt0(R.iChgTot)} A) acima do recomendado para o banco (${fmt0(R.icMax)} A = ${T.cCarga} C): limite a corrente no controlador ou aumente o banco.`);
-  R.prodMes = row ? row.m.map(h => R.Pfv * h * n(c.pr)) : [];
+  R.prodMes = R.tel ? MESES.map((_, i) => R.tel.faces.reduce((a, f, j) => a + R.tel.sf[j] * R.Ns * n(m.p) * f.m[i] * n(c.pr), 0)) : row ? row.m.map(h => R.Pfv * h * n(c.pr)) : [];
   R.sobraMes = R.prodMes.map((v, i) => v / R.EfvMes[i] - 1);
   R.sobra = R.sobraMes.length ? Math.min(...R.sobraMes) : 0;
   R.excBat = R.prodMes.length ? Math.min(...R.prodMes.map((v, i) => (v - R.EfvMes[i]) * T.eta)) : 0;
@@ -760,6 +847,16 @@ function barrasSVG(vals, { cor = "#0e6a4e", alvo = null, alvoTxt = "", destacar 
   if (alvo != null) { const y = 14 + ch - ch * alvo / max; o += `<line x1="${pad}" x2="${W - 8}" y1="${y}" y2="${y}" stroke="#b3261e" stroke-dasharray="6 4" stroke-width="1.6"/><text x="${W - 10}" y="12" text-anchor="end" class="lbl" style="fill:#b3261e">- - - ${esc(alvoTxt)}</text>`; }
   return o + `<text x="8" y="12">${esc(un)}</text></svg>`;
 }
+function linhasSVG(series, { un = "", h = 230, dest = -1 } = {}) {
+  const W = 680, pad = 44, ch = h - 50, all = series.flatMap(x => x.v), max = Math.max(...all) * 1.12 || 1, bw = (W - pad - 10) / 12, cores = ["#0e6a4e", "#b5452f", "#2f5fb5", "#9a5a00", "#7a4fd0", "#0b7c78"];
+  const X = i => pad + i * bw + bw / 2, Y = v => 14 + ch - ch * v / max;
+  let o = `<svg class="chart" viewBox="0 0 ${W} ${h}" xmlns="http://www.w3.org/2000/svg">`;
+  for (let k = 0; k <= 4; k++) { const v = max * k / 4; o += `<line x1="${pad}" x2="${W - 8}" y1="${Y(v)}" y2="${Y(v)}" stroke="currentColor" opacity=".12"/><text x="${pad - 6}" y="${Y(v) + 4}" text-anchor="end">${fmt(v, 1)}</text>`; }
+  MESES.forEach((m, i) => { o += `<text x="${X(i)}" y="${h - 18}" text-anchor="middle" ${i === dest ? 'class="lbl"' : ""}>${m}</text>`; });
+  if (dest >= 0) o += `<rect x="${X(dest) - bw / 2}" y="14" width="${bw}" height="${ch}" fill="#b3261e" opacity=".07"/>`;
+  series.forEach((sr, k) => { const c = sr.cor || cores[k % cores.length]; o += `<polyline points="${sr.v.map((v, i) => `${X(i)},${Y(v)}`).join(" ")}" fill="none" stroke="${c}" stroke-width="${sr.w || 2.2}" ${sr.d ? 'stroke-dasharray="6 4"' : ""}/>`; o += `<text x="${pad + 6 + k * 150}" y="${h - 2}" style="fill:${c}" class="lbl">— ${esc(sr.nome)}</text>`; });
+  return o + `<text x="8" y="12">${esc(un)}</text></svg>`;
+}
 function vidaSVG(R) {
   const W = 680, Hh = 240, pad = 56, ch = 175, curva = R.T.curva, xs = []; for (let d = 0.1; d <= 1.0001; d += 0.02) xs.push(d);
   const ys = xs.map(d => ciclos(d, curva)), lim = R.T.vidaCal * 365, max = Math.max(...ys, lim) * 1.1;
@@ -859,6 +956,17 @@ const VIEWS = {
     <div class="tbl"><table><thead><tr><th>Usar</th><th>Ângulo</th><th class="r">Incl.</th>${MESES.map(m => `<th class="r">${m}</th>`).join("")}<th class="r">Média</th><th class="r">Mínimo</th></tr></thead><tbody>${rows.map((r, i) => { const mi = Math.min(...r.m), im = r.m.indexOf(mi); return `<tr class="${i === S.local.sel ? "sel" : ""}"><td><input type="radio" name="rowsel" data-row="${i}" ${i === S.local.sel ? "checked" : ""} style="width:auto"></td><td>${esc(r.nome)}</td><td class="num">${r.ang}° ${r.dir || ""}</td>${r.m.map((v, j) => `<td class="num ${j === im && i === S.local.sel ? "min" : ""}">${fmt(v, 2)}</td>`).join("")}<td class="num">${fmt(r.media, 2)}</td><td class="num"><b>${fmt(mi, 2)}</b></td></tr>`; }).join("")}</tbody></table></div>
     ${barrasSVG(R.row.m, { destacar: R.mesCrit, alvo: R.row.media, alvoTxt: "média anual " + fmt(R.row.media, 2) + " (NÃO usar)", un: "kWh/m²·dia — " + R.row.nome + " " + R.row.ang + "°" })}
     <div class="res">${card("HSP de projeto", fmt(R.hsp, 2), `${MESES[R.mesCrit]} · pior mês`)}${card("Média anual", fmt(R.hspMed, 2), "só para comparação")}${card("Diferença", pct(R.hspMed / R.hsp - 1), "quanto faltaria se usasse a média")}${card("Inclinação", R.row.ang + "°", "voltada para o " + (n(S.local.lat) < 0 ? "norte" : "sul"))}</div></div>` : ""}
+    ${rows.length ? (() => { const t = S.telhado, tel = R.tel; return `<div class="block"><h3>Telhado: águas, orientação e inclinação</h3>
+    <div class="grid">${fld("telhado.usar", "Instalar sobre telhado com águas definidas", { opts: [["nao", "Não — estrutura na inclinação ótima (linha selecionada)"], ["sim", "Sim — módulos rentes às águas do telhado"]] })}</div>
+    ${t.usar === "sim" ? `<div class="tbl ct cab"><table><thead><tr><th>Água</th><th>Orient.</th><th>Incl.</th><th class="r">Compr. (m)</th><th class="r">Largura (m)</th><th class="r">${S.modo === "existente" ? "Instalados" : "Limite"}</th><th></th></tr></thead><tbody>${t.faces.map((f, j) => `<tr><td><input class="w-l" type="text" data-tf="${j}" data-tff="nome" value="${esc(f.nome)}"></td><td><input class="w-s" type="text" data-tf="${j}" data-tff="az" value="${esc(f.az)}" title="N, NE, L, SE, S, SO, O, NO ou graus (N = 0, L = 90)"></td><td><input class="w-s" type="text" data-tf="${j}" data-tff="inc" value="${esc(f.inc)}" title="graus (ex.: 17) ou caimento em % (ex.: 30%)"></td><td><input class="w-s" type="number" step="0.01" data-tf="${j}" data-tff="comp" value="${esc(f.comp)}" placeholder="beiral"></td><td><input class="w-s" type="number" step="0.01" data-tf="${j}" data-tff="larg" value="${esc(f.larg)}" placeholder="caída"></td><td><input class="w-s" type="number" data-tf="${j}" data-tff="nmod" value="${esc(f.nmod)}" placeholder="${S.modo === "existente" ? "" : "área"}"></td><td><button class="btn small danger" type="button" data-fdel="${j}">×</button></td></tr>`).join("")}</tbody></table></div>
+    <div class="actions"><button class="btn small" type="button" id="addF">+ Água</button></div>
+    <div class="grid">${fld("telhado.margem", "Recuo das bordas e cumeeira (m)", { step: "0.05", hint: "afastamento livre para vento, fixação e manutenção: 0,3–0,5 m" })}${fld("telhado.medida", "Largura da água medida", { opts: [["plano", "No plano do telhado (do beiral à cumeeira)"], ["planta", "Na planta (projeção horizontal)"]] })}</div>
+    <p class="step-hint">Orientação: para onde a água “olha” — N, NE, L, SE, S, SO, O, NO ou azimute em graus (N = 0°, L = 90°, S = 180°, O = 270°). Inclinação em graus (17) ou caimento do telhado em % (30% = 16,7°; 50% = 26,6°; 100% = 45°).</p>
+    ${tel ? `<div class="tbl cab"><table><thead><tr><th>Água</th><th>Orient.</th><th class="r">Incl.</th><th class="r">HSP mín.</th><th class="r">HSP méd.</th><th class="r">Inverno</th><th class="r">Anual</th><th class="r">Mód.</th><th class="r">Str.</th></tr></thead><tbody>${tel.faces.map((f, j) => `<tr><td>${esc(f.nome)}</td><td>${dirNome(f.az)} (${fmt0(f.az)}°)</td><td class="num">${fmt(f.inc, 1)}°</td><td class="num">${fmt(f.min, 2)} ${MESES[f.mesMin]}</td><td class="num">${fmt(f.media, 2)}</td><td class="num"><b>${pct(f.efMin)}</b></td><td class="num">${pct(f.efMed)}</td><td class="num">${tel.sf ? tel.sf[j] * R.Ns : "—"}</td><td class="num">${tel.sf ? tel.sf[j] + "×" + R.Ns : "—"}</td></tr>`).join("")}<tr class="sub"><td colspan="3">Ótimo: ${esc(R.row.nome)} ${R.row.ang}°</td><td class="num">${fmt(R.hsp, 2)}</td><td class="num">${fmt(R.row.media, 2)}</td><td class="num">100%</td><td class="num">100%</td><td class="num">${R.Nmod}</td><td class="num">${R.Nstr}</td></tr></tbody></table></div>
+    ${tel.faces.some(f => f.nArea != null) ? `<div class="tbl cab"><table><thead><tr><th>Água</th><th class="r">Área (m²)</th><th class="r">Retrato</th><th class="r">Paisagem</th><th class="r">Máx.</th><th class="r">Ocup. máx.</th><th class="r">Usados</th><th class="r">Ocup. real</th></tr></thead><tbody>${tel.faces.map((f, j) => f.nArea == null ? `<tr><td>${esc(f.nome)}</td><td colspan="7" class="step-hint">informe comprimento e largura para limitar pela área</td></tr>` : `<tr><td>${esc(f.nome)}</td><td class="num">${fmt(f.area, 1)} <small>(${fmt(f.L, 1)}×${fmt(f.Wpl, 1)})</small></td><td class="num">${f.nRet}</td><td class="num">${f.nPai}</td><td class="num"><b>${f.nArea}</b> <small>${f.orient}</small></td><td class="num">${pct(f.nArea * f.amod / f.area)}</td><td class="num">${tel.sf[j] * R.Ns}</td><td class="num">${pct(tel.sf[j] * R.Ns * f.amod / f.area)}</td></tr>`).join("")}</tbody></table></div>
+    <p class="step-hint">Módulo de ${fmt(n(S.eq.mod.comp), 3)} × ${fmt(n(S.eq.mod.larg), 3)} m (${fmt(n(S.eq.mod.comp) * n(S.eq.mod.larg), 2)} m²), 2 cm entre módulos (grampos) e recuo de ${fmt(n(S.telhado.margem), 2)} m nas bordas. O número máximo sai do arranjo em grade (retrato ou paisagem), por isso a área de módulos é sempre menor que a área da água.</p>` : ""}
+    ${linhasSVG([...tel.faces.map(f => ({ nome: f.nome, v: f.m })), { nome: "ótimo " + R.row.ang + "°", v: R.row.m, d: true, cor: "#17221d" }], { un: "kWh/m²·dia por água (tracejado: inclinação ótima)", dest: R.mesDim })}
+    <p class="note">Captação = irradiação da água ÷ irradiação na inclinação ótima (linha selecionada do SunData). Cada água é calculada hora a hora no dia médio de cada mês e calibrada pela tabela do CRESESB. Os módulos vão primeiro para a água que mais rende no mês deficitário; cada água forma strings e MPPT próprios. ${tel.faces.some(f => f.efMin < 0.7) ? "<b>Há água com captação de inverno abaixo de 70%:</b> no hemisfério sul, faces voltadas ao sul perdem muito no inverno — prefira norte, leste ou oeste, ou estrutura inclinada." : ""}</p>` : ""}` : `<p class="step-hint">Use quando os módulos ficam rentes ao telhado: informe cada água (lado) com orientação e inclinação. A ferramenta calcula a captação de cada lado e distribui os módulos.</p>`}</div>`; })() : ""}
     <div class="block"><h3>Temperaturas de projeto (correção de tensão dos módulos)</h3><div class="grid">${fld("temp.tmin", "Temperatura mínima do ar (°C)", { hint: "eleva o Voc: limite do controlador" })}${fld("temp.tmax", "Temperatura máxima do ar (°C)", { hint: "célula ≈ ar + 30 °C: reduz o Vmp" })}</div></div>
     ${S.local.obs ? `<p class="note warn">${esc(S.local.obs)}</p>` : ""}`;
   },
@@ -902,7 +1010,7 @@ Mês de dimensionamento = máx(E_bat,mês / HSP_mês) → ${MESES[R.mesDim]}: ${
     ${fld("crit.drec", "Dias para recuperar o banco (0 = não considerar)", { step: "1", hint: "sobredimensiona o FV para recarregar após o evento; usual 7–14" })}
     ${fld("crit.tbat", "Temperatura média do abrigo das baterias (°C)", { step: "1", hint: "cada +10 °C acima de 25 °C reduz a vida à metade" })}
     ${fld("crit.tpart", "Duração do pico de partida (s)", { step: "0.1", hint: "compressor/motor direto: 0,3–1 s" })}${fld("crit.kfrio", "Fator R(−18 °C)/R(25 °C) para CCA", { step: "0.1", hint: "chumbo ≈ 1,6–2,0" })}</div></div>
-    <div class="block"><h3>Módulo fotovoltaico</h3><div class="grid">${fld("eq.mod.nome", "Modelo", { type: "text" })}${fld("eq.mod.p", "Pmáx (W)")}${fld("eq.mod.voc", "Voc (V)")}${fld("eq.mod.vmp", "Vmp (V)")}${fld("eq.mod.isc", "Isc (A)")}${fld("eq.mod.imp", "Imp (A)")}${fld("eq.mod.bvoc", "Coef. temp. Voc (%/°C)", { step: "0.01" })}${fld("eq.mod.fusmax", "Fusível máx. em série (A)")}</div></div>
+    <div class="block"><h3>Módulo fotovoltaico</h3><div class="grid">${fld("eq.mod.nome", "Modelo", { type: "text" })}${fld("eq.mod.p", "Pmáx (W)")}${fld("eq.mod.voc", "Voc (V)")}${fld("eq.mod.vmp", "Vmp (V)")}${fld("eq.mod.isc", "Isc (A)")}${fld("eq.mod.imp", "Imp (A)")}${fld("eq.mod.bvoc", "Coef. temp. Voc (%/°C)", { step: "0.01" })}${fld("eq.mod.fusmax", "Fusível máx. em série (A)")}${fld("eq.mod.comp", "Comprimento do módulo (m)", { step: "0.001" })}${fld("eq.mod.larg", "Largura do módulo (m)", { step: "0.001" })}</div></div>
     <div class="block"><h3>Bateria (unidade)</h3><div class="grid">${fld("eq.bat.nome", "Modelo", { type: "text" })}${fld("eq.bat.v", "Tensão nominal (V)", { step: "0.1" })}${fld("eq.bat.ah", "Capacidade (Ah, C20/C10)")}${fld("eq.bat.ri", "Resistência interna (mΩ)", { step: "0.1", hint: "catálogo ou medida com a bateria nova" })}${fld("eq.bat.imax", "Corrente máx. contínua de descarga (A)")}${fld("eq.bat.ipico", "Corrente de pico (A)", { hint: "limite do BMS/fabricante" })}${fld("eq.bat.tpico", "Duração do pico (s)", { step: "0.5" })}${fld("eq.bat.cca", "CCA (A, só chumbo; 0 = não informado)", { hint: "30 s a −18 °C até 7,2 V (12 V)" })}${S.crit.bat === "li" ? fld("eq.bat.bms", "BMS", { opts: [["integrado", "Integrado no módulo (rack)"], ["externo", "Externo (células avulsas)"]] }) : ""}</div><div class="actions"><button class="btn small ghost" type="button" id="batPadrao">Usar bateria padrão desta tecnologia</button></div></div>
     <div class="block"><h3>Controlador de carga MPPT</h3><div class="grid">${fld("eq.ctrl.nome", "Modelo", { type: "text" })}${fld("eq.ctrl.imax", "Corrente máx. de carga (A)")}${fld("eq.ctrl.vocmax", "Voc máx. de entrada (V)")}${fld("eq.ctrl.p48", "Potência FV máx. em 48 V (W)", { hint: "proporcional à tensão do banco" })}</div></div>
     <div class="block"><h3>Inversor off-grid</h3><div class="grid">${fld("eq.inv.nome", "Modelo", { type: "text" })}${fld("eq.inv.p", "Potência contínua (W)")}${fld("eq.inv.surto", "Fator de surto (× P, ~5 s)", { step: "0.1" })}${fld("eq.inv.eta", "Rendimento", { step: "0.01" })}${fld("eq.inv.carr", "Carregador CA (A)", { hint: "recarga pelo gerador" })}${fld("eq.inv.vcorte", "Corte por subtensão (V; 0 = automático)", { step: "0.1", hint: `automático: ${fmt(R.Vnom * R.T.vCorte, 1)} V` })}</div></div>`; },
@@ -987,10 +1095,11 @@ SoB: ΔV = V_máx − V_mín ≤ ΔV_lim     Vida restante = mín(vida_projeto �
     ${[["SOC", "State of Charge — estado de carga (% da capacidade atual)", "Contagem de Ah (shunt ou BMS); tensão em repouso (OCV) no chumbo. Base do controle de carga e do corte."], ["DoD", "Depth of Discharge — profundidade de descarga = 1 − SOC", "Define ciclos e vida; projeto: lítio 80%, chumbo 50%."], ["SOH", "State of Health — capacidade atual / nominal", "Ensaio de descarga, resistência interna ou CCA; fim de vida em 80%."], ["SoE", "State of Energy — energia disponível (Wh)", "SOC × SOH × energia nominal; autonomia real hoje."], ["SoP", "State of Power — potência máxima que o banco entrega sem cair abaixo da tensão de corte", "V_corte·(OCV − V_corte)/R_i; compara com o surto dos motores."], ["SoB", "State of Balance — equilíbrio entre células/baterias em série", "Diferença de tensão em repouso; LiFePO4 ≤ 30 mV/célula, chumbo ≤ 50 mV/célula."], ["CCA", "Cold Cranking Amps — corrente por 30 s a −18 °C até 7,2 V (bateria de 12 V)", "Testador de condutância; indica resistência interna e sulfatação do chumbo."], ["Ri", "Resistência interna", "Medidor AC 1 kHz ou degrau de corrente ΔV/ΔI; dobrar o valor de nova ≈ fim de vida."], ["Ciclos eq.", "Ciclos equivalentes = Ah descarregados / capacidade nominal", "Registrados pelo BMS; somam o dano real de uso."]].map(r => `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("")}</tbody></table></div></div>`; },
   fv: () => `<p class="intro">O gerador FV precisa repor, <b>no mês de dimensionamento (${MESES[R.mesDim]}, maior consumo/irradiação)</b>, a energia retirada da bateria mais as perdas de carga e descarga.</p>
     ${formula(`E_FV = E_bat,${MESES[R.mesDim]} / η_bat = ${fmt0(R.EbatDim)} / ${R.T.eta} = ${fmt0(R.Efv)} Wh/dia${R.Erec ? `   (+ recuperação ${fmt0(R.Erec)} Wh/dia)` : ""}
-P_FV = E_FV / (HSP_${MESES[R.mesDim]} × PR) = ${fmt0(R.Efv + R.Erec)} / (${fmt(R.hspDim, 2)} × ${S.crit.pr}) = ${fmt0(R.Pnec)} W  →  ${R.Nnec} módulos de ${S.eq.mod.p} W
+P_FV = E_FV / (HSP_${MESES[R.mesDim]} × PR) = ${fmt0(R.Efv + R.Erec)} / (${fmt(R.hspDim, 2)} × ${S.crit.pr}) = ${fmt0(R.Pnec)} W${R.tel ? "   (HSP efetiva das águas; módulos distribuídos mês a mês)" : ""}  →  ${R.Nnec} módulos de ${S.eq.mod.p} W
 Voc,máx = Voc·[1 + β·(T_mín − 25)] = ${S.eq.mod.voc}·[1 + ${S.eq.mod.bvoc}%·(${S.temp.tmin} − 25)] = ${fmt(R.vocMax, 2)} V  →  Ns ≤ ${S.eq.ctrl.vocmax}/${fmt(R.vocMax, 2)} = ${R.NsMax}
 Vmp,quente = Vmp·[1 + β·(T_máx + 30 − 25)] = ${fmt(R.vmpQ, 2)} V  →  Ns ≥ (V_carga ${fmt(R.vChg, 1)} + 5)/${fmt(R.vmpQ, 2)} = ${R.NsMin}`)}
     <div class="res">${card("Módulos", R.Nmod, `${R.Ns} em série × ${R.Nstr} strings`)}${card("Potência instalada", fmt(R.Pfv / 1000, 2) + " kWp", `necessário ${fmt(R.Pnec / 1000, 2)} kWp`)}${card("Voc,máx do arranjo", fmt0(R.vocArr) + " V", `a ${S.temp.tmin} °C (limite ${S.eq.ctrl.vocmax} V)`)}${card("Controladores", R.nCtrl + "×", `${R.strCtrl} string(s) cada · ${fmt(R.iCtrl)} A de ${S.eq.ctrl.imax} A`)}${card("Folga no mês crítico", pct(R.sobra), "menor produção/necessidade − 1")}${card("Área aprox.", fmt(R.Nmod * 2.6, 0) + " m²", "≈ 2,6 m² por módulo de 550 W")}</div>
+    ${R.tel ? `<div class="block"><h3>Arranjo por água do telhado</h3><div class="tbl cab"><table><thead><tr><th>Água</th><th>Orient.</th><th class="r">Módulos</th><th class="r">Strings ×${R.Ns}</th><th class="r">kWp</th><th class="r">MPPT</th><th class="r">kWh/dia ${MESES[R.mesDim]}</th></tr></thead><tbody>${R.tel.faces.map((f, j) => `<tr><td>${esc(f.nome)}</td><td>${dirNome(f.az)} · ${fmt(f.inc, 1)}°</td><td class="num">${R.tel.sf[j] * R.Ns}</td><td class="num">${R.tel.sf[j]}</td><td class="num">${fmt(R.tel.sf[j] * R.Ns * n(S.eq.mod.p) / 1000, 2)}</td><td class="num">${R.tel.nc ? R.tel.nc[j] : "—"}</td><td class="num">${fmt(R.tel.sf[j] * R.Ns * n(S.eq.mod.p) * f.m[R.mesDim] * n(S.crit.pr) / 1000, 2)}</td></tr>`).join("")}</tbody></table></div><p class="step-hint">HSP efetiva do arranjo no mês crítico: ${fmt(R.hspDim, 2)} kWh/m²·dia (média ponderada pelas águas). Strings de águas diferentes não se misturam no mesmo MPPT.</p></div>` : ""}
     <div class="block"><h3>Produção mensal estimada × necessidade</h3>${barrasSVG(R.prodMes.map(v => v / 1000), { destacar: R.mesDim, outra: R.EfvMes.map(v => v / 1000), un: "kWh/dia gerados (barras) × necessidade do mês (linha)" })}<p class="step-hint">Nos meses fortes sobra energia (o controlador corta a carga quando a bateria enche). Esse é o preço do off-grid: dimensionar pelo pior mês.</p></div>${avisos()}`,
   inv: () => { const b = S.backup; return `<p class="intro">O inversor alimenta as cargas CA a partir do banco. Ele é dimensionado pela potência simultânea com folga e precisa suportar o surto de partida dos motores.</p>
     ${formula(`P_inv ≥ 1,25 × P_simultânea = 1,25 × ${fmt0(R.Psim)} = ${fmt0(R.PinvNec)} W  →  ${R.invN}× ${fmt0(n(S.eq.inv.p))} W
@@ -1030,12 +1139,14 @@ document.addEventListener("click", e => {
   if (b.dataset.step != null) { cur = +b.dataset.step; render(); window.scrollTo({ top: 0 }); return; }
   if (b.dataset.nav) { cur = Math.max(0, Math.min(STEPS.length - 1, cur + +b.dataset.nav)); render(); window.scrollTo({ top: 0 }); return; }
   if (b.dataset.del != null) { S.cargas.splice(+b.dataset.del, 1); persist(); render(); return; }
+  if (b.dataset.fdel != null) { S.telhado.faces.splice(+b.dataset.fdel, 1); persist(); render(); return; }
   if (b.dataset.udel != null) { S.analise.splice(+b.dataset.udel, 1); persist(); render(); return; }
   if (b.dataset.est != null) { aplicarEstacao(+b.dataset.est, S.local.fonte); render(); return; }
   switch (b.id) {
     case "addC": S.cargas.push({ nat: "res", nome: "Novo equipamento", tipo: "CA", q: 1, w: 100, h: 1, fs: 1, kp: 1, crit: 1 }); break;
     case "addU": (S.analise = S.analise || []).push({ id: "B" + (S.analise.length + 1), v: "", ri: "", cca: "", ccaNom: "", soh: "", soc: "" }); break;
     case "limpaU": S.analise = []; break;
+    case "addF": S.telhado.faces.push({ nome: "Água " + (S.telhado.faces.length + 1), az: "L", inc: "30%", nmod: "" }); break;
     case "btnColarU": { const rows = ($("#colarU").value || "").split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => l.split(/\t|;/).map(x => x.trim()));
       const lid = rows.map(c => { const num = c.map(x => x.replace(",", ".")); const hasId = isNaN(parseFloat(num[0])); const o = hasId ? num.slice(1) : num; return { id: hasId ? c[0] : "", v: n(o[0]) || "", ri: n(o[1]) || "", cca: n(o[2]) || "", ccaNom: n(o[3]) || "", soh: n(o[4]) || "", soc: n(o[5]) || "" }; }).filter(u => u.v || u.ri || u.cca);
       if (!lid.length) { toast("Nada reconhecido. Use: ID; V; mΩ; CCA; CCA nominal; SOH; SOC"); return; } S.analise = lid; toast(lid.length + " bateria(s) importada(s)."); break; }
@@ -1059,6 +1170,7 @@ document.addEventListener("change", e => {
   if (t.dataset.bind) { const old = getP(t.dataset.bind); setP(t.dataset.bind, t.type === "number" ? (t.value === "" ? "" : n(t.value)) : t.value);
     if (t.dataset.bind === "crit.bat" && old !== t.value) { S.eq.bat = Object.assign({}, TIPOS[t.value].unid); S.crit.dod = TIPOS[t.value].dod; S.crit.ftemp = TIPOS[t.value].ftemp; } }
   else if (t.dataset.c != null) { const l = S.cargas[+t.dataset.c]; l[t.dataset.f] = t.type === "checkbox" ? (t.checked ? 1 : 0) : t.type === "number" ? n(t.value) : t.value; if (t.dataset.f === "nat") l.kp = NAT[t.value]?.kp ?? 1; }
+  else if (t.dataset.tf != null) { S.telhado.faces[+t.dataset.tf][t.dataset.tff] = t.type === "number" ? (t.value === "" ? "" : n(t.value)) : t.value; }
   else if (t.dataset.mes != null) { S.conta.meses[+t.dataset.mes] = t.value === "" ? "" : n(t.value); }
   else if (t.dataset.u != null) { const u = S.analise[+t.dataset.u]; u[t.dataset.uf] = t.type === "number" ? (t.value === "" ? "" : n(t.value)) : t.value; }
   else if (t.dataset.row != null) S.local.sel = +t.dataset.row;
@@ -1147,6 +1259,11 @@ async function gerarPDF() {
     table([{ h: "Plano", w: 3.2 }, { h: "Incl.", w: 0.9, a: "r" }, ...MESES.map(m => ({ h: m, w: 0.85, a: "r" })), { h: "Média", w: 1, a: "r" }, { h: "Mín.", w: 1, a: "r" }],
       (S.local.rows || []).map(r => [r.nome, r.ang + "°", ...r.m.map(v => fmt(v, 2)), fmt(r.media, 2), fmt(Math.min(...r.m), 2)]), { size: 7, bold: [S.local.sel] });
     if (R.row) barras(R.row.m, { dest: R.mesCrit, alvo: R.row.media, alvoTxt: "média anual (não usar)", un: "kWh/m²·dia — " + R.row.nome });
+    if (R.tel) { h2("Telhado: águas e captação"); table([{ h: "Água", w: 2 }, { h: "Orientação", w: 1.2 }, { h: "Incl.", w: 0.7, a: "r" }, { h: "HSP mín.", w: 1, a: "r" }, { h: "HSP média", w: 0.9, a: "r" }, { h: "Captação inverno", w: 1.1, a: "r" }, { h: "Captação anual", w: 1, a: "r" }, { h: "Módulos", w: 0.8, a: "r" }],
+      R.tel.faces.map((f, j) => [f.nome, `${dirNome(f.az)} (${fmt0(f.az)}°)`, fmt(f.inc, 1) + "°", `${fmt(f.min, 2)} (${MESES[f.mesMin]})`, fmt(f.media, 2), pct(f.efMin), pct(f.efMed), String(R.tel.sf[j] * R.Ns)]), { size: 7.5 });
+      if (R.tel.faces.some(f => f.nArea != null)) table([{ h: "Água", w: 2 }, { h: "Área (m²)", w: 1.4, a: "r" }, { h: "Retrato", w: 0.8, a: "r" }, { h: "Paisagem", w: 0.8, a: "r" }, { h: "Máx.", w: 0.8, a: "r" }, { h: "Ocupação máx.", w: 1, a: "r" }, { h: "Usados", w: 0.8, a: "r" }],
+        R.tel.faces.filter(f => f.nArea != null).map(f => { const j = R.tel.faces.indexOf(f); return [f.nome, `${fmt(f.area, 1)} (${fmt(f.L, 2)} x ${fmt(f.Wpl, 2)})`, String(f.nRet), String(f.nPai), `${f.nArea} (${f.orient})`, pct(f.nArea * f.amod / f.area), String(R.tel.sf[j] * R.Ns)]; }), { size: 7.5 });
+      text("Cada água: integração horária no dia médio do mês (Collares-Pereira & Rabl, Erbs, Liu-Jordan), calibrada pela linha selecionada do SunData. Captação = irradiação da água / irradiação na inclinação ótima.", { size: 7.5, color: MUT }); }
     text(`HSP de projeto = ${fmt(R.hsp, 2)} kWh/m²·dia (${MESES[R.mesCrit]}). Temperaturas de projeto: mínima ${S.temp.tmin} °C (Voc) e máxima ${S.temp.tmax} °C (Vmp).`, { font: FB });
     P_(35);
     /* cargas */
@@ -1205,7 +1322,7 @@ CCA necessário = 5,4/(k_frio x R_12V) = ${isFinite(R.ccaReq) ? fmt0(R.ccaReq) :
 P_FV = E_FV / (HSP_${MESES[R.mesDim]} x PR) = ${fmt0(R.Efv + R.Erec)} / (${fmt(R.hspDim, 2)} x ${S.crit.pr}) = ${fmt0(R.Pnec)} W  ->  ${R.Nnec} módulos de ${S.eq.mod.p} W
 Voc,max = ${S.eq.mod.voc} x [1 + (${S.eq.mod.bvoc}/100) x (${S.temp.tmin} - 25)] = ${fmt(R.vocMax, 2)} V  ->  Ns <= ${S.eq.ctrl.vocmax}/${fmt(R.vocMax, 2)} = ${R.NsMax}
 Vmp,quente = ${S.eq.mod.vmp} x [1 + (${S.eq.mod.bvoc}/100) x (${S.temp.tmax} + 30 - 25)] = ${fmt(R.vmpQ, 2)} V  ->  Ns >= (${fmt(R.vChg, 1)} + 5)/${fmt(R.vmpQ, 2)} = ${R.NsMin}
-Adotado: ${R.Ns} em série x ${R.Nstr} strings = ${R.Nmod} módulos = ${fmt(R.Pfv / 1000, 2)} kWp ; Voc,max arranjo = ${fmt0(R.vocArr)} V
+Adotado: ${R.Ns} em série x ${R.Nstr} strings = ${R.Nmod} módulos${R.tel ? " (" + R.tel.faces.map((f, j) => `${f.nome}: ${R.tel.sf[j]}x${R.Ns}`).join("; ") + ")" : ""} = ${fmt(R.Pfv / 1000, 2)} kWp ; Voc,max arranjo = ${fmt0(R.vocArr)} V
 Controladores: ${R.nCtrl} x ${S.eq.ctrl.imax} A (${R.strCtrl} string(s) cada, ${fmt(R.iCtrl)} A)`);
     barras(R.prodMes.map(v => v / 1000), { dest: R.mesCrit, alvo: R.Efv / 1000, alvoTxt: "necessidade " + fmt(R.Efv / 1000, 2) + " kWh/dia", un: "Produção estimada (kWh/dia)", cor: rgb(0.6, 0.35, 0) });
     h2("5. Inversor e transferência");

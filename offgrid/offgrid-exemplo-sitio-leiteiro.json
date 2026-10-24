@@ -219,7 +219,9 @@
       "isc": 14,
       "imp": 13.11,
       "bvoc": -0.27,
-      "fusmax": 25
+      "fusmax": 25,
+      "comp": 2.278,
+      "larg": 1.134
     },
     "bat": {
       "nome": "Bateria LiFePO4 51,2 V 100 Ah (5,12 kWh) rack",
@@ -386,6 +388,29 @@
       "soc": 73
     }
   ],
+  "telhado": {
+    "usar": "nao",
+    "margem": 0.4,
+    "medida": "plano",
+    "faces": [
+      {
+        "nome": "Água norte",
+        "az": "N",
+        "inc": "30%",
+        "comp": "",
+        "larg": "",
+        "nmod": ""
+      },
+      {
+        "nome": "Água sul",
+        "az": "S",
+        "inc": "30%",
+        "comp": "",
+        "larg": "",
+        "nmod": ""
+      }
+    ]
+  },
   "precos": {
     "mod": {
       "d": "Módulo fotovoltaico 550 W monocristalino",
@@ -624,6 +649,6 @@
     "controladores": 3,
     "inversor": 5000,
     "totalR$": 120039.48000000001,
-    "geradoEm": "2026-10-24T00:38:21.115Z"
+    "geradoEm": "2026-10-24T02:45:40.494Z"
   }
 }
