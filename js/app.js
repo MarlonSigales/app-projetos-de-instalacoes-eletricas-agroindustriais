@@ -357,7 +357,8 @@ function calc(){
 }
 // SPDA — área de exposição e eventos perigosos (NBR 5419-2, Anexo A) e geometria pelo nível de proteção (NBR 5419-3)
 function spdaCalc(){
-  const e=S.estrutura||{},L=Math.max(0,+e.L||0),W=Math.max(0,+e.W||0),H=Math.max(0,+e.H||0);
+  const e=S.estrutura||{},ce=contornoEdif(); // em branco: dimensões do contorno dos ambientes desenhados na etapa 02
+  const L=Math.max(0,+e.L||ce?.L||0),W=Math.max(0,+e.W||ce?.W||0),H=Math.max(0,+e.H||ce?.H||0),autoDim={L:!+e.L&&!!ce,W:!+e.W&&!!ce,H:!+e.H&&!!ce};
   const np=NP5419[e.np]?e.np:"III",g=NP5419[np];
   const Ad=L*W+2*3*H*(L+W)+Math.PI*(3*H)**2;
   const ng=+e.ng||0,cd=+e.cd||0.5,Nd=ng*Ad*cd*1e-6;
@@ -388,7 +389,7 @@ function spdaCalc(){
   // análise de risco R1 (NBR 5419-2), sem SPDA e para cada nível de proteção
   const risco={};["nenhum","IV","III","II","I"].forEach(n=>risco[n]=riscoR1(e,Ad,ng,cd,n));
   const rec=["nenhum","IV","III","II","I"].find(n=>risco[n].ok)||null;
-  return {ok:L>0&&W>0&&H>0,L,W,H,np,g,Ad,ng,cd,Nd,per,nDesc,nAneis,aneisInt,linhasL,linhasW,captacao,descidas,anel,re,rho,l1,anelOk:l1!=null?re>=l1:null,falta,lv,hastesAd,
+  return {ok:L>0&&W>0&&H>0,L,W,H,ce,autoDim,np,g,Ad,ng,cd,Nd,per,nDesc,nAneis,aneisInt,linhasL,linhasW,captacao,descidas,anel,re,rho,l1,anelOk:l1!=null?re>=l1:null,falta,lv,hastesAd,
     natural,cobMet,cobMetZona,zMax,ki,kc,km,sSeg,sZona,nBEL,fixH,fixV,toque,insp,risco,rec};
 }
 // NBR 5419-3, 5.3.3: descidas uniformes no perímetro — uma em cada canto saliente e as demais repartidas pelos lados
@@ -1046,7 +1047,7 @@ ${S.ambientes.some(a=>a.zona)?`<p class="note warn"><b>Áreas classificadas:</b>
 ${S.projetos.luminotecnico?`<div class="block"><h3>Projeto luminotécnico</h3>${attBlock("luminotecnico")}</div>`:""}
 ${S.projetos.spda?`<div class="block"><h3>Projeto de SPDA — NBR 5419:2015</h3>
 <p class="note">Análise de risco R1 (perda de vida humana, NBR 5419-2) com as componentes R<sub>A</sub>, R<sub>B</sub>, R<sub>U</sub> e R<sub>V</sub>, e pré-dimensionamento pelo método das malhas (NBR 5419-3) para o nível de proteção adotado. R<sub>C</sub>, R<sub>M</sub>, R<sub>W</sub> e R<sub>Z</sub> só compõem R1 em estruturas com risco de explosão ou hospitais e não são calculadas aqui.</p>
-<div class="grid">${fld("estrutura.L","Comprimento da estrutura (m)",{type:"number",step:"0.1"})}${fld("estrutura.W","Largura da estrutura (m)",{type:"number",step:"0.1"})}${fld("estrutura.H","Altura máxima (m)",{type:"number",step:"0.1"})}${fld("estrutura.ng","N<sub>G</sub> (descargas/km²/ano)",{type:"number",step:"0.1",ph:"mapa NBR 5419-2"})}${fld("estrutura.cd","Localização — C<sub>D</sub>",{opts:Object.entries(CD5419)})}${fld("estrutura.np","Nível de proteção adotado",{opts:Object.keys(NP5419).map(k=>[k,`NP ${k}`])})}${fld("estrutura.cob","Cobertura",{opts:[["nao_metalica","Não metálica (cerâmica, fibrocimento, laje)"],["metalica","Metálica contínua (captor natural, 5.2.5)"]]})}${fld("estrutura.desc","Descidas",{opts:[["convencional","Condutores de descida (cobre 35 mm²)"],["natural","Naturais: pilares metálicos ou armadura contínua"]]})}${fld("estrutura.km","Isolante entre SPDA e instalações — k<sub>m</sub>",{opts:[["1","Ar (1)"],["0.5","Concreto ou tijolo (0,5)"]]})}${fld("estrutura.passo","Tensões de toque e passo (seção 8)",{opts:[["brita","Brita 20 cm ou asfalto 5 cm até 3 m das descidas"],["isolacao","Isolação das descidas (100 kV, XLPE 3 mm)"],["barreira","Barreiras e placas de advertência"],["baixa","Dispensada: baixa presença de pessoas"]]})}</div>
+<div class="grid">${fld("estrutura.L","Comprimento da estrutura (m)",{type:"number",step:"0.1",ph:R.spda.ce?`${fmt(R.spda.ce.L,1)} (etapa 02)`:"",hint:"Em branco: contorno dos ambientes da etapa 02."})}${fld("estrutura.W","Largura da estrutura (m)",{type:"number",step:"0.1",ph:R.spda.ce?`${fmt(R.spda.ce.W,1)} (etapa 02)`:"",hint:"Em branco: contorno dos ambientes da etapa 02."})}${fld("estrutura.H","Altura máxima (m)",{type:"number",step:"0.1",ph:R.spda.ce?`${fmt(R.spda.ce.H,1)} (etapa 02)`:"",hint:"Em branco: maior altura dos ambientes."})}${fld("estrutura.ng","N<sub>G</sub> (descargas/km²/ano)",{type:"number",step:"0.1",ph:"mapa NBR 5419-2"})}${fld("estrutura.cd","Localização — C<sub>D</sub>",{opts:Object.entries(CD5419)})}${fld("estrutura.np","Nível de proteção adotado",{opts:Object.keys(NP5419).map(k=>[k,`NP ${k}`])})}${fld("estrutura.cob","Cobertura",{opts:[["nao_metalica","Não metálica (cerâmica, fibrocimento, laje)"],["metalica","Metálica contínua (captor natural, 5.2.5)"]]})}${fld("estrutura.desc","Descidas",{opts:[["convencional","Condutores de descida (cobre 35 mm²)"],["natural","Naturais: pilares metálicos ou armadura contínua"]]})}${fld("estrutura.km","Isolante entre SPDA e instalações — k<sub>m</sub>",{opts:[["1","Ar (1)"],["0.5","Concreto ou tijolo (0,5)"]]})}${fld("estrutura.passo","Tensões de toque e passo (seção 8)",{opts:[["brita","Brita 20 cm ou asfalto 5 cm até 3 m das descidas"],["isolacao","Isolação das descidas (100 kV, XLPE 3 mm)"],["barreira","Barreiras e placas de advertência"],["baixa","Dispensada: baixa presença de pessoas"]]})}</div>
 <details><summary>Análise de risco R1 (NBR 5419-2) — parâmetros</summary><div class="grid" style="margin-top:8px">
 ${fld("estrutura.horas","Permanência de pessoas (h/dia)",{type:"number",step:"1"})}${fld("estrutura.rt","Tipo de piso — rt",{opts:Object.entries(R5419.rt)})}${fld("estrutura.PTA","Medidas contra tensão de toque/passo — PTA",{opts:Object.entries(R5419.PTA)})}
 ${fld("estrutura.rf","Risco de incêndio — rf",{opts:Object.entries(R5419.rf)})}${fld("estrutura.rp","Providências contra incêndio — rp",{opts:Object.entries(R5419.rp)})}${fld("estrutura.hz","Perigo especial — hz",{opts:Object.entries(R5419.hz)})}
@@ -1622,16 +1623,26 @@ function espacoTotal(){const C=+S.forn.espComp||0,L=+S.forn.espLarg||0;return C>
 function entradaPonto(){const e=espacoTotal(),ld=S.forn.entLado;if(!e||!ld)return null;const lim=ld==="inf"||ld==="sup"?e.C:e.L;
   let p=S.forn.entPos===""||S.forn.entPos==null?lim/2:+S.forn.entPos||0;p=Math.min(lim,Math.max(0,p));
   return ld==="inf"?{x:p,y:0,lado:ld,nx:0,ny:1}:ld==="sup"?{x:p,y:e.L,lado:ld,nx:0,ny:-1}:ld==="esq"?{x:0,y:p,lado:ld,nx:1,ny:0}:{x:e.C,y:p,lado:ld,nx:-1,ny:0};}
-function layoutPlanta(){
-  const fixos=S.ambientes.filter(temXY);let nCmd=0,xAuto=fixos.length?Math.max(...fixos.map(a=>+a.x+(+a.comprimento||0)))+2:0;
+// posição de cada ambiente: X/Y informados ou encaixe automático dentro do espaço total (etapa 02)
+function posAmbientes(){
+  const fixos=S.ambientes.filter(temXY);let xAuto=fixos.length?Math.max(...fixos.map(a=>+a.x+(+a.comprimento||0)))+2:0;
   const esp=espacoTotal(),ocup=fixos.map(a=>({x:+a.x,y:+a.y,L:+a.comprimento||0,W:+a.largura||0}));
   // com espaço total: ambientes sem X/Y são encaixados dentro dele, a partir da origem (0; 0), na primeira posição livre
   const encaixe=(L,W)=>{if(!esp||L>esp.C||W>esp.L)return null;const st=0.5,cand=[0,...ocup.map(o=>o.x+o.L)],candY=[0,...ocup.map(o=>o.y+o.W)];
     const ys=[...new Set(candY.concat([...Array(Math.floor(esp.L/st)+1).keys()].map(k=>k*st)))].sort((a,b)=>a-b),xs=[...new Set(cand.concat([...Array(Math.floor(esp.C/st)+1).keys()].map(k=>k*st)))].sort((a,b)=>a-b);
     for(const y of ys){if(y+W>esp.L+1e-6)break;for(const x of xs){if(x+L>esp.C+1e-6)break;if(!ocup.some(o=>x<o.x+o.L-1e-6&&o.x<x+L-1e-6&&y<o.y+o.W-1e-6&&o.y<y+W-1e-6))return [x,y];}}return null;};
   if(esp)xAuto=Math.max(xAuto,esp.C+2);
-  const amb=S.ambientes.map(a=>{const L=Math.max(0,+a.comprimento||0),W=Math.max(0,+a.largura||0);let x,y;
+  return S.ambientes.map(a=>{const L=Math.max(0,+a.comprimento||0),W=Math.max(0,+a.largura||0);let x,y;
     if(temXY(a)){x=+a.x;y=+a.y;}else{const pe=L&&W?encaixe(L,W):null;if(pe){[x,y]=pe;ocup.push({x,y,L,W});}else{x=xAuto;y=0;xAuto+=L+2;}}
+    return {a,x,y,L,W};});
+}
+// contorno da edificação = retângulo que envolve todos os ambientes posicionados
+function contornoEdif(){const p=posAmbientes().filter(r=>r.L>0&&r.W>0);if(!p.length)return null;
+  const x1=Math.min(...p.map(r=>r.x)),y1=Math.min(...p.map(r=>r.y)),x2=Math.max(...p.map(r=>r.x+r.L)),y2=Math.max(...p.map(r=>r.y+r.W));
+  return {x:x1,y:y1,L:x2-x1,W:y2-y1,H:Math.max(0,...p.map(r=>+r.a.altura||0))};}
+function layoutPlanta(){
+  let nCmd=0;const esp=espacoTotal();
+  const amb=posAmbientes().map(({a,x,y,L,W})=>{
     const oc=R.out.filter(o=>o.c.ambiente===a.id),num=t=>oc.filter(o=>o.c.tipo===t);
     const grade=(n,mx=0)=>{if(!n||!L||!W)return [];const cols=Math.max(1,Math.round(Math.sqrt(n*L/W))),rows=Math.ceil(n/cols),r=[];
       for(let k=0;k<n;k++)r.push([x+L*((k%cols)+0.5)/cols,y+W*(Math.floor(k/cols)+0.5)/rows]);return r;};
@@ -1909,29 +1920,59 @@ async function gerarPDF(){
   // ---- Planta de situação
   function simSituacao(){
     const {pp,w,h}=simPage(A3L,"Planta de situação (croqui)");
-    const f=S.forn;
+    const f=S.forn,Lp=layoutPlanta(),esp=Lp.esp;
+    // terreno = espaço total da etapa 02 (ou o contorno do que foi desenhado)
+    const ter=esp?{x:0,y:0,C:esp.C,L:esp.L}:{x:Lp.bb.x1,y:Lp.bb.y1,C:Lp.bb.x2-Lp.bb.x1,L:Lp.bb.y2-Lp.bb.y1};
+    // entrada: a da etapa 02; sem ela, suposta no limite inferior, alinhada ao QGBT
+    const q0=Lp.quad[0];let ent=Lp.ent,suposta=false;
+    if(!ent){suposta=true;ent={x:Math.min(ter.x+ter.C,Math.max(ter.x,q0?q0.x:ter.x+ter.C/2)),y:ter.y,lado:"inf",nx:0,ny:1};}
+    const ox_=-ent.nx,oy_=-ent.ny; // normal para fora do terreno
+    const dRede=Math.max(4,0.12*Math.max(ter.C,ter.L)),dVia0=dRede+2,dVia1=dRede+5,horiz=ent.ny!==0;
+    const ladoP=horiz?ent.y:ent.x; // coordenada do limite onde está a entrada
+    const ext0=(horiz?ter.x:ter.y)-2,ext1=(horiz?ter.x+ter.C:ter.y+ter.L)+2;
+    const fora=d=>ladoP+(horiz?oy_:ox_)*d;
+    const seg=(d)=>horiz?[[ext0,fora(d)],[ext1,fora(d)]]:[[fora(d),ext0],[fora(d),ext1]];
+    const poste=horiz?[ent.x,fora(dRede)]:[fora(dRede),ent.y];
+    // enquadramento (zoom no terreno, rede e via)
+    let x1=ter.x,y1=ter.y,x2=ter.x+ter.C,y2=ter.y+ter.L;[seg(dVia1),seg(dRede)].flat().forEach(([a,b])=>{x1=Math.min(x1,a);y1=Math.min(y1,b);x2=Math.max(x2,a);y2=Math.max(y2,b);});
+    Lp.quad.forEach(r=>{x1=Math.min(x1,r.x-1);y1=Math.min(y1,r.y-1);x2=Math.max(x2,r.x+1);y2=Math.max(y2,r.y+1);});
+    x1-=1;y1-=1;x2+=1;y2+=1;
+    const X0=60,Y0=140,BW=w-460,BH=h-240,sc=Math.min(BW/(x2-x1),BH/(y2-y1)),ox=X0+(BW-(x2-x1)*sc)/2,oy=Y0+(BH-(y2-y1)*sc)/2,P=(x,y)=>[ox+(x-x1)*sc,oy+(y-y1)*sc];
     // via e rede
-    pp.drawRectangle({x:60,y:120,width:w-440,height:46,color:rgb(0.88,0.88,0.86)});T(pp,`Via de acesso — ${id.local||"endereço a preencher"}`,80,138,10,FB,GR);
-    Ln(pp,60,190,w-380,190,1.4,ACC,[6,4]);T(pp,`Rede da distribuidora (${f.rede||"tipo a informar"}) — ${id.distribuidora||""}`,80,196,8,F,ACC);
-    for(let x=90;x<w-380;x+=150){Ci(pp,x,190,5,{fill:rgb(1,1,1),bc:ACC,bw:1.4});}
-    const px=390;Ci(pp,px,190,7,{fill:RSOFT,bc:RED,bw:1.6});T(pp,"Poste de derivação (ponto de entrega)",px-60,176,7.5,FB,RED);
-    // lote e edificação
-    Bx(pp,120,230,w-560,480,{bc:GR,bw:1.2});T(pp,"Limite do terreno",130,700,8,F,GR);
-    Bx(pp,300,380,w-860,240,{bw:2,fill:LG});TC(pp,id.obra||"Edificação",300+(w-860)/2,500,11,FB);TC(pp,id.atividade||"",300+(w-860)/2,484,8,F,MUT);
-    // padrão e alimentador
-    SIM(pp,"med",px,251,11);T(pp,"Padrão de entrada / medição",px+24,246,7.5);
-    Ln(pp,px,197,px,236,1.2,INK,[3,2]);T(pp,`Ramal de ligação — ${f.distRede||"distância a confirmar"}`,px+8,212,7.5,FB,RED);redU(pp,px+8,212,190);
-    const qx=320,qy=400;SIM(pp,"qdg",qx+13,qy+9,10);T(pp,"QGBT",qx,qy+24,8,FB);
-    Ln(pp,px,266,px,qy+9,1.6);Ln(pp,px,qy+9,qx+26,qy+9,1.6);
-    T(pp,`Alimentador de entrada: ${R.ent.s?R.ent.txt+" mm²":"—"}, ${R.ent.ed?R.ent.ed.nome:""}, ${fmtN(f.Lent)} m, método ${f.metEnt}`,px+8,330,7.5,F,INK);
-    // quadros: cada um ligado à sua origem (QGBT ou quadro intermediário); x proporcional à distância total de rota até o QGBT
-    const pos=new Map([[S.quadros[0],{x:qx,y:qy}]]);
-    quadrosEmArvore().slice(1).forEach((q,i)=>{const pq=pos.get(paiDe(q))||pos.get(S.quadros[0]);const x=Math.min(w-420,Math.max(pq.x+50,qx+60+distQGBT(q)*5)),y=Math.max(260,620-i*48);pos.set(q,{x,y});
-      SIM(pp,"qdp",x+13,y+9,10);T(pp,q.nome,x,y+24,8,FB);Ln(pp,pq.x+13,pq.y+(y>pq.y?18:0),pq.x+13,y+9,0.8,INK,[4,3]);Ln(pp,pq.x+13,y+9,x,y+9,0.8,INK,[4,3]);
-      T(pp,`${origemQ(q)} -> ${q.nome}: ${fmt(+q.L||0,0)} m`,x+32,y+9,7,F,MUT);if(paiDe(q)!==S.quadros[0])T(pp,`rota até o QGBT: ${fmt(distQGBT(q),0)} m`,x+32,y,6.5,F,MUT);});
-    // norte
-    const nx=w-420,ny=640;Ln(pp,nx,ny,nx,ny+50,1.4);pp.drawSvgPath(`M ${nx} ${-(ny+60)} L ${nx-7} ${-(ny+44)} L ${nx+7} ${-(ny+44)} Z`,{color:INK});TC(pp,"N",nx,ny+64,10,FB);
-    T(pp,"Orientação, distâncias e posição da rede são supostas: conferir em levantamento de campo.",60,90,9,FB,RED);
+    {const [a,b]=seg(dVia0),[c,d]=seg(dVia1),[p1x,p1y]=P(Math.min(a[0],c[0]),Math.min(a[1],c[1])),[p2x,p2y]=P(Math.max(b[0],d[0]),Math.max(b[1],d[1]));
+      pp.drawRectangle({x:p1x,y:p1y,width:p2x-p1x,height:p2y-p1y,color:rgb(0.88,0.88,0.86)});
+      T(pp,"VIA",horiz?p1x+8:(p1x+p2x)/2-7,horiz?(p1y+p2y)/2-4:p2y-14,8,FB,GR);}
+    {const [a,b]=seg(dRede),[p1x,p1y]=P(...a),[p2x,p2y]=P(...b);Ln(pp,p1x,p1y,p2x,p2y,1.4,ACC,[6,4]);
+      T(pp,"REDE",p1x+(horiz?8:4),p1y+(horiz?5:6),7.5,FB,ACC);
+      const Lr=Math.hypot(p2x-p1x,p2y-p1y),n=Math.max(2,Math.floor(Lr/150));for(let k=0;k<=n;k++)Ci(pp,p1x+(p2x-p1x)*k/n,p1y+(p2y-p1y)*k/n,4,{fill:rgb(1,1,1),bc:ACC,bw:1.2});}
+    // terreno / espaço total
+    {const [a,b]=P(ter.x,ter.y),[c,d]=P(ter.x+ter.C,ter.y+ter.L);[[a,b,c,b],[c,b,c,d],[c,d,a,d],[a,d,a,b]].forEach(([u,v,s2,t])=>Ln(pp,u,v,s2,t,1.2,GR,[8,4]));
+      T(pp,`Limite do terreno / espaço total — ${fmt(ter.C,1)} × ${fmt(ter.L,1)} m`,a+4,d+5,8,F,GR);}
+    // edificação: ambientes da etapa 02
+    Lp.amb.forEach(r=>{const [x,y]=P(r.x,r.y);Bx(pp,x,y,r.L*sc,r.W*sc,{bw:1.8,fill:LG});const fs=Math.max(5.5,Math.min(9,r.L*sc/14));
+      TC(pp,r.a.nome.slice(0,34),x+r.L*sc/2,y+r.W*sc/2+2,fs,FB);TC(pp,`${fmt(r.L,1)} × ${fmt(r.W,1)} m`,x+r.L*sc/2,y+r.W*sc/2-fs,fs*0.8,F,MUT);});
+    if(!Lp.amb.length)T(pp,"Cadastre os ambientes na etapa 02 para desenhar a edificação.",X0+20,Y0+BH/2,10,FB,RED);
+    // poste, ramal, padrão de entrada
+    const [pex,pey]=P(ent.x,ent.y),[ptx,pty]=P(...poste);
+    Ln(pp,ptx,pty,pex,pey,1.2,INK,[3,2]);Ci(pp,ptx,pty,6,{fill:RSOFT,bc:RED,bw:1.6});
+    T(pp,"P",ptx+8,pty+4,8,FB,RED);
+    SIM(pp,"med",pex,pey,9,{ang:horiz?0:90});T(pp,"M",pex+(ent.nx<0?6:-14)+(horiz?10:0),pey+(horiz?(ent.ny>0?-18:12):10),8,FB,suposta?RED:INK);
+    // alimentador de entrada e alimentadores dos quadros
+    const er=Lp.entRota||(q0?{pts:[[ent.x,ent.y],ent.nx?[q0.x,ent.y]:[ent.x,q0.y],[q0.x,q0.y]]}:null);
+    if(er){const q=er.pts.map(([a,b])=>P(a,b));for(let k=1;k<q.length;k++)Ln(pp,q[k-1][0],q[k-1][1],q[k][0],q[k][1],1.6);}
+    Lp.alim.forEach(({de,para})=>{const [a,b]=P(de.x,de.y),[c,d]=P(para.x,para.y);Ln(pp,a,b,a,d,0.8,INK,[4,3]);Ln(pp,a,d,c,d,0.8,INK,[4,3]);});
+    Lp.quad.forEach((r,k)=>{const [x,y]=P(r.x,r.y);SIM(pp,k===0?"qdg":"qdp",x,y,8);T(pp,r.q.nome,x+10,y+6,7.5,FB);});
+    // legenda
+    {let ly=h-210;const lx=w-360,L_=(t,c=INK,b=F)=>{ly-=TW(pp,t,lx,ly,315,7.5,b,c)*10+4;};T(pp,"Legenda",lx,ly,10,FB);ly-=16;
+      L_(`P — poste de derivação (ponto de entrega). M — padrão de entrada / medição${suposta?" (posição suposta: entrada não posicionada na etapa 02)":` no limite ${({inf:"inferior",sup:"superior",esq:"esquerdo",dir:"direito"})[ent.lado]} do terreno`}.`);
+      L_(`Ramal de ligação (P → M): ${f.distRede||"distância a confirmar"}.`,RED,FB);
+      L_(`REDE — rede da distribuidora: ${f.rede||"tipo a informar"}${id.distribuidora?` (${id.distribuidora})`:""}. VIA — via de acesso: ${id.local||"endereço a preencher"}.`,ACC);
+      L_(`Alimentador de entrada (M → ${S.quadros[0].nome}), linha cheia: ${R.ent.s?R.ent.txt+" mm²":"—"}${R.ent.ed?", "+R.ent.ed.nome:""}, ${fmtN(f.Lent)} m, método ${f.metEnt}.`);
+      R.quadros.filter(q=>q.pai).forEach(q=>L_(`${q.pai} → ${q.q.nome}, tracejado: ${q.f&&q.f.s?q.f.txt+" mm², ":""}${fmt(+q.q.L||0,0)} m.`,MUT));}
+    // norte e escala gráfica
+    const nx=w-420,ny=h-170;Ln(pp,nx,ny,nx,ny+50,1.4);pp.drawSvgPath(`M ${nx} ${-(ny+60)} L ${nx-7} ${-(ny+44)} L ${nx+7} ${-(ny+44)} Z`,{color:INK});TC(pp,"N",nx,ny+64,10,FB);
+    {const m=[1,2,5,10,20,50,100].find(v=>v*sc>=60)||100;Ln(pp,X0,Y0-30,X0+m*sc,Y0-30,2);T(pp,"0",X0-2,Y0-42,7);T(pp,`${m} m`,X0+m*sc-8,Y0-42,7);}
+    T(pp,`Desenho conforme o espaço, os ambientes e a entrada da etapa 02.${suposta?" Entrada não posicionada na etapa 02: posição suposta.":""} Norte, via e rede supostos: conferir em levantamento de campo.`,60,82,8.5,FB,RED);
     carimbo(pp,w,"Planta de situação","SIT-01");
   }
   // ---- Planta baixa esquemática (simbologia ABNT NBR 5444)
@@ -1981,20 +2022,27 @@ async function gerarPDF(){
   }
   function simLuminotecnico(){
     const {pp,w,h}=simPage(A3L,"Projeto luminotécnico — distribuição por ambiente");
-    const somaL=S.ambientes.reduce((n,a)=>n+Math.max(0,+a.comprimento||0),0),maxW=Math.max(0,...S.ambientes.map(a=>+a.largura||0));
-    const escala=Math.min((w-100)/Math.max(somaL,1),(h-300)/Math.max(maxW,1));let x=50;
     T(pp,"Método dos lúmens, N = E × A / (phi × FU × FM), e espaçamento máximo S/Hm por ambiente. Iluminâncias de referência: NBR ISO/CIE 8995-1.",50,h-94,9,FB);
-    S.ambientes.forEach(a=>{
-      const c=calcularAmbiente(a),rw=Math.max(45,(+a.comprimento||0)*escala),rh=Math.max(38,(+a.largura||0)*escala),y=220;
-      Bx(pp,x,y,rw,rh,{bc:GR,bw:1.2,fill:LG});T(pp,a.nome.slice(0,38),x+5,y+rh-14,7,FB);
-      T(pp,`${fmt(+a.comprimento||0,1)} × ${fmt(+a.largura||0,1)} m · H ${fmt(+a.altura||0,1)} m`,x+5,y+rh-25,6,F,MUT);
-      const cols=Math.max(1,Math.ceil(Math.sqrt(c.luminarias*Math.max(+a.comprimento||0,0.1)/Math.max(+a.largura||0,0.1)))),rows=Math.ceil(c.luminarias/cols);
-      for(let i=0;i<c.luminarias;i++){const cx=x+rw*(i%cols+0.5)/cols,cy=y+rh*(Math.floor(i/cols)+0.5)/Math.max(rows,1);SIM(pp,"lum",cx,cy,4);}
-      T(pp,`${a.lux} lx exig. · Em ${fmt0(c.em)} lx · ${c.luminarias} lum. · ${fmt0(c.potencia)} W`,x,y-14,7,FB,c.em>=(+a.lux||0)-0.5?ACC:RED);
-      T(pp,`${fmt0(c.area)} m² · K ${fmt(c.k,2)} · FU ${fmt(+a.uf,2)} · FM ${fmt(+a.mf,2)} · ${fmt(a.lm,0)} lm / peça · ${fmt(c.dens,1)} W/m²`,x,y-25,6.5,F,MUT);
-      x+=rw+5;
-    });
-    if(!S.ambientes.length)T(pp,"Sem ambientes cadastrados: incluir dimensões e parâmetros para dimensionar luminárias.",50,h-130,10,FB,RED);
+    const pos=posAmbientes().filter(r=>r.L>0&&r.W>0);
+    if(!pos.length){T(pp,"Sem ambientes cadastrados: incluir na etapa 02 as dimensões e, na etapa 08, os parâmetros para dimensionar luminárias.",50,h-130,10,FB,RED);carimbo(pp,w,"Luminotécnico","LUM-01");return;}
+    // zoom só na área iluminada (ambientes); a área externa não entra
+    const x1=Math.min(...pos.map(r=>r.x))-0.5,y1=Math.min(...pos.map(r=>r.y))-0.5,x2=Math.max(...pos.map(r=>r.x+r.L))+0.5,y2=Math.max(...pos.map(r=>r.y+r.W))+0.5;
+    const X0=50,Y0=130,BW=w-470,BH=h-260,sc=Math.min(BW/(x2-x1),BH/(y2-y1)),ox=X0+(BW-(x2-x1)*sc)/2,oy=Y0+(BH-(y2-y1)*sc)/2,P=(x,y)=>[ox+(x-x1)*sc,oy+(y-y1)*sc];
+    const s0=Math.max(2.4,Math.min(4.5,0.22*sc));
+    pos.forEach(({a,x,y,L,W})=>{const c=calcularAmbiente(a),[px,py]=P(x,y),ok=c.em>=(+a.lux||0)-0.5;
+      Bx(pp,px,py,L*sc,W*sc,{bc:INK,bw:1.4,fill:LG});
+      const cols=Math.max(1,Math.round(Math.sqrt(c.luminarias*L/W))),rows=Math.max(1,Math.ceil(c.luminarias/cols));
+      for(let k=0;k<c.luminarias;k++){const [cx,cy]=P(x+L*((k%cols)+0.5)/cols,y+W*(Math.floor(k/cols)+0.5)/rows);SIM(pp,"lum",cx,cy,s0);}
+      T(pp,a.nome.slice(0,36),px+4,py+W*sc-11,7,FB,INK);T(pp,`${c.luminarias} lum. · Em ${fmt0(c.em)} lx`,px+4,py+W*sc-20,6,FB,ok?ACC:RED);});
+    // escala gráfica
+    {const m=[1,2,5,10,20,50].find(v=>v*sc>=60)||50;Ln(pp,X0,Y0-30,X0+m*sc,Y0-30,2);T(pp,"0",X0-2,Y0-42,7);T(pp,`${m} m`,X0+m*sc-8,Y0-42,7);}
+    // quadro-resumo por ambiente
+    const lx=w-400;let ly=h-130;T(pp,"Resumo por ambiente",lx,ly,10,FB);ly-=16;
+    pos.forEach(({a})=>{const c=calcularAmbiente(a),ok=c.em>=(+a.lux||0)-0.5;
+      T(pp,a.nome.slice(0,44),lx,ly,7.5,FB);ly-=10;
+      T(pp,`${fmt(+a.comprimento||0,1)} × ${fmt(+a.largura||0,1)} m · H ${fmt(+a.altura||0,1)} m · ${fmt0(c.area)} m² · K ${fmt(c.k,2)}`,lx,ly,6.5,F,MUT);ly-=9;
+      T(pp,`${a.lux} lx exig. · Em ${fmt0(c.em)} lx · ${c.luminarias} lum. × ${fmt(a.lm,0)} lm · ${fmt0(c.potencia)} W · ${fmt(c.dens,1)} W/m²`,lx,ly,6.5,FB,ok?ACC:RED);ly-=9;
+      T(pp,`FU ${fmt(+a.uf,2)} · FM ${fmt(+a.mf,2)}`,lx,ly,6.5,F,MUT);ly-=14;});
     T(pp,"Estudo preliminar: confirmar iluminância, refletâncias, luminária e uniformidade conforme uso e norma aplicável.",50,80,8,FB,RED);
     carimbo(pp,w,"Luminotécnico","LUM-01");
   }
@@ -2008,6 +2056,9 @@ async function gerarPDF(){
         const n=Math.max(1,Math.floor(Math.hypot(x2-x1,y2-y1)/45));for(let k=1;k<=n;k++){const t=k/(n+1);SIM(pp,"terraT",x1+(x2-x1)*t,y1+(y2-y1)*t,7,{ang:[180,270,0,90][j]},MAR);}});
       T(pp,"50•",ax+aw+4,ay+4,7,FB,MAR);
       Bx(pp,ox,oy,bw,bh,{bw:2,fill:LG});
+      // ambientes da etapa 02 dentro do contorno protegido (zoom na edificação)
+      if(sp.ce){const rx=sp.ce.x,ry=sp.ce.y;posAmbientes().filter(r=>r.L>0&&r.W>0).forEach(r=>{const x=ox+(r.x-rx)*e,y=oy+(r.y-ry)*e;Bx(pp,x,y,r.L*e,r.W*e,{bc:MUT,bw:0.6});T(pp,r.a.nome.slice(0,30),x+3,y+r.W*e-9,6,F,MUT);});
+        if(!sp.autoDim.L&&Math.abs(sp.L-sp.ce.L)>0.05||!sp.autoDim.W&&Math.abs(sp.W-sp.ce.W)>0.05)T(pp,`Dimensões informadas (${fmt(sp.L,1)} × ${fmt(sp.W,1)} m) diferentes do contorno dos ambientes da etapa 02 (${fmt(sp.ce.L,1)} × ${fmt(sp.ce.W,1)} m).`,X0,Y0-48,7.5,FB,RED);}
       if(sp.cobMet)TC(pp,"Cobertura metálica contínua = captor natural (5.2.5)",ox+bw/2,oy+bh/2,8,FB,ACC);
       else{for(let k=0;k<sp.linhasL;k++){const yy=oy+bh*k/Math.max(sp.linhasL-1,1);Ln(pp,ox,yy,ox+bw,yy,1.1,ACC);}
         for(let k=0;k<sp.linhasW;k++){const xx=ox+bw*k/Math.max(sp.linhasW-1,1);Ln(pp,xx,oy,xx,oy+bh,1.1,ACC);}}
@@ -2015,7 +2066,7 @@ async function gerarPDF(){
       T(pp,`${fmt(sp.L,1)} m`,ox+bw/2-12,oy-e-14,8,FB);T(pp,`${fmt(sp.W,1)} m`,ox+bw+e+6,oy+bh/2,8,FB);
       T(pp,sp.cobMet?"Captação natural: telhas metálicas interligadas às descidas (Tab. 3: aço >= 0,5 mm)":`Malha ${sp.g.m} × ${sp.g.m} m (cobre 35 mm²)${sp.cobMetZona?" — telha sobre zona de poeira não é captor":""}`,X0,Y0-22,8,FB,ACC);
       T(pp,`${sp.nDesc} descidas (D), uma em cada canto (5.3.3)${sp.natural?" — naturais":""}${sp.nAneis?` · ${sp.nAneis} anel(éis) intermediário(s) a cada ${sp.g.d} m`:""} · anel: cordoalha de cobre nu 50 mm² a ~1 m`,X0,Y0-34,8,FB,MAR);}
-    else T(pp,"Informe comprimento, largura e altura da estrutura na etapa 08 para desenhar a malha.",X0,Y0+AH/2,10,FB,RED);
+    else T(pp,"Cadastre os ambientes na etapa 02 (ou informe comprimento, largura e altura da estrutura) para desenhar a malha.",X0,Y0+AH/2,10,FB,RED);
     // resultados
     const xr=680;let y=h-100;T(pp,"Resultados",xr,y,11,FB);y-=18;
     const toq={brita:"brita 20 cm até 3 m das descidas",isolacao:"isolação das descidas (100 kV) até 3 m",barreira:"barreiras e placas de advertência",baixa:"dispensada: baixa presença de pessoas",naturais:"dispensada: >= 10 descidas naturais"}[sp.toque]||"—";
