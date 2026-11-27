@@ -1441,7 +1441,7 @@ function distanciasDesenho(){const P=layoutPlanta(),out={quadros:[],ent:null,cir
 function aplicarDistancias(){const d=distanciasDesenho();let n=0;
   d.quadros.forEach(({q,L})=>{if(Math.abs((+q.L||0)-L)>0.01){q.L=L;n++;}});if(d.ent!=null&&Math.abs((+S.forn.Lent||0)-d.ent)>0.01){S.forn.Lent=d.ent;n++;}
   d.circ.forEach(({o,ld,lb})=>{const c=S.circ[o.i];if(!c)return;if(Math.abs((+c.ld||0)-ld)>0.01||Math.abs((+c.lb||0)-lb)>0.01){c.ld=ld;c.lb=lb;n++;}});return n;}
-let ED_TOOL="sel",ED_UNDO=[],ED_NOVO=null,EDT=null,PIP=null,ED_FLOAT=false,ED_MOD={porta:"giro",janela:"correr"},ED_CARGA="aquecedor";
+let ED_TABAB=false,ED_TOOL="sel",ED_UNDO=[],ED_NOVO=null,EDT=null,PIP=null,ED_FLOAT=false,ED_MOD={porta:"giro",janela:"correr"},ED_CARGA="aquecedor";
 const edDoc=()=>PIP?PIP.document:document,edEl=id=>edDoc().getElementById(id);
 const ED_TOOLS=[["sel","Selecionar e arrastar","M5 3l13 8-6 1 4 7-2 1-4-7-5 4z"],["amb","Ambiente — arraste um retângulo","M3 5h18v14H3z"],["porta","Porta — clique perto da parede","M4 20V4h9v16M13 4c5 0 7 4 7 8"],
   ["janela","Janela — clique perto da parede","M3 9h18M3 12h18M3 15h18"],["quadro","Quadro — clique perto da parede","M5 4h14v16H5zM5 4l14 16"],["maq","Máquina (motor)","M12 3a9 9 0 1 0 .01 0zM8 16V8l4 5 4-5v8"],
@@ -1505,10 +1505,12 @@ function editorSVG(){
   s+=`<rect id="edPrev" x="0" y="0" width="0" height="0" fill="#1f3b5a" fill-opacity="0.12" stroke="#1f3b5a" stroke-width="${f/6}" stroke-dasharray="${f/2} ${f/4}" pointer-events="none"/>`;
   return s+`</svg>`;}
 function editorTabela(){const d=distanciasDesenho(),r=[];
-  d.quadros.forEach(({q,L})=>r.push([`Alimentador ${paiDe(q)?.nome||"QGBT"} → ${q.nome}`,+q.L||0,L]));
-  if(d.ent!=null)r.push(["Alimentador de entrada (padrão → QGBT)",+S.forn.Lent||0,d.ent]);
-  d.circ.forEach(({o,ld,lb})=>{const c=S.circ[o.i];r.push([`C${o.i+1} ${o.c.nome} — trecho horizontal`,+c.ld||0,ld],[`C${o.i+1} ${o.c.nome} — baixada`,+c.lb||0,lb]);});
-  return `<div class="tbl"><table><thead><tr><th>Trecho</th><th class="num">Usado no cálculo (m)</th><th class="num">Medido no desenho (m)</th></tr></thead><tbody>${r.map(([t,a,b])=>`<tr><td>${esc(t)}</td><td class="num">${fmtN(a)}</td><td class="num" ${Math.abs(a-b)>0.01?'style="color:#b3261e;font-weight:600"':""}>${fmtN(b)}</td></tr>`).join("")}</tbody></table></div>`;}
+  d.quadros.forEach(({q,L})=>r.push([`Alimentador ${paiDe(q)?.nome||"QGBT"} → ${q.nome}`,+q.L||0,L,`q:${S.quadros.indexOf(q)}`]));
+  if(d.ent!=null)r.push(["Alimentador de entrada (padrão → QGBT)",+S.forn.Lent||0,d.ent,"ent"]);
+  d.circ.forEach(({o,ld,lb})=>{const c=S.circ[o.i];r.push([`C${o.i+1} ${o.c.nome} — trecho horizontal`,+c.ld||0,ld,`ld:${o.i}`],[`C${o.i+1} ${o.c.nome} — baixada`,+c.lb||0,lb,`lb:${o.i}`]);});
+  const dif=r.filter(([,a,b])=>Math.abs(a-b)>0.01).length;
+  return `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0"><button type="button" class="btn small" id="edMed" title="Mede de novo todos os trechos pelo desenho atual">Atualizar medições</button><button type="button" class="btn small primary" id="edApl" ${dif?"":"disabled"}>Aplicar todas no cálculo${dif?` (${dif})`:""}</button><span style="font-size:12px;color:var(--muted,#666)">${dif?`${dif} trecho(s) diferente(s) do desenho`:"Os comprimentos do cálculo correspondem ao desenho."}</span></div>
+  <div class="tbl"><table><thead><tr><th>Trecho</th><th class="num">Usado no cálculo (m)</th><th class="num">Medido no desenho (m)</th><th></th></tr></thead><tbody>${r.map(([t,a,b,k])=>{const df=Math.abs(a-b)>0.01;return `<tr><td>${esc(t)}</td><td class="num">${fmtN(a)}</td><td class="num" ${df?'style="color:#b3261e;font-weight:600"':""}>${fmtN(b)}</td><td>${df?`<button type="button" class="btn small" data-edrow="${k}" data-v="${b}">Aplicar</button>`:""}</td></tr>`;}).join("")}</tbody></table></div>`;}
 const ED_DICA={sel:"Arraste para mover · botão direito em qualquer elemento para editar",amb:"Pressione e arraste no espaço vazio para desenhar um ambiente",porta:"Clique perto da parede de um ambiente",janela:"Clique perto da parede de um ambiente",quadro:"Clique perto de uma parede",maq:"Clique dentro do ambiente onde a máquina fica",tue:"Escolha o tipo de carga e clique perto da parede onde ela fica",tug:"Clique dentro do ambiente para acrescentar uma tomada",lum:"Clique dentro do ambiente para acrescentar uma luminária",del:"Clique no elemento a apagar"};
 function editorBarra(){return `${ED_TOOLS.map(([k,t,d])=>`<button type="button" class="ed-tool${ED_TOOL===k?" on":""}" data-edtool="${k}" title="${t}" aria-label="${t}" aria-pressed="${ED_TOOL===k}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="${d}"/></svg></button>`).join("")}
   <span class="ed-sep"></span><button type="button" class="ed-tool" id="edUndo" title="Desfazer" aria-label="Desfazer" ${ED_UNDO.length?"":"disabled"}><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>`;}
@@ -1517,11 +1519,11 @@ function editorOpcoes(){if(ED_TOOL==="porta"||ED_TOOL==="janela")return `<select
 function editorPainel(){return `<div id="edPanel" class="ed-panel${ED_FLOAT?" ed-float":""}${PIP?" ed-pip":""}">
   <div class="ed-top"><b>Editor dos desenhos</b><span class="ed-dica" id="edDica">${ED_DICA[ED_TOOL]}</span><span data-live="edopc">${editorOpcoes()}</span><span class="ed-acoes">
     <label class="ed-chk" title="Ao soltar, grava nos cálculos os comprimentos medidos no desenho"><input type="checkbox" id="edAuto" ${S.par.distAuto?"checked":""}> distâncias automáticas</label>
-    <button type="button" class="btn small" id="edApl">Usar distâncias agora</button><button type="button" class="btn small" id="edSnap">Quadros nas paredes</button>
+    <button type="button" class="btn small" id="edDist" title="Abre a tabela de distâncias medidas no desenho">Distâncias</button><button type="button" class="btn small" id="edSnap">Quadros nas paredes</button>
     ${PIP?`<button type="button" class="btn small" id="edPipX">Voltar para a página</button>`:`<button type="button" class="btn small" id="edPip" title="Abre o editor numa janela flutuante, fora da página (sempre visível)">Janela flutuante</button><button type="button" class="btn small" id="edFloat">${ED_FLOAT?"Recolher":"Expandir"}</button><button type="button" class="btn small" id="edFull">Tela cheia</button>`}</span></div>
   <div class="ed-corpo"><div class="ed-barra" role="toolbar" aria-label="Ferramentas" data-live="edbarra">${editorBarra()}</div><div class="ed-tela" data-live="editor">${editorSVG()}</div></div>
   <div class="ed-msg" id="edMsg"></div><div id="edCtx" class="ed-ctx" hidden></div>
-  <details class="ed-tab"><summary>Distâncias (usado no cálculo × medido no desenho)</summary><div data-live="edtab">${editorTabela()}</div></details></div>`;}
+  <details class="ed-tab" id="edTabD" ${ED_TABAB?"open":""}><summary>Distâncias medidas no desenho (usado no cálculo × medido)</summary><div data-live="edtab">${editorTabela()}</div></details></div>`;}
 const ED_CSS=`.ed-panel{border:1px solid var(--line,#ccc);border-radius:8px;background:var(--sheet,#fff);display:flex;flex-direction:column;position:relative}
 .ed-panel.ed-float{position:fixed;inset:16px;z-index:9000;box-shadow:0 10px 40px rgba(0,0,0,.35);resize:both;overflow:auto}
 .ed-panel.ed-pip{border:0;border-radius:0;height:100vh}
@@ -1621,10 +1623,14 @@ function edUp(ev){
   if(S.par.distAuto){calc();const n=aplicarDistancias();if(n)edToast(`${n} comprimento(s) atualizado(s) pelo desenho.`);}
   persist();soft();edAtualizar(true);}
 function edCtx(ev){if(!ev.target.closest||!ev.target.closest("#edSvg"))return;const g=ev.target.closest("[data-drag],[data-pt]");ev.preventDefault();if(g)edCtxAbrir(ev,g);}
-function edClick(ev){const b=ev.target.closest&&ev.target.closest("button,input");if(!b)return;
+function edClick(ev){const sm=ev.target.closest&&ev.target.closest("#edTabD > summary");if(sm){ED_TABAB=!sm.parentElement.open;return;}const b=ev.target.closest&&ev.target.closest("button,input");if(!b)return;
   if(b.dataset.edtool){ED_TOOL=b.dataset.edtool;edAtualizar(true);return;}
-  const id=b.id;if(!id)return;
+  const id=b.id||"";if(!id&&!b.dataset.edrow)return;
   if(id==="edUndo"){const j=ED_UNDO.pop();if(j){S=normalizar(JSON.parse(j));calc();persist();soft();edAtualizar(true);if(!PIP)render(true);edToast("Alteração desfeita.");}return;}
+  if(id==="edMed"){calc();edAtualizar(true);edToast("Medições atualizadas pelo desenho.");return;}
+  if(id==="edDist"){const d=edEl("edTabD");if(d){d.open=true;ED_TABAB=true;d.scrollIntoView({block:"nearest"});}return;}
+  if(b.dataset.edrow){edSnap();const [k,ix]=b.dataset.edrow.split(":"),v=+b.dataset.v;if(k==="q")S.quadros[+ix].L=v;else if(k==="ent")S.forn.Lent=v;else if(k==="ld")S.circ[+ix].ld=v;else if(k==="lb")S.circ[+ix].lb=v;
+    calc();persist();soft();edAtualizar(true);if(!PIP)render(true);edToast("Comprimento aplicado ao cálculo.");return;}
   if(id==="edApl"){calc();const n=aplicarDistancias();persist();soft();edAtualizar(true);if(!PIP)render(true);edToast(n?`${n} comprimento(s) atualizado(s) pelo desenho.`:"Os comprimentos já correspondem ao desenho.");return;}
   if(id==="edSnap"){edSnap();const P_=layoutPlanta();P_.quad.forEach(r=>{const w_=paredeMaisProxima(P_,r.x,r.y);if(w_){r.q.x=Math.round(w_.x*100)/100;r.q.y=Math.round(w_.y*100)/100;}});return edFim("Quadros ajustados às paredes. Confira as posições.");}
   if(id==="edAuto"){S.par.distAuto=b.checked;persist();return;}
@@ -1632,7 +1638,7 @@ function edClick(ev){const b=ev.target.closest&&ev.target.closest("button,input"
   if(id==="edFloat"){ED_FLOAT=!ED_FLOAT;render(true);return;}
   if(id==="edFull"){const p=edEl("edPanel");if(p&&p.requestFullscreen)(document.fullscreenElement?document.exitFullscreen():p.requestFullscreen());return;}
   if(id==="edCtxX"){edCtxFechar();return;}}
-function edChange(ev){const t=ev.target;if(t.id==="edMod"){ED_MOD[ED_TOOL]=t.value;}else if(t.id==="edCarga"){ED_CARGA=t.value;}}
+function edChange(ev){const t=ev.target;if(t.id==="edTabD")ED_TABAB=t.open;if(t.id==="edMod"){ED_MOD[ED_TOOL]=t.value;}else if(t.id==="edCarga"){ED_CARGA=t.value;}}
 function edSubmit(ev){if(ev.target.id==="edCtxF"){ev.preventDefault();edCtxAplicar(ev.target);}}
 function edTecla(ev){if(ev.key==="Escape"){edCtxFechar();if(ED_FLOAT&&!PIP){ED_FLOAT=false;render(true);}}}
 function edLigar(D){D.addEventListener("pointerdown",edDown);D.addEventListener("pointermove",edMove);D.addEventListener("pointerup",edUp);D.addEventListener("contextmenu",edCtx);D.addEventListener("click",edClick);D.addEventListener("submit",edSubmit);D.addEventListener("change",edChange);D.addEventListener("keydown",edTecla);}
