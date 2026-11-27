@@ -1458,7 +1458,9 @@ function guiasDoTrecho(ch){const hz=ch.t==="h",lin=hz?ch.a[1]:ch.a[0],i0=Math.mi
   return (S.guias||[]).filter(g=>{const gh=Math.abs(g.a[1]-g.b[1])<1e-6;if(gh!==hz)return false;const gl=gh?g.a[1]:g.a[0],j0=Math.min(gh?g.a[0]:g.a[1],gh?g.b[0]:g.b[1]),j1=Math.max(gh?g.a[0]:g.a[1],gh?g.b[0]:g.b[1]);return Math.abs(gl-lin)<0.15&&j0<i1-0.05&&j1>i0+0.05;});}
 function tirarGuias(ch){const ts=new Set(guiasDoTrecho(ch));S.guias=(S.guias||[]).filter(g=>!ts.has(g));return ts.size;}
 function edSnap(){ED_UNDO.push(JSON.stringify(S));if(ED_UNDO.length>30)ED_UNDO.shift();}
-function edFim(msg){calc();if(S.par.distAuto)aplicarDistancias();persist();soft();edAtualizar(true);if(!PIP)render(true);if(msg)edToast(msg);}
+// com o editor na tela, atualiza só o conteúdo dele (recriar o painel tiraria a tela cheia); fora dele, redesenha a etapa
+function edRender(){if(!PIP&&STEPS[cur]&&STEPS[cur].k!=="edit")render(true);}
+function edFim(msg){calc();if(S.par.distAuto)aplicarDistancias();persist();soft();edAtualizar(true);edRender();if(msg)edToast(msg);}
 function edToast(m){if(PIP){const t=edEl("edMsg");if(t){t.textContent=m;t.style.opacity=1;clearTimeout(edToast.t);edToast.t=setTimeout(()=>t.style.opacity=0,3500);}}else toast(m);}
 function ambEm(x,y){return posAmbientes().find(r=>r.L>0&&r.W>0&&x>=r.x-0.05&&x<=r.x+r.L+0.05&&y>=r.y-0.05&&y<=r.y+r.W+0.05);}
 function ambPerto(x,y){let b=null,bd=Infinity;posAmbientes().filter(r=>r.L>0&&r.W>0).forEach(r=>{const d=Math.hypot(Math.max(r.x-x,0,x-(r.x+r.L)),Math.max(r.y-y,0,y-(r.y+r.W)));if(d<bd){bd=d;b=r;}});return b;}
@@ -1664,12 +1666,12 @@ function edCtx(ev){if(!ev.target.closest||!ev.target.closest("#edSvg"))return;co
 function edClick(ev){const sm=ev.target.closest&&ev.target.closest("#edTabD > summary");if(sm){ED_TABAB=!sm.parentElement.open;return;}const b=ev.target.closest&&ev.target.closest("button,input");if(!b)return;
   if(b.dataset.edtool){ED_TOOL=b.dataset.edtool;edAtualizar(true);return;}
   const id=b.id||"";if(!id&&!b.dataset.edrow)return;
-  if(id==="edUndo"){const j=ED_UNDO.pop();if(j){S=normalizar(JSON.parse(j));calc();persist();soft();edAtualizar(true);if(!PIP)render(true);edToast("Alteração desfeita.");}return;}
+  if(id==="edUndo"){const j=ED_UNDO.pop();if(j){S=normalizar(JSON.parse(j));calc();persist();soft();edAtualizar(true);edRender();edToast("Alteração desfeita.");}return;}
   if(id==="edMed"){calc();edAtualizar(true);edToast("Medições atualizadas pelo desenho.");return;}
   if(id==="edDist"){const d=edEl("edTabD");if(d){d.open=true;ED_TABAB=true;d.scrollIntoView({block:"nearest"});}return;}
   if(b.dataset.edrow){edSnap();const [k,ix]=b.dataset.edrow.split(":"),v=+b.dataset.v;if(k==="q")S.quadros[+ix].L=v;else if(k==="ent")S.forn.Lent=v;else if(k==="ld")S.circ[+ix].ld=v;else if(k==="lb")S.circ[+ix].lb=v;
-    calc();persist();soft();edAtualizar(true);if(!PIP)render(true);edToast("Comprimento aplicado ao cálculo.");return;}
-  if(id==="edApl"){calc();const n=aplicarDistancias();persist();soft();edAtualizar(true);if(!PIP)render(true);edToast(n?`${n} comprimento(s) atualizado(s) pelo desenho.`:"Os comprimentos já correspondem ao desenho.");return;}
+    calc();persist();soft();edAtualizar(true);edRender();edToast("Comprimento aplicado ao cálculo.");return;}
+  if(id==="edApl"){calc();const n=aplicarDistancias();persist();soft();edAtualizar(true);edRender();edToast(n?`${n} comprimento(s) atualizado(s) pelo desenho.`:"Os comprimentos já correspondem ao desenho.");return;}
   if(id==="edSnap"){edSnap();const P_=layoutPlanta();P_.quad.forEach(r=>{const w_=paredeMaisProxima(P_,r.x,r.y);if(w_){r.q.x=Math.round(w_.x*100)/100;r.q.y=Math.round(w_.y*100)/100;}});return edFim("Quadros ajustados às paredes. Confira as posições.");}
   if(id==="edSup"){const r=exportarSupervisorio();edToast(`Arquivo do Supervisório gerado: ${r.eq} equipamentos, ${r.tags} variáveis e ${r.cmd} comandos.`);return;}
   if(id==="edAuto"){S.par.distAuto=b.checked;persist();return;}
