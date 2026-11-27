@@ -235,6 +235,61 @@ const LIG={
 // tipos de carga de uso específico (TUE): potência e fator de potência típicos, sigla e nome
 const CARGAS_TUE={geral:{t:"Uso específico (geral)",sg:"TUE",pot:1500,fp:0.95},aquecedor:{t:"Aquecedor / resistência",sg:"AQ",pot:2000,fp:1},chuveiro:{t:"Chuveiro elétrico",sg:"CH",pot:5500,fp:1},
   torneira:{t:"Torneira elétrica",sg:"TE",pot:5500,fp:1},arcond:{t:"Ar-condicionado",sg:"AC",pot:1800,fp:0.85},forno:{t:"Forno / estufa",sg:"FO",pot:3000,fp:1},refrig:{t:"Refrigeração (freezer, câmara)",sg:"RF",pot:600,fp:0.8}};
+// biblioteca de cargas agroindustriais: valores típicos de partida (confirmar na placa/catálogo do equipamento)
+// m(nome, cv, η, FP, partida) → motor · r(nome, W, FP, tipo de carga) → uso específico
+const CATALOGO_CARGAS=(()=>{let n=0;const m=(g,nome,cv,eta,fp,partida="direta")=>({id:"m"+(++n),g,nome,tipo:"motor",pot:cv,unid:"cv",eta,fp,partida}),
+  r=(g,nome,w,fp=1,cargaTipo="aquecedor")=>({id:"r"+(++n),g,nome,tipo:"tue",pot:w,unid:"W",fp,cargaTipo});
+  return [
+  // grãos: recebimento, limpeza, secagem e armazenagem
+  m("Grãos — recebimento e armazenagem","Moega com rosca de recebimento",5,0.86,0.82),m("Grãos — recebimento e armazenagem","Elevador de canecas",7.5,0.885,0.83,"yd"),
+  m("Grãos — recebimento e armazenagem","Transportador de corrente (redler)",5,0.86,0.82),m("Grãos — recebimento e armazenagem","Rosca transportadora",3,0.85,0.81),
+  m("Grãos — recebimento e armazenagem","Correia transportadora",5,0.86,0.82),m("Grãos — recebimento e armazenagem","Máquina de pré-limpeza",3,0.85,0.81),
+  m("Grãos — recebimento e armazenagem","Máquina de limpeza (peneiras e ventilador)",5,0.86,0.82),m("Grãos — recebimento e armazenagem","Ventilador do secador de grãos",15,0.91,0.85,"yd"),
+  m("Grãos — recebimento e armazenagem","Exaustor do secador",7.5,0.885,0.83,"yd"),m("Grãos — recebimento e armazenagem","Aerador de silo",10,0.895,0.84,"yd"),
+  m("Grãos — recebimento e armazenagem","Rosca varredora de silo",3,0.85,0.81),m("Grãos — recebimento e armazenagem","Tombador hidráulico de caminhão",15,0.91,0.85,"soft"),
+  m("Grãos — recebimento e armazenagem","Balança de fluxo / ensacadeira automática",1,0.80,0.78),
+  // beneficiamento
+  m("Beneficiamento","Descascador de arroz",10,0.895,0.84,"yd"),m("Beneficiamento","Brunidor / polidor de arroz",20,0.915,0.85,"soft"),
+  m("Beneficiamento","Mesa densimétrica",2,0.83,0.80),m("Beneficiamento","Trieur (separador de grãos)",1.5,0.82,0.79),
+  m("Beneficiamento","Selecionadora óptica (compressor)",7.5,0.885,0.83,"yd"),m("Beneficiamento","Classificador de café / peneiras",2,0.83,0.80),
+  m("Beneficiamento","Descascador / despolpador de café",5,0.86,0.82),m("Beneficiamento","Debulhador de milho",7.5,0.885,0.83,"yd"),
+  // ração e moagem
+  m("Ração e moagem","Moinho de martelos",15,0.91,0.85,"soft"),m("Ração e moagem","Triturador / picador de forragem",10,0.895,0.84,"yd"),
+  m("Ração e moagem","Misturador de ração vertical",5,0.86,0.82),m("Ração e moagem","Misturador horizontal (fita)",10,0.895,0.84,"yd"),
+  m("Ração e moagem","Peletizadora",30,0.925,0.86,"soft"),m("Ração e moagem","Desintegrador / picadeira de cana",15,0.91,0.85,"soft"),
+  m("Ração e moagem","Ensacadeira com costuradora",2,0.83,0.80),
+  // água e irrigação
+  m("Água e irrigação","Bomba centrífuga de irrigação",10,0.895,0.84,"soft"),m("Água e irrigação","Bomba submersa de poço",5,0.83,0.82,"soft"),
+  m("Água e irrigação","Bomba de recalque de água",3,0.85,0.81),m("Água e irrigação","Pivô central — motorredutores (conjunto)",7.5,0.85,0.80,"inv"),
+  m("Água e irrigação","Motobomba de fertirrigação",2,0.83,0.80),
+  // leite
+  m("Leite e laticínios","Bomba de vácuo da ordenhadeira",5,0.86,0.82),m("Leite e laticínios","Compressor do resfriador de leite",5,0.86,0.82),
+  m("Leite e laticínios","Bomba de transferência de leite",1.5,0.82,0.79),m("Leite e laticínios","Desnatadeira",1,0.80,0.78),
+  m("Leite e laticínios","Homogeneizador",10,0.895,0.84,"yd"),m("Leite e laticínios","Batedeira de manteiga",2,0.83,0.80),
+  r("Leite e laticínios","Pasteurizador (resistências)",9000,1),r("Leite e laticínios","Tanque de queijo com aquecimento",6000,1),
+  // aves, suínos e estufas
+  m("Aves, suínos e estufas","Ventilador / exaustor de aviário",1,0.80,0.78),m("Aves, suínos e estufas","Comedouro automático (motorredutor)",0.5,0.70,0.72),
+  m("Aves, suínos e estufas","Bomba de nebulização",1,0.80,0.78),m("Aves, suínos e estufas","Raspador de dejetos",1.5,0.82,0.79),
+  r("Aves, suínos e estufas","Campânula / aquecedor de pintinhos",1500,1),r("Aves, suínos e estufas","Escamoteador / placa aquecida de leitões",500,1),
+  r("Aves, suínos e estufas","Incubadora / chocadeira",1200,0.95),r("Aves, suínos e estufas","Aquecedor de estufa agrícola",3000,1),
+  r("Aves, suínos e estufas","Eletrificador de cerca",20,0.9,"geral"),
+  // frutas, hortaliças e alimentos
+  m("Frutas, hortaliças e alimentos","Lavadora de frutas e legumes",2,0.83,0.80),m("Frutas, hortaliças e alimentos","Despolpadeira de frutas",3,0.85,0.81),
+  m("Frutas, hortaliças e alimentos","Mesa de seleção / esteira",1,0.80,0.78),m("Frutas, hortaliças e alimentos","Moenda de cana (engenho)",10,0.895,0.84,"yd"),
+  m("Frutas, hortaliças e alimentos","Prensa de óleo (expeller)",15,0.91,0.85,"soft"),m("Frutas, hortaliças e alimentos","Centrífuga",5,0.86,0.82),
+  m("Frutas, hortaliças e alimentos","Serra-fita de carne",2,0.83,0.80),m("Frutas, hortaliças e alimentos","Moedor de carne",3,0.85,0.81),
+  r("Frutas, hortaliças e alimentos","Desidratador de frutas (estufa)",4000,1,"forno"),r("Frutas, hortaliças e alimentos","Tacho / caldeira de doce (resistências)",6000,1,"forno"),
+  r("Frutas, hortaliças e alimentos","Forno industrial",9000,1,"forno"),r("Frutas, hortaliças e alimentos","Seladora / embaladora",1500,0.95,"geral"),
+  r("Frutas, hortaliças e alimentos","Esterilizador / autoclave",6000,1,"forno"),
+  // frio, ar e serviços
+  m("Frio, ar comprimido e serviços","Compressor de câmara fria",7.5,0.885,0.83,"yd"),m("Frio, ar comprimido e serviços","Compressor de ar",10,0.895,0.84,"yd"),
+  m("Frio, ar comprimido e serviços","Máquina de gelo",3,0.85,0.81),m("Frio, ar comprimido e serviços","Lavadora de alta pressão",3,0.85,0.81),
+  m("Frio, ar comprimido e serviços","Esmeril / bancada de oficina",1,0.80,0.78),
+  r("Frio, ar comprimido e serviços","Freezer horizontal",500,0.8,"refrig"),r("Frio, ar comprimido e serviços","Refrigerador / expositor",400,0.8,"refrig"),
+  r("Frio, ar comprimido e serviços","Ar-condicionado 12.000 BTU/h",1200,0.85,"arcond"),r("Frio, ar comprimido e serviços","Ar-condicionado 24.000 BTU/h",2400,0.85,"arcond"),
+  r("Frio, ar comprimido e serviços","Máquina de solda (inversora)",5000,0.9,"geral"),r("Frio, ar comprimido e serviços","Boiler / aquecedor de água",3000,1),
+  r("Frio, ar comprimido e serviços","Caldeira elétrica",15000,1,"forno"),r("Frio, ar comprimido e serviços","Chuveiro elétrico",5500,1,"chuveiro"),
+  r("Frio, ar comprimido e serviços","Torneira elétrica",5500,1,"torneira"),r("Frio, ar comprimido e serviços","Aquecedor de ambiente",1500,1)];})();
 // modelos de portas e janelas: sigla usada na planta
 const MODELOS_AB={porta:{giro:["Giro","P"],correr:["De correr","PC"],dupla:["Dupla (2 folhas)","PD"],enrolar:["De enrolar / portão","PE"]},janela:{correr:["De correr","JC"],basculante:["Basculante","JB"],maximar:["Maxim-ar","JM"],fixa:["Fixa","JF"]}};
 const TIPOS={ilum:"Iluminação",tug:"Tomadas de uso geral (TUG)",tue:"Tomada/uso específico (TUE)",motor:"Motor"};
