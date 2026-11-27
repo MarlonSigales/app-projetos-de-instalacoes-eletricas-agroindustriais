@@ -1716,7 +1716,10 @@ function layoutPlanta(){
   const rota=criarRoteador(ambOk.map(r=>({x:r.x,y:r.y,L:r.L,W:r.W})),bb);
   // canaletas: do quadro de origem até o centro de cada ambiente atendido, por dentro das áreas; a baixada desce no fim
   const rotas=Object.values(R.cans).map(g=>{const paths=[];g.circ.forEach(ci=>{const o=R.out[ci-1];if(!o)return;const q=qp(o.c.q),r=amb.find(z=>z.a.id===o.c.ambiente);if(!q)return;
-      const alvo=r?[r.x+r.L/2,r.y+r.W/2]:[q.x+3,q.y+2];paths.push(rota([q.x,q.y],alvo).pts);});return {k:g.k,paths};}).filter(r=>r.paths.length);
+      // circuito sem ambiente: vai ao centro do ambiente onde está o quadro (ou do mais próximo dele)
+      const rz=r||ambOk.find(z=>q.x>=z.x-1e-6&&q.x<=z.x+z.L+1e-6&&q.y>=z.y-1e-6&&q.y<=z.y+z.W+1e-6)||ambOk.slice().sort((u,v)=>Math.hypot(u.x+u.L/2-q.x,u.y+u.W/2-q.y)-Math.hypot(v.x+v.L/2-q.x,v.y+v.W/2-q.y))[0];
+      if(!rz)return;const alvo=[rz.x+rz.L/2,rz.y+rz.W/2];paths.push(rota([q.x,q.y],alvo).pts);});
+    const vis=new Set();return {k:g.k,paths:paths.filter(pt=>{const k=JSON.stringify(pt);if(vis.has(k))return false;vis.add(k);return true;})};}).filter(r=>r.paths.length);
   const alim=S.quadros.map(q=>{const pai=paiDe(q);if(!pai)return null;const a=qp(pai.nome),b=qp(q.nome);return a&&b?{de:a,para:b,q,pts:rota([a.x,a.y],[b.x,b.y]).pts}:null;}).filter(Boolean);
   // entrada → QGBT: sai do limite e segue por dentro das áreas
   const entRota=ent&&quad[0]?rota([ent.x,ent.y],[quad[0].x,quad[0].y]):null;
@@ -2021,6 +2024,7 @@ async function gerarPDF(){
       L_(`Ramal de ligação (P → M): ${f.distRede||"distância a confirmar"}.`,RED,FB);
       L_(`REDE — rede da distribuidora: ${f.rede||"tipo a informar"}${id.distribuidora?` (${id.distribuidora})`:""}. VIA — via de acesso: ${id.local||"endereço a preencher"}.`,ACC);
       L_(`Alimentador de entrada (M → ${S.quadros[0].nome}), linha cheia: ${R.ent.s?R.ent.txt+" mm²":"—"}${R.ent.ed?", "+R.ent.ed.nome:""}, ${fmtN(f.Lent)} m, método ${f.metEnt}.`);
+      L_("Linha cinza contínua: canaletas de distribuição, do quadro até o centro do ambiente atendido, onde descem as baixadas (detalhe na planta baixa).",rgb(0.35,0.35,0.35));
       R.quadros.filter(q=>q.pai).forEach(q=>L_(`${q.pai} → ${q.q.nome}, tracejado: ${q.f&&q.f.s?q.f.txt+" mm², ":""}${fmt(+q.q.L||0,0)} m.`,MUT));}
     // norte e escala gráfica
     const nx=w-420,ny=h-170;Ln(pp,nx,ny,nx,ny+50,1.4);pp.drawSvgPath(`M ${nx} ${-(ny+60)} L ${nx-7} ${-(ny+44)} L ${nx+7} ${-(ny+44)} Z`,{color:INK});TC(pp,"N",nx,ny+64,10,FB);
