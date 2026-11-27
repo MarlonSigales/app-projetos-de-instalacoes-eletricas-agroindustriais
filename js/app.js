@@ -21,7 +21,7 @@ function blank(){
     id:{cliente:"",obra:"",atividade:"",local:"",municipio:"",uc:"",distribuidora:"",rt:"",crea:"",art:"",projetista:"",data:new Date().toISOString().slice(0,10)},
     projetos:{eletrico:true,luminotecnico:false,spda:false},
     forn:{espComp:"",espLarg:"",entLado:"",entPos:"",sistema:"380/220",atend:"BT",classe:"rural",subclasse:"Agroindustrial",tensaoPrim:13.8,subterraneo:false,modalidade:"",iccMT:"",Lmt:30,trafo:false,trafoKVA:"",rede:"",distRede:"",Lent:15,metEnt:"D",aterr:"TN-S",aerea:true,aq:"AQ2",spda:false,rhoEletrica:"",ra:30,ul:50,obs:""},
-    par:{temp:30,tempSolo:20,rhoSolo:2.5,metDist:"B1",metBaix:"B1",agrDist:"feixe",espEnt:"nula",arrF:"trifolio",arrG:"horizontal",ipin:7,dvPartida:10,simular:true,softLim:3,invLim:1.5,bobina:"220 Vca",icc:6,dpsSempre:false,dvTerm:4,dvTotal:5,dvEnt:1,rho:0.0206,curva:"C",curvaMotor:"D",reserva:20,sobra:10,neutroRed:false,ocupCan:40,espSupCan:1.5,baixAparente:true,xCabo:0.08,rTerra:10,nEquip:6,lEquip:10,corrFP:true,fpAlvo:0.92,emerg:true,zTrafo:4.5,tipoSub:"poste"},
+    par:{temp:30,tempSolo:20,rhoSolo:2.5,metDist:"B1",metBaix:"B1",agrDist:"feixe",espEnt:"nula",arrF:"trifolio",arrG:"horizontal",ipin:7,dvPartida:10,simular:true,softLim:3,invLim:1.5,bobina:"220 Vca",icc:6,dpsSempre:false,distAuto:true,dvTerm:4,dvTotal:5,dvEnt:1,rho:0.0206,curva:"C",curvaMotor:"D",reserva:20,sobra:10,neutroRed:false,ocupCan:40,espSupCan:1.5,baixAparente:true,xCabo:0.08,rTerra:10,nEquip:6,lEquip:10,corrFP:true,fpAlvo:0.92,emerg:true,zTrafo:4.5,tipoSub:"poste"},
     quadros:[{nome:"QGBT",L:0,met:"B1",pai:"",infl:"seco",x:"",y:""}],
     ambientes:[],aberturas:[],
     circ:[],
@@ -495,6 +495,7 @@ const STEPS=[
   {k:"memo",t:"Memorial descritivo",s:"Texto gerado e editável"},
   {k:"art",t:"ART e documentos",s:"ART, especificações, materiais"},
   {k:"orc",t:"Orçamento",s:"Serviços, horas, lucro"},
+  {k:"edit",t:"Editor dos desenhos",s:"Arrastar e recalcular"},
   {k:"fim",t:"Gerar projeto",s:"PDF completo"}
 ];
 let cur=0;
@@ -1416,7 +1417,83 @@ function pendencias(){
     ["ART anexada",a.art.length>0]
   ];
 }
-V.fim=()=>{const pd=pendencias(),ok=pd.filter(x=>x[1]).length;return `${head(11)}
+/* ============================================================
+   EDITOR DOS DESENHOS — arrastar ambientes, quadros, entrada, aberturas e máquinas; distâncias recalculadas
+   ============================================================ */
+// comprimentos a partir do desenho: alimentadores, entrada e, por circuito, trecho horizontal (até o ponto mais distante) e baixada
+function distanciasDesenho(){const P=layoutPlanta(),out={quadros:[],ent:null,circ:[]};
+  P.alim.forEach(a=>{let L=0;for(let k=1;k<a.pts.length;k++)L+=Math.abs(a.pts[k][0]-a.pts[k-1][0])+Math.abs(a.pts[k][1]-a.pts[k-1][1]);out.quadros.push({q:a.q,L:Math.max(1,Math.ceil(L*2)/2)});});
+  if(P.entRota)out.ent=Math.max(1,Math.ceil(P.entRota.L));
+  R.out.forEach(o=>{const ls=P.lig.filter(l=>l.c===o.i+1);if(!ls.length)return;const Q=P.quad.find(r=>r.q.nome===o.c.q);if(!Q)return;
+    // grafo dos trechos do circuito; distância do quadro até o ponto mais afastado
+    const key=p=>Math.round(p[0]*4)+","+Math.round(p[1]*4),adj=new Map(),add=(a,b,d)=>{if(!adj.has(a))adj.set(a,[]);adj.get(a).push([b,d]);};
+    ls.forEach(l=>{for(let k=1;k<l.pts.length;k++){const a=key(l.pts[k-1]),b=key(l.pts[k]),d=Math.abs(l.pts[k][0]-l.pts[k-1][0])+Math.abs(l.pts[k][1]-l.pts[k-1][1]);add(a,b,d);add(b,a,d);}});
+    const s0=key([Q.x,Q.y]),dist=new Map([[s0,0]]),fila=[s0];while(fila.length){fila.sort((u,v)=>dist.get(u)-dist.get(v));const u=fila.shift();(adj.get(u)||[]).forEach(([v,d])=>{const nd=dist.get(u)+d;if(!dist.has(v)||nd<dist.get(v)){dist.set(v,nd);fila.push(v);}});}
+    const ld=Math.max(1,Math.ceil(Math.max(0,...dist.values())*2)/2),a=S.ambientes.find(z=>z.id===o.c.ambiente),H=Math.max(2.5,+a?.altura||3);
+    const lb=o.c.tipo==="ilum"?0.5:o.c.tipo==="tug"?Math.round((H-0.3)*10)/10:o.c.tipo==="tue"?Math.round(Math.max(0.5,H-2)*10)/10:Math.round(Math.max(0.5,H-0.5)*10)/10;
+    out.circ.push({o,ld,lb});});
+  return out;}
+function aplicarDistancias(){const d=distanciasDesenho();let n=0;
+  d.quadros.forEach(({q,L})=>{if(Math.abs((+q.L||0)-L)>0.01){q.L=L;n++;}});if(d.ent!=null&&Math.abs((+S.forn.Lent||0)-d.ent)>0.01){S.forn.Lent=d.ent;n++;}
+  d.circ.forEach(({o,ld,lb})=>{const c=S.circ[o.i];if(!c)return;if(Math.abs((+c.ld||0)-ld)>0.01||Math.abs((+c.lb||0)-lb)>0.01){c.ld=ld;c.lb=lb;n++;}});return n;}
+let EDT=null; // arrasto em andamento
+function editorSVG(){
+  if(!S.ambientes.length)return `<p class="note warn">Cadastre os ambientes na etapa 02 para editar o desenho.</p>`;
+  const P=layoutPlanta(),bb=P.bb,m=1.5,x1=bb.x1-m,y2=bb.y2+m,W=bb.x2-bb.x1+2*m,H=bb.y2-bb.y1+2*m,X=v=>(v-x1).toFixed(3),Y=v=>(y2-v).toFixed(3),f=Math.max(0.3,Math.min(W,H)/45);
+  const ln=(a,b,c,d,st,w,da="")=>`<line x1="${X(a)}" y1="${Y(b)}" x2="${X(c)}" y2="${Y(d)}" stroke="${st}" stroke-width="${w}" ${da?`stroke-dasharray="${da}"`:""}/>`;
+  let s=`<svg id="edSvg" viewBox="0 0 ${W.toFixed(2)} ${H.toFixed(2)}" style="width:100%;max-height:640px;background:#fff;border:1px solid var(--line,#ccc);border-radius:6px;touch-action:none;user-select:none" data-x1="${x1}" data-y2="${y2}">`;
+  if(P.esp)s+=`<rect x="${X(0)}" y="${Y(P.esp.L)}" width="${P.esp.C}" height="${P.esp.L}" fill="#f6f8f4" stroke="#2e5d34" stroke-width="${f/6}" stroke-dasharray="${f} ${f/4} ${f/8} ${f/4} ${f/8} ${f/4}"/>`;
+  P.amb.forEach((r,i)=>{s+=`<rect data-drag="amb" data-i="${i}" x="${X(r.x)}" y="${Y(r.y+r.W)}" width="${r.L}" height="${r.W}" fill="${temXY(r.a)?"#dfe9f5":"#fff4d6"}" fill-opacity="0.85" stroke="#1f3b5a" stroke-width="${f/5}" style="cursor:move"/>
+    <text x="${X(r.x+0.3)}" y="${Y(r.y+r.W-0.3)-(-f)}" font-size="${f}" fill="#1f3b5a" pointer-events="none">${esc(r.a.nome)} · ${fmt(r.L,1)} × ${fmt(r.W,1)} m</text>
+    <rect data-drag="res" data-i="${i}" x="${X(r.x+r.L)-f*0.5}" y="${Y(r.y+r.W)-f*0.5}" width="${f}" height="${f}" fill="#1f3b5a" style="cursor:nwse-resize"><title>Arraste para mudar comprimento e largura</title></rect>`;});
+  P.chains.forEach(ch=>{s+=ln(ch.a[0],ch.a[1],ch.b[0],ch.b[1],"#7a5c00",ch.circ.length>=4?f/3:f/9);});
+  P.alim.forEach(a=>{for(let k=1;k<a.pts.length;k++)s+=ln(a.pts[k-1][0],a.pts[k-1][1],a.pts[k][0],a.pts[k][1],"#333",f/7);});
+  if(P.entRota)for(let k=1;k<P.entRota.pts.length;k++){const [a,b]=P.entRota.pts[k-1],[c,d]=P.entRota.pts[k];s+=ln(a,b,c,d,"#000",f/6,P.dentroDe((a+c)/2,(b+d)/2)?"":`${f/2} ${f/3}`);}
+  P.amb.forEach(r=>{r.lum.forEach(([a,b])=>{s+=`<rect x="${X(a)-f*0.35}" y="${Y(b)-f*0.18}" width="${f*0.7}" height="${f*0.36}" fill="none" stroke="#555" stroke-width="${f/14}" pointer-events="none"/>`;});
+    r.tug.forEach(([a,b])=>{s+=`<circle cx="${X(a)}" cy="${Y(b)}" r="${f*0.18}" fill="#555" pointer-events="none"/>`;});
+    if(r.inter)s+=`<circle cx="${X(r.inter[0])}" cy="${Y(r.inter[1])}" r="${f*0.2}" fill="#fff" stroke="#000" stroke-width="${f/12}" pointer-events="none"/>`;
+    r.fix.forEach(fx=>{if(fx.maq)s+=`<g data-drag="maq" data-c="${fx.o.i}" style="cursor:move"><circle cx="${X(fx.p[0])}" cy="${Y(fx.p[1])}" r="${f*0.7}" fill="#fff" stroke="#000" stroke-width="${f/8}"/><text x="${X(fx.p[0])}" y="${Y(fx.p[1])-(-f*0.3)}" font-size="${f*0.8}" text-anchor="middle" pointer-events="none">M</text><text x="${X(fx.p[0]+0.9)}" y="${Y(fx.p[1])}" font-size="${f*0.7}" pointer-events="none">${esc(fx.o.c.nome.replace(/\s*\([^)]*\)/g,""))}</text></g>`;
+      else s+=`<circle cx="${X(fx.p[0])}" cy="${Y(fx.p[1])}" r="${f*0.25}" fill="#a33" pointer-events="none"/>`;});
+    r.ab.forEach((o,j)=>{const gi=S.aberturas.indexOf(S.aberturas.filter(z=>z.amb===r.a.id)[j]);s+=`<line data-drag="ab" data-i="${gi}" x1="${X(o.A[0])}" y1="${Y(o.A[1])}" x2="${X(o.B[0])}" y2="${Y(o.B[1])}" stroke="${o.tipo==="porta"?"#c2410c":"#0369a1"}" stroke-width="${f*0.6}" stroke-linecap="butt" style="cursor:grab"><title>${o.tipo==="porta"?"Porta":"Janela"} ${fmt(o.larg,2)} m — arraste ao longo da parede</title></line>`;});});
+  P.quad.forEach((r,i)=>{s+=`<g data-drag="q" data-i="${i}" style="cursor:move"><rect x="${X(r.x)-f*0.6}" y="${Y(r.y)-f*0.6}" width="${f*1.2}" height="${f*1.2}" fill="${r.naParede?"#b3261e":"#fff"}" stroke="#b3261e" stroke-width="${f/8}"/><text x="${X(r.x)-(-f*0.8)}" y="${Y(r.y)-f*0.7}" font-size="${f*0.85}" fill="#b3261e" font-weight="bold" pointer-events="none">${esc(r.q.nome)}</text></g>`;});
+  if(P.ent)s+=`<polygon data-drag="ent" points="${[[0,1],[0.9,-0.6],[-0.9,-0.6]].map(([u,v])=>`${(+X(P.ent.x)+u*f).toFixed(3)},${(+Y(P.ent.y)-v*f).toFixed(3)}`).join(" ")}" fill="#e8a400" stroke="#000" stroke-width="${f/10}" style="cursor:grab"><title>Entrada de energia — arraste ao longo do limite da área</title></polygon>`;
+  return s+`</svg>`;}
+function editorTabela(){const d=distanciasDesenho(),r=[];
+  d.quadros.forEach(({q,L})=>r.push([`Alimentador ${paiDe(q)?.nome||"QGBT"} → ${q.nome}`,+q.L||0,L]));
+  if(d.ent!=null)r.push(["Alimentador de entrada (padrão → QGBT)",+S.forn.Lent||0,d.ent]);
+  d.circ.forEach(({o,ld,lb})=>{const c=S.circ[o.i];r.push([`C${o.i+1} ${o.c.nome} — trecho horizontal`,+c.ld||0,ld],[`C${o.i+1} ${o.c.nome} — baixada`,+c.lb||0,lb]);});
+  return `<div class="tbl"><table><thead><tr><th>Trecho</th><th class="num">Usado no cálculo (m)</th><th class="num">Medido no desenho (m)</th></tr></thead><tbody>${r.map(([t,a,b])=>`<tr><td>${esc(t)}</td><td class="num">${fmtN(a)}</td><td class="num" ${Math.abs(a-b)>0.01?'style="color:var(--bad);font-weight:600"':""}>${fmtN(b)}</td></tr>`).join("")}</tbody></table></div>`;}
+V.edit=()=>`${head(STEPS.findIndex(s=>s.k==="edit"))}
+<p class="intro">Arraste os elementos do desenho: ambientes (e o canto superior direito para mudar as dimensões), quadros (encaixam na parede mais próxima ao soltar), a entrada de energia (ao longo do limite da área), portas e janelas (ao longo da parede) e as máquinas. Tudo se reorganiza — pontos, eletrodutos e rotas — e as distâncias são recalculadas.</p>
+${chkT("par.distAuto","Atualizar automaticamente os comprimentos do cálculo com as distâncias do desenho","Ao soltar um elemento, grava nos alimentadores, na entrada e nos circuitos os comprimentos medidos no desenho: trecho horizontal até o ponto mais distante e baixada pela altura do ambiente.")}
+<div data-live="editor">${editorSVG()}</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"><button class="btn small primary" type="button" id="edApl">Usar as distâncias do desenho agora</button><button class="btn small" type="button" id="snapQ">Ajustar quadros às paredes</button></div>
+<div class="block"><h3>Distâncias</h3><div data-live="edtab">${editorTabela()}</div></div>${nav()}`;
+function edPt(ev){const sv=document.getElementById("edSvg");const p=sv.createSVGPoint();p.x=ev.clientX;p.y=ev.clientY;const q=p.matrixTransform(sv.getScreenCTM().inverse());return [q.x+(+sv.dataset.x1),(+sv.dataset.y2)-q.y];}
+function edRedesenhar(){const el=document.querySelector('[data-live="editor"]');if(el)el.innerHTML=editorSVG();const t=document.querySelector('[data-live="edtab"]');if(t)t.innerHTML=editorTabela();}
+document.addEventListener("pointerdown",ev=>{const g=ev.target.closest&&ev.target.closest("[data-drag]");if(!g||!document.getElementById("edSvg"))return;ev.preventDefault();
+  const P=layoutPlanta(),tp=g.dataset.drag,i=+g.dataset.i,p0=edPt(ev);EDT={tp,i,c:+g.dataset.c,p0};
+  if(tp==="amb"||tp==="res"){const r=P.amb[i];r.a.x=r.x;r.a.y=r.y;EDT.o={x:r.x,y:r.y,L:r.L,W:r.W};
+    // quadros (na parede ou dentro) e máquinas do ambiente acompanham o arrasto
+    const den=(x,y)=>x>=r.x-0.3&&x<=r.x+r.L+0.3&&y>=r.y-0.3&&y<=r.y+r.W+0.3;
+    EDT.qs=P.quad.filter(z=>den(z.x,z.y)).map(z=>({q:z.q,x:z.x,y:z.y}));EDT.ms=r.fix.filter(z=>z.maq).map(z=>({c:S.circ[z.o.i],x:z.p[0],y:z.p[1]}));}
+  if(tp==="q"){const r=P.quad[i];EDT.o={x:r.x,y:r.y};}
+  if(tp==="maq"){const f=P.amb.flatMap(r=>r.fix).find(z=>z.o.i===EDT.c);EDT.o={x:f.p[0],y:f.p[1]};}});
+document.addEventListener("pointermove",ev=>{if(!EDT)return;const [x,y]=edPt(ev),dx=x-EDT.p0[0],dy=y-EDT.p0[1],sn=v=>Math.round(v*2)/2;
+  if(EDT.tp==="amb"){const a=S.ambientes[EDT.i];a.x=sn(EDT.o.x+dx);a.y=sn(EDT.o.y+dy);const ddx=a.x-EDT.o.x,ddy=a.y-EDT.o.y;
+    (EDT.qs||[]).forEach(z=>{z.q.x=Math.round((z.x+ddx)*100)/100;z.q.y=Math.round((z.y+ddy)*100)/100;});(EDT.ms||[]).forEach(z=>{if(z.c){z.c.px=z.x+ddx;z.c.py=z.y+ddy;}});}
+  else if(EDT.tp==="res"){const a=S.ambientes[EDT.i];a.comprimento=Math.max(1,sn(EDT.o.L+dx));a.largura=Math.max(1,sn(EDT.o.W+dy));}
+  else if(EDT.tp==="q"){const q=S.quadros[EDT.i];q.x=Math.round((EDT.o.x+dx)*4)/4;q.y=Math.round((EDT.o.y+dy)*4)/4;}
+  else if(EDT.tp==="maq"){const c=S.circ[EDT.c];c.px=Math.round((EDT.o.x+dx)*4)/4;c.py=Math.round((EDT.o.y+dy)*4)/4;}
+  else if(EDT.tp==="ab"){const o=S.aberturas[EDT.i],r=posAmbientes().find(z=>z.a.id===o.amb);if(r){const hz=o.parede==="inf"||o.parede==="sup",lim=hz?r.L:r.W;o.pos=Math.round(Math.min(Math.max(0,lim-o.larg),Math.max(0,(hz?x-r.x:y-r.y)-o.larg/2))*10)/10;}}
+  else if(EDT.tp==="ent"){const e=espacoTotal();if(e){const d=[["inf",Math.abs(y)],["sup",Math.abs(y-e.L)],["esq",Math.abs(x)],["dir",Math.abs(x-e.C)]].sort((a,b)=>a[1]-b[1])[0][0];S.forn.entLado=d;S.forn.entPos=Math.round(Math.min(d==="inf"||d==="sup"?e.C:e.L,Math.max(0,d==="inf"||d==="sup"?x:y))*2)/2;}}
+  edRedesenhar();});
+document.addEventListener("pointerup",()=>{if(!EDT)return;const tp=EDT.tp,i=EDT.i;EDT=null;
+  if(tp==="q"){const P=layoutPlanta(),r=P.quad[i],w_=r&&paredeMaisProxima(P,r.x,r.y);if(w_){r.q.x=Math.round(w_.x*100)/100;r.q.y=Math.round(w_.y*100)/100;}}
+  if(S.par.distAuto){calc();const n=aplicarDistancias();if(n)toast(`${n} comprimento(s) atualizado(s) pelo desenho.`);}
+  persist();soft();edRedesenhar();});
+
+V.fim=()=>{const pd=pendencias(),ok=pd.filter(x=>x[1]).length;return `${head(STEPS.length-1)}
 <p class="intro">O PDF segue o fluxo da Aula 2 (slide 7), na mesma ordem do material de referência da Bysol. Cada seção abre com uma página separadora que indica a etapa e o que ela contém. Itens ainda não anexados aparecem como folha de pendência.</p>
 <div class="grid wide">
 <div class="card"><h3>Verificação</h3><ul class="pend">${pd.map(([t,v])=>`<li class="${v?"ok":""}">${t}</li>`).join("")}</ul></div>
@@ -1508,6 +1585,7 @@ document.addEventListener("click",e=>{
   if(b.id==="addAmb"){const i=S.ambientes.length+1;S.ambientes.push({id:`amb-${Date.now()}`,nome:`Ambiente ${i}`,comprimento:6,largura:5,altura:3,lux:300,lm:4000,w:40,uf:0.6,mf:0.8,espTomadas:5,espLum:1.5,infl:"seco",zona:"",saidas:1,x:"",y:""});persist();render(true);return;}
   if(b.dataset.addab){const a=S.ambientes[0];S.aberturas.push({amb:a.id,tipo:b.dataset.addab,parede:"inf",pos:0.5,larg:b.dataset.addab==="porta"?0.9:1.5});persist();render(true);return;}
   if(b.dataset.delab!=null){S.aberturas.splice(+b.dataset.delab,1);persist();render(true);return;}
+  if(b.id==="edApl"){calc();const n=aplicarDistancias();persist();render(true);toast(n?`${n} comprimento(s) atualizado(s) pelo desenho.`:"Os comprimentos já correspondem ao desenho.");return;}
   if(b.id==="snapQ"){const P_=layoutPlanta();let n=0;P_.quad.forEach(r=>{const w_=paredeMaisProxima(P_,r.x,r.y);if(w_){r.q.x=Math.round(w_.x*100)/100;r.q.y=Math.round(w_.y*100)/100;n++;}});persist();render(true);toast(`${n} quadro(s) ajustado(s) às paredes. Confira as posições.`);return;}
   if(b.dataset.delamb!=null){const a=S.ambientes.splice(+b.dataset.delamb,1)[0];S.aberturas=S.aberturas.filter(o=>o.amb!==a.id);S.circ.forEach(c=>{if(c.ambiente===a.id)c.ambiente="";});persist();render(true);return;}
   if(b.dataset.del!=null){S.circ.splice(+b.dataset.del,1);persist();render(true);return;}
@@ -1757,7 +1835,7 @@ function layoutPlanta(){
     const idxTue=new Set(tues.map((_,j)=>Math.min(nPar-1,Math.round((j+0.5)*nPar/Math.max(1,tues.length)-0.5))));
     const tug=[],fix=[];let jt=0;pp_.forEach((p,k)=>{if(idxTue.has(k)&&jt<tues.length)fix.push({o:tues[jt++],p:[p[0],p[1]],parede:p[2],d:p[3]});else tug.push([p[0],p[1],p[2],p[3]]);});
     // máquinas (motores): no meio do ambiente, entre as linhas de luminárias; a baixada desce até elas
-    const ym=y+W*(g.rows>1?1/g.rows:0.3);motores.forEach((o,j)=>fix.push({o,p:[x+L*(j+1)/(motores.length+1),ym],maq:true}));
+    const ym=y+W*(g.rows>1?1/g.rows:0.3);motores.forEach((o,j)=>{const px_=o.c.px,py_=o.c.py,ok_=px_!==""&&px_!=null&&py_!==""&&py_!=null&&isFinite(+px_)&&isFinite(+py_);fix.push({o,p:ok_?[Math.min(x+L-0.3,Math.max(x+0.3,+px_)),Math.min(y+W-0.3,Math.max(y+0.3,+py_))]:[x+L*(j+1)/(motores.length+1),ym],maq:true});});
     // interruptor ao lado da primeira porta (no batente), saídas sobre as portas
     let inter=null;if(nLum&&L&&W){if(portas.length){const d=portas[0],s_=d.p0-0.25>=0.3?d.p0-0.25:d.p1+0.25,hz=d.hz;
         inter=hz?[x+s_,d.A[1]+d.nin[1]*0.15]:[d.A[0]+d.nin[0]*0.15,y+s_];}else inter=[x+Math.min(0.8,L/4),y+0.35];}
