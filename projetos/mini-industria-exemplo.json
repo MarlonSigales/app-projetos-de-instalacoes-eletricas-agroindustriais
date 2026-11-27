@@ -12,7 +12,7 @@
     "crea": "RS000000",
     "art": "",
     "projetista": "Turma 2026.2",
-    "data": "2026-10-02"
+    "data": "2026-11-27"
   },
   "projetos": {
     "eletrico": true,
@@ -35,7 +35,7 @@
     "trafoKVA": "",
     "rede": "Rede secundária trifásica 380/220 V da distribuidora",
     "distRede": "30 m",
-    "Lent": 12,
+    "Lent": 21,
     "metEnt": "D",
     "aterr": "TN-S",
     "aerea": true,
@@ -202,7 +202,8 @@
       "lb": 4,
       "prot": "fus",
       "partida": "yd",
-      "fusTipo": "gG"
+      "fusTipo": "gG",
+      "ambiente": "secagem"
     },
     {
       "q": "QD-SECADOR",
@@ -222,7 +223,8 @@
       "lb": 3,
       "prot": "dj",
       "partida": "direta",
-      "fusTipo": "gG"
+      "fusTipo": "gG",
+      "ambiente": "secagem"
     },
     {
       "q": "QF-PROD",
@@ -241,8 +243,9 @@
       "ld": 14,
       "lb": 3,
       "prot": "dj",
-      "partida": "direta",
-      "fusTipo": "gG"
+      "partida": "inv",
+      "fusTipo": "gG",
+      "ambiente": "moagem"
     },
     {
       "q": "QF-PROD",
@@ -262,7 +265,8 @@
       "lb": 3,
       "prot": "dj",
       "partida": "soft",
-      "fusTipo": "gG"
+      "fusTipo": "gG",
+      "ambiente": "moagem"
     },
     {
       "q": "QF-PROD",
@@ -282,7 +286,8 @@
       "lb": 2.5,
       "prot": "djm",
       "partida": "direta",
-      "fusTipo": "gG"
+      "fusTipo": "gG",
+      "ambiente": "secagem"
     },
     {
       "q": "QF-PROD",
@@ -303,6 +308,58 @@
     },
     {
       "q": "QF-PROD",
+      "nome": "Iluminação da sala de moagem (LED)",
+      "tipo": "ilum",
+      "lig": "F+N",
+      "qtd": 12,
+      "pot": 40,
+      "unid": "W",
+      "fp": 0.95,
+      "eta": 1,
+      "fu": 1,
+      "fd": 1,
+      "can": "CN-1",
+      "ld": 16,
+      "lb": 3,
+      "ambiente": "moagem"
+    },
+    {
+      "q": "QF-PROD",
+      "nome": "TUG do galpão (manutenção)",
+      "tipo": "tug",
+      "lig": "F+N",
+      "qtd": 6,
+      "pot": 200,
+      "unid": "VA",
+      "fp": 0.8,
+      "eta": 1,
+      "fu": 1,
+      "fd": 0.3,
+      "can": "CN-1",
+      "ld": 18,
+      "lb": 1.5,
+      "ambiente": "secagem",
+      "local": "externo"
+    },
+    {
+      "q": "QF-PROD",
+      "nome": "TUG da sala de moagem",
+      "tipo": "tug",
+      "lig": "F+N",
+      "qtd": 6,
+      "pot": 200,
+      "unid": "VA",
+      "fp": 0.8,
+      "eta": 1,
+      "fu": 1,
+      "fd": 0.3,
+      "can": "CN-1",
+      "ld": 14,
+      "lb": 1.5,
+      "ambiente": "moagem"
+    },
+    {
+      "q": "QF-PROD",
       "nome": "Tomada industrial 3P+T (manutenção)",
       "tipo": "tue",
       "lig": "3F+N",
@@ -316,7 +373,8 @@
       "can": "CN-1, CN-2",
       "ld": 15,
       "lb": 1.5,
-      "local": "molhado"
+      "local": "molhado",
+      "ambiente": "moagem"
     },
     {
       "q": "QL-ADM",
@@ -351,6 +409,24 @@
       "ld": 10,
       "lb": 1.5,
       "ambiente": "escritorio"
+    },
+    {
+      "q": "QL-ADM",
+      "nome": "Ar-condicionado do escritório (TUE)",
+      "tipo": "tue",
+      "lig": "F+F",
+      "qtd": 1,
+      "pot": 1800,
+      "unid": "W",
+      "fp": 0.9,
+      "eta": 1,
+      "fu": 1,
+      "fd": 1,
+      "can": "CN-2",
+      "ld": 9,
+      "lb": 2,
+      "ambiente": "escritorio",
+      "dr": "sim"
     }
   ],
   "canaletas": {},
@@ -433,8 +509,8 @@
     "obs": "Valores de exemplo, fictícios. Preços de materiais a confirmar por cotação."
   },
   "estrutura": {
-    "L": 36,
-    "W": 13,
+    "L": 0,
+    "W": 0,
     "H": 7,
     "ng": 5,
     "cd": 0.5,
@@ -459,13 +535,19 @@
   "revisoes": [
     {
       "rev": "00",
-      "data": "2026-10-02",
+      "data": "2026-11-27",
       "desc": "Emissão inicial (exemplo)",
+      "autor": "Turma 2026.2"
+    },
+    {
+      "rev": "01",
+      "data": "2026-11-27",
+      "desc": "Inclusão da entrada no limite do terreno e rotas internas (exemplo)",
       "autor": "Turma 2026.2"
     }
   ],
   "chk": {},
   "exemplo": true,
   "formato": "projeto-eletrico-agro",
-  "exportadoEm": "2026-10-02T20:37:12.517Z"
+  "exportadoEm": "2026-11-27T18:42:42.525Z"
 }
