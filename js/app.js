@@ -2341,24 +2341,41 @@ async function gerarPDF(){
       Bx(pp,bxq,y-16,90,32,{bw:1.6,fill:LG});TC(pp,q.q.nome,bxq+45,y-4,10,FB);TC(pp,`${fmt(q.S,2)} kVA${q.filhos.length?" (c/ sub)":""}`,bxq+45,y-26,7,F,MUT);});
     const q0=R.quadros[0];if(q0&&q0.cs.length){const y=by2+10;T(pp,`${q0.cs.length} circuito(s) alimentados diretamente pelo ${q0.q.nome}: ver prancha do quadro.`,bx+20,y,8,F,MUT);}
     T(pp,"Aterramento: "+ATERR[f.aterr],60,70,8);carimbo(pp,w,"Unifilar geral","UNI-01");
-    // por quadro
+    // por quadro: diagrama horizontal (entrada → quadro tracejado com geral, barramento, DPS e um ramal por circuito)
     let pr=2;
-    R.quadros.forEach(q=>{if(!q.cs.length)return;const per=14;for(let k=0;k<q.cs.length;k+=per){const cs=q.cs.slice(k,k+per);
+    R.quadros.forEach((q,iq)=>{if(!q.cs.length)return;const per=13;for(let k=0;k<q.cs.length;k+=per){const cs=q.cs.slice(k,k+per),ehQG=iq===0;
       ({pp,w,h}=simPage(A3L,`Diagrama unifilar — ${q.q.nome}${q.cs.length>per?` (${k/per+1})`:""}`));
-      const yb=h-130,x1=90,x2=w-90,sp=(x2-x1)/cs.length;
-      pp.drawRectangle({x:x1-10,y:yb-3,width:x2-x1+20,height:6,color:INK});T(pp,`Barramento ${q.q.nome} — ${R.sys.nome}${q.f&&q.f.s?` — alimentador ${q.f.txt} mm², ${q.f.polos}P ${q.f.inom} A`:""}`,x1-10,yb+12,9,FB);
-      cs.forEach((o,j)=>{const x=x1+sp*j+sp/2;Ln(pp,x,yb,x,yb-20,1);brkSym(pp,x,yb-20,o.prot==="fus"?"fus":"disj");let y=yb-42;
-        if(o.dr){Ln(pp,x,y,x,y-8,1);Bx(pp,x-9,y-26,18,18,{fill:rgb(1,1,1)});TC(pp,"DR",x,y-20,6.5,FB);y-=26;}
-        if(o.mp){Ln(pp,x,y,x,y-8,1);Bx(pp,x-9,y-26,18,18,{fill:LG});TC(pp,o.partida==="inv"?"INV":o.partida==="soft"?"SS":o.partida==="yd"?"Y-D":"K",x,y-20,6,FB);y-=26;}
-        Ln(pp,x,y,x,yb-190,1);carga(pp,x,yb-200,o);
-        let ty=yb-225;const mw=sp-8;
-        T(pp,`C${o.i+1}`,x-mw/2,ty,8,FB,RED);ty-=11;
-        ty-=TW(pp,o.c.nome,x-mw/2,ty,mw,6.5,FB)*8+2;
-        ty-=TW(pp,`${fmt(o.P/1000,2)} kW · ${o.fases} · Ib ${fmt(o.ib,1)} A`,x-mw/2,ty,mw,6)*7.5+2;
-        ty-=TW(pp,o.s?`F/N/PE ${sec(o.s)}/${o.sn?sec(o.sn):"-"}/${o.spe?sec(o.spe):"PEN"} mm² · ${o.ed.nome}`:"sem solução",x-mw/2,ty,mw,6)*7.5+2;
-        ty-=TW(pp,protTxt(o),x-mw/2,ty,mw,6,F,ACC)*7.5+2;
-        TW(pp,o.s?`dV ${fmt(o.dvTot,2)} %`:"",x-mw/2,ty,mw,6,F,MUT);});
-      T(pp,"Diagrama gerado dos cálculos: conferir numeração, bornes e identificação dos dispositivos.",60,70,8,FB,RED);carimbo(pp,w,`Unifilar ${q.q.nome}`,`UNI-${String(pr++).padStart(2,"0")}`);}});
+      const yTopo=h-110,yBase=150,dps=ehQG&&R.dps.incl&&k===0,nR=cs.length+(dps?1:0),pas=Math.min(42,(yTopo-yBase-40)/Math.max(nR,1));
+      const xBus=360,xBox0=300,yIn=yTopo-30;
+      const W_=(x1,y1,x2,y2,wd=1.2)=>Ln(pp,x1,y1,x2,y2,wd,INK);
+      const disjH=(x,y,lab,sub)=>{SIM(pp,"disj",x,y,8,{ang:90});if(lab)TC(pp,lab,x,y+12,7,FB);if(sub)TC(pp,sub,x,y-18,5.8,F,MUT);};
+      const fusH=(x,y,lab)=>{SIM(pp,"fus",x,y,8,{ang:90});if(lab)TC(pp,lab,x,y+12,7,FB);};
+      // entrada
+      if(ehQG){Ci(pp,60,yIn,9);TC(pp,"~",60,yIn-3,9,FB);TC(pp,"Rede da distribuidora",60,yIn-22,6.5,FB);TC(pp,R.sys.nome,60,yIn-31,6,F,MUT);
+        W_(69,yIn,110,yIn);TC(pp,"Padrão de entrada",175,yIn+26,7,FB);disjH(130,yIn,R.ent.inom?`${R.ent.polos}P ${R.ent.inom} A`:"DG","disjuntor geral");W_(138,yIn,170,yIn);
+        Bx(pp,170,yIn-8,32,16,{bw:1,fill:rgb(1,1,1)});TC(pp,"kWh",186,yIn-3,7,FB);W_(202,yIn,xBox0,yIn);
+        T(pp,`${R.ent.s?R.ent.txt+" mm²":"—"} · ${fmtN(S.forn.Lent)} m`,212,yIn+6,6.5,F,MUT);}
+      else{TC(pp,`Alimentador desde ${q.pai||S.quadros[0].nome}`,140,yIn+26,7,FB);W_(60,yIn,120,yIn);if(q.f)disjH(130,yIn,`${q.f.polos}P ${q.f.inom||"—"} A`,`no ${q.pai||S.quadros[0].nome}`);W_(138,yIn,xBox0,yIn);
+        T(pp,q.f&&q.f.s?`${q.f.txt} mm² · ${fmt(+q.q.L||0,0)} m`:"—",150,yIn+6,6.5,F,MUT);if(q.f&&q.f.s)SIM(pp,"cond",250,yIn,4,{nf:q.f.nf,n:q.f.sn>0,pe:q.f.spe>0});}
+      // quadro
+      const yB0=yTopo-30-(nR)*pas-10;
+      const box=(x,y,ww,hh)=>{[[x,y,x+ww,y],[x+ww,y,x+ww,y+hh],[x+ww,y+hh,x,y+hh],[x,y+hh,x,y]].forEach(([a,b,c,d])=>Ln(pp,a,b,c,d,1.2,INK,[6,3]));};
+      box(xBox0,yB0-20,w-60-xBox0,yTopo+28-(yB0-20));T(pp,`Quadro de distribuição — ${q.q.nome} (${R.sys.nome})`,xBox0+8,yTopo+14,9,FB);
+      W_(xBox0,yIn,xBus-26,yIn);disjH(xBus-18,yIn,q.f&&ehQG?"":"",ehQG?"":"geral");W_(xBus-10,yIn,xBus,yIn);
+      pp.drawRectangle({x:xBus-2,y:yB0,width:4,height:yIn-yB0+8,color:INK});
+      let yj=yIn-pas;
+      // DPS: do barramento ao terra
+      if(dps){W_(xBus,yj,xBus+80,yj);Bx(pp,xBus+80,yj-9,34,18,{bw:1,fill:rgb(1,1,1)});TC(pp,"DPS",xBus+97,yj-3,7,FB);W_(xBus+114,yj,xBus+150,yj);SIM(pp,"terra",xBus+150,yj-8,5);
+        T(pp,`${R.dps.itens.map(it=>`${it.n} × ${it.mod}`).join(" + ")} · Up ≤ ${fmt(R.dps.up,1)} kV · ligado ao BEP/PE`,xBus+170,yj-3,6.5,F,INK);yj-=pas;}
+      cs.forEach(o=>{const y=yj;W_(xBus,y,xBus+30,y);let x=xBus+30;
+        if(o.dr){W_(x,y,x+8,y);Bx(pp,x+8,y-8,34,16,{bw:1,fill:rgb(1,1,1)});TC(pp,"IDR",x+25,y-3,6.5,FB);TC(pp,`${o.dr.polos}P ${o.dr.In} A ${o.dr.idn} mA`,x+25,y+11,5.8,F,MUT);x+=42;}
+        W_(x,y,x+12,y);x+=12;if(o.prot==="fus"&&o.mp)fusH(x+8,y,`${o.mp.fus?.If||"—"} A`);else disjH(x+8,y,o.prot==="djm"&&o.mp&&o.mp.djm?(o.mp.djm.f?`${fmtN(o.mp.djm.f[0])}–${fmtN(o.mp.djm.f[1])} A`:`${fmt(o.mp.djm.Ir,1)} A`):o.inom?`${o.L.polos}P ${o.inom} A`:"—",o.mp?(o.prot==="djm"?"disj.-motor":o.curva?`curva ${o.curva}`:""):(o.curva?`curva ${o.curva}`:""));x+=16;
+        if(o.mp){W_(x,y,x+10,y);Bx(pp,x+10,y-8,30,16,{bw:1,fill:LG});TC(pp,o.partida==="inv"?"INV":o.partida==="soft"?"SS":o.partida==="yd"?"Y-D":"K",x+25,y-3,6.5,FB);x+=40;}
+        const xc_=Math.max(x+50,560);W_(x,y,xc_+40,y);if(o.s)SIM(pp,"cond",xc_,y,4,{nf:o.L.nf,n:!!o.sn,pe:!!o.spe});TC(pp,o.s?`${sec(o.s)} mm²`:"—",xc_,y+8,5.8,F,MUT);
+        const xt=xc_+52;T(pp,`Circuito ${String(o.i+1).padStart(2,"0")} — ${o.c.nome}`.slice(0,70),xt,y+1,7.5,FB,INK);
+        T(pp,`${TIPO_CURTO[o.c.tipo]||""} · ${fmt(o.P/1000,2)} kW · ${o.fases} · Ib ${fmt(o.ib,1)} A${o.s?` · F/N/PE ${sec(o.s)}/${o.sn?sec(o.sn):"-"}/${o.spe?sec(o.spe):"PEN"} mm² · ${o.ed.nome} · queda ${fmt(o.dvTot,2)} %`:" · sem solução"}`.slice(0,130),xt,y-8,6,F,MUT);
+        yj-=pas;});
+      T(pp,"Diagrama gerado dos cálculos: conferir numeração, bornes e identificação dos dispositivos. IDR conforme NBR 5410, 5.1.3.2.2; DPS conforme 6.3.5.",60,70,8,FB,RED);carimbo(pp,w,`Unifilar ${q.q.nome}`,`UNI-${String(pr++).padStart(2,"0")}`);}});
   }
   // ---- Multifilar / força e comando
   function simMultifilar(){
