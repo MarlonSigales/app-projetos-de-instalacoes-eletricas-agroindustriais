@@ -102,6 +102,7 @@ function persist(){clearTimeout(saveT);saveT=setTimeout(()=>{try{const c=Object.
    CÁLCULO
    ============================================================ */
 const fmtN=x=>x!==""&&x!=null&&isFinite(+x)?Number(x).toLocaleString("pt-BR",{maximumFractionDigits:2}):"—"; // número com vírgula decimal, sem casas fixas
+const lumTxt=c=>c.luminarias?`${c.luminarias} (${c.cols} × ${c.rows})${c.luminarias>c.nCalc?` +${c.luminarias-c.nCalc}`:""}`:"0"; // luminárias, grade colunas × linhas e acréscimo para fechar a grade
 const fmt=(x,d=1)=>isFinite(x)?Number(x).toLocaleString("pt-BR",{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
 const fmt0=x=>fmt(x,0);
 const sec=s=>String(s).replace(".",",");
@@ -124,6 +125,10 @@ function nivelQ(q){return cadeia(q).length-1;}
 function origemQ(q){const p=paiDe(q);return p?p.nome:"";}
 function distQGBT(q){return cadeia(q).reduce((a,x)=>a+(x===S.quadros[0]?0:Math.max(0,+x.L||0)),0);} // soma dos trechos até o QGBT
 function quadrosEmArvore(){const out=[];const vis=new Set();const rec=(q)=>{if(vis.has(q))return;vis.add(q);out.push(q);S.quadros.filter(x=>x!==q&&paiDe(x)===q).forEach(rec);};rec(S.quadros[0]);S.quadros.forEach(q=>{if(!vis.has(q))out.push(q);});return out;}
+// grade fechada de luminárias: colunas = √(N·C/L) arredondado (o mais próximo primeiro; depois para baixo ou para cima)
+// e linhas = N/colunas inteiro; se nenhuma opção fechar, soma uma luminária e recalcula
+function gradeLum(n,L,W){for(let N=Math.max(1,n);;N++){const r=Math.sqrt(N*L/W);
+  for(const c of [...new Set([Math.round(r),Math.floor(r),Math.ceil(r)])].filter(c=>c>=1))if(N%c===0)return {n:N,cols:c,rows:N/c};}}
 function calcularAmbiente(a){
   const L=Math.max(0,+a.comprimento||0),W=Math.max(0,+a.largura||0),H=Math.max(0,+a.altura||0);
   const area=L*W,perimetro=2*(L+W),hm=Math.max(0.5,H-0.8);
@@ -132,10 +137,12 @@ function calcularAmbiente(a){
   const uf=Math.max(0.1,+a.uf||0.65),mf=Math.max(0.1,+a.mf||0.8),lm=Math.max(1,+a.lm||0);
   const porFluxo=area>0?Math.ceil(area*(+a.lux||0)/(lm*uf*mf)):0;
   const porEspacamento=area>0?Math.ceil(L/(espL*hm))*Math.ceil(W/(espL*hm)):0;
-  const luminarias=Math.max(porFluxo,porEspacamento);
+  const nCalc=Math.max(porFluxo,porEspacamento);
+  let luminarias=nCalc,cols=0,rows=0;
+  if(nCalc>0&&L>0&&W>0){const g=gradeLum(nCalc,L,W);luminarias=g.n;cols=g.cols;rows=g.rows;}
   const em=area>0?luminarias*lm*uf*mf/area:0; // iluminância média mantida obtida
   const k=area>0&&hm>0?area/(hm*(L+W)):0; // índice do recinto (para escolher o FU na tabela do fabricante)
-  return {area,perimetro,hm,tomadas,luminarias,potencia:luminarias*(+a.w||0),porFluxo,porEspacamento,em,k,dens:area>0?luminarias*(+a.w||0)/area:0};
+  return {area,perimetro,hm,tomadas,luminarias,nCalc,cols,rows,potencia:luminarias*(+a.w||0),porFluxo,porEspacamento,em,k,dens:area>0?luminarias*(+a.w||0)/area:0};
 }
 function itab(met,nc,s){const i=SEC.indexOf(s);const p=S.par;
   if(T36[met])return T36[met][nc>=3?1:0][i];
@@ -1032,13 +1039,13 @@ function ambienteRow(a,i){const c=calcularAmbiente(a);return `<tr>
 <td><select style="min-width:120px" data-amb="${i}" data-f="zona" aria-label="Classificação de área por poeira combustível">${Object.entries(ZONAS).map(([k,v])=>`<option value="${k}" ${(a.zona||"")===k?"selected":""}>${k?"Zona "+k:"Não classificada"}</option>`).join("")}</select></td>
 <td><input type="number" class="w-s" min="0" step="1" data-amb="${i}" data-f="saidas" value="${a.saidas??1}" aria-label="Número de saídas"></td>
 <td><input type="number" class="w-s" step="0.5" data-amb="${i}" data-f="x" value="${a.x??""}" placeholder="auto" aria-label="Posição X"></td><td><input type="number" class="w-s" step="0.5" data-amb="${i}" data-f="y" value="${a.y??""}" placeholder="auto" aria-label="Posição Y"></td>
-<td class="num" data-live="amb-area-${i}">${fmt0(c.area)} m²</td><td class="num" data-live="amb-k-${i}">${fmt(c.k,2)}</td><td class="num" data-live="amb-tug-${i}">${c.tomadas}</td><td class="num" data-live="amb-lum-${i}">${c.luminarias}</td><td class="num" data-live="amb-em-${i}">${fmt0(c.em)} lx</td><td class="num" data-live="amb-emg-${i}">${S.par.emerg?emergCalc(a).n:"—"}</td>
+<td class="num" data-live="amb-area-${i}">${fmt0(c.area)} m²</td><td class="num" data-live="amb-k-${i}">${fmt(c.k,2)}</td><td class="num" data-live="amb-tug-${i}">${c.tomadas}</td><td class="num" data-live="amb-lum-${i}">${lumTxt(c)}</td><td class="num" data-live="amb-em-${i}">${fmt0(c.em)} lx</td><td class="num" data-live="amb-emg-${i}">${S.par.emerg?emergCalc(a).n:"—"}</td>
 <td><button class="btn small danger" type="button" data-delamb="${i}" aria-label="Remover ambiente">Remover</button></td></tr>`;}
 V.des=()=>`${head(7)}
 <p class="intro">Desenhos das plantas (item D), quadros e diagramas (item F) e detalhes construtivos (item G). Anexe as pranchas produzidas em CAD. Elas entram no PDF final na ordem da documentação do projeto.</p>
 <div class="block" style="margin-top:0;border-top:0;padding-top:0"><h3>Ambientes e dimensões</h3>
 <p class="note">Nome, dimensões e posição dos ambientes são cadastrados na etapa 02 (planta de situação) <button class="btn small" type="button" data-step="1">Ir para a etapa 02</button>; aqui ficam os parâmetros de iluminação, tomadas, influências e emergência. Tomadas TUG: contagem geométrica por perímetro e espaçamento adotado, no mínimo uma por ambiente (9.5.2.2.1). Iluminação: método dos lúmens, N = E × A / (φ × FU × FM), e espaçamento máximo S/Hm; a altura define Hm = altura − 0,8 m. Iluminâncias de referência: NBR ISO/CIE 8995-1 (ex.: depósitos 100–200 lx, processamento industrial 300 lx, escritórios 500 lx). Vincule os circuitos de iluminação e TUG a um ambiente na etapa 04 para usar estas quantidades.</p>
-<div class="tbl ct"><table><thead><tr>${[["Ambiente","nome"],["Comp. (m)","comprimento"],["Larg. (m)","largura"],["Alt. (m)","altura"],["Lux","lux"],["lm/luminária","lm"],["W/luminária","w"],["FU","uf"],["FM","mf"],["Esp. TUG (m)","espTomadas"],["S/Hm máx.","espLum"],["Influências","infl"],["Poeira comb.","zona"],["Saídas","saidas"],["X (m)","x"],["Y (m)","y"]].map(([t,k])=>thT(t,TIPS_COL.amb[k])).join("")}${thT("Área","Comprimento × largura.","r")}${thT("K","Índice do recinto K = A / (Hm × (C + L)). Use-o para ler o FU na tabela da luminária.","r")}${thT("TUG","Número de tomadas de uso geral calculado.","r")}${thT("Luminárias","Maior valor entre o método dos lúmens e o espaçamento máximo.","r")}${thT("Em obtida","Iluminância média mantida com o número de luminárias adotado. Deve ser ≥ ao valor exigido.","r")}${thT("Emerg.","Luminárias de emergência (NBR 10898): espaçamento ≤ 4 × altura de instalação, máx. 15 m.","r")}<th></th></tr></thead><tbody>
+<div class="tbl ct"><table><thead><tr>${[["Ambiente","nome"],["Comp. (m)","comprimento"],["Larg. (m)","largura"],["Alt. (m)","altura"],["Lux","lux"],["lm/luminária","lm"],["W/luminária","w"],["FU","uf"],["FM","mf"],["Esp. TUG (m)","espTomadas"],["S/Hm máx.","espLum"],["Influências","infl"],["Poeira comb.","zona"],["Saídas","saidas"],["X (m)","x"],["Y (m)","y"]].map(([t,k])=>thT(t,TIPS_COL.amb[k])).join("")}${thT("Área","Comprimento × largura.","r")}${thT("K","Índice do recinto K = A / (Hm × (C + L)). Use-o para ler o FU na tabela da luminária.","r")}${thT("TUG","Número de tomadas de uso geral calculado.","r")}${thT("Luminárias","Maior valor entre o método dos lúmens e o espaçamento máximo, arredondado para cima até fechar a grade: colunas = arred(√(N × C / L)) e linhas = N / colunas inteiro. Mostra a grade (colunas × linhas) e quantas luminárias foram acrescentadas (+n).","r")}${thT("Em obtida","Iluminância média mantida com o número de luminárias adotado. Deve ser ≥ ao valor exigido.","r")}${thT("Emerg.","Luminárias de emergência (NBR 10898): espaçamento ≤ 4 × altura de instalação, máx. 15 m.","r")}<th></th></tr></thead><tbody>
 ${S.ambientes.map(ambienteRow).join("")||`<tr><td colspan="23" style="padding:12px;color:var(--muted)">Nenhum ambiente cadastrado.</td></tr>`}
 </tbody></table></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" id="addAmb">+ Ambiente</button><button class="btn small primary" type="button" id="btnDxf" data-tip="Gera a planta baixa em escala real (metros) com ambientes, luminárias, tomadas, emergência, quadros e rotas das canaletas, em camadas, para abrir no AutoCAD, LibreCAD ou DraftSight.">Exportar planta (DXF)</button></div>
 <p class="note">Posição X/Y: canto inferior esquerdo de cada ambiente (e posição de cada quadro, etapa 04), em metros. Em branco, os ambientes são enfileirados automaticamente. A mesma posição é usada na planta do PDF e na exportação DXF.</p>
@@ -1406,7 +1413,7 @@ function renderSummary(){
 }
 function liveCells(){R.out.forEach(o=>{const a=document.querySelector(`[data-live="S${o.i}"]`),b=document.querySelector(`[data-live="I${o.i}"]`),q=document.querySelector(`[data-c="${o.i}"][data-f="qtd"]`);if(a)a.textContent=fmt0(o.S);if(b)b.textContent=fmt(o.ib,1);if(q)q.value=o.c.qtd;});
   S.ambientes.forEach((a,i)=>{const c=calcularAmbiente(a);const set=(k,v)=>{const el=document.querySelector(`[data-live="amb-${k}-${i}"]`);if(el)el.textContent=v;};
-    set("area",`${fmt0(c.area)} m²`);set("emg",S.par.emerg?emergCalc(a).n:"—");set("k",fmt(c.k,2));set("tug",c.tomadas);set("lum",c.luminarias);set("em",`${fmt0(c.em)} lx`);
+    set("area",`${fmt0(c.area)} m²`);set("emg",S.par.emerg?emergCalc(a).n:"—");set("k",fmt(c.k,2));set("tug",c.tomadas);set("lum",lumTxt(c));set("em",`${fmt0(c.em)} lx`);
     const em=document.querySelector(`[data-live="amb-em-${i}"]`);if(em)em.style.color=c.area>0&&c.em<(+a.lux||0)-0.5?"var(--bad)":"";});}
 // totais de materiais e orçamento sem redesenhar a página (mantém o foco no campo em edição)
 function atualizarTotais(){
@@ -1644,7 +1651,7 @@ function layoutPlanta(){
   let nCmd=0;const esp=espacoTotal();
   const amb=posAmbientes().map(({a,x,y,L,W})=>{
     const oc=R.out.filter(o=>o.c.ambiente===a.id),num=t=>oc.filter(o=>o.c.tipo===t);
-    const grade=(n,mx=0)=>{if(!n||!L||!W)return [];const cols=Math.max(1,Math.round(Math.sqrt(n*L/W))),rows=Math.ceil(n/cols),r=[];
+    const grade=(n,mx=0)=>{if(!n||!L||!W)return [];const g=gradeLum(n,L,W),cols=g.cols,rows=Math.ceil(n/cols),r=[];
       for(let k=0;k<n;k++)r.push([x+L*((k%cols)+0.5)/cols,y+W*(Math.floor(k/cols)+0.5)/rows]);return r;};
     const nLum=Math.max(0,...num("ilum").map(o=>+o.c.qtd||0)),nTug=Math.max(0,...num("tug").map(o=>+o.c.qtd||0));
     const lc=num("ilum")[0],tc=num("tug")[0],wLum=lc?lc.P/Math.max(1,+lc.c.qtd||1):0,vaTug=tc?tc.S/Math.max(1,+tc.c.qtd||1):0;
@@ -2031,7 +2038,7 @@ async function gerarPDF(){
     const s0=Math.max(2.4,Math.min(4.5,0.22*sc));
     pos.forEach(({a,x,y,L,W})=>{const c=calcularAmbiente(a),[px,py]=P(x,y),ok=c.em>=(+a.lux||0)-0.5;
       Bx(pp,px,py,L*sc,W*sc,{bc:INK,bw:1.4,fill:LG});
-      const cols=Math.max(1,Math.round(Math.sqrt(c.luminarias*L/W))),rows=Math.max(1,Math.ceil(c.luminarias/cols));
+      const cols=Math.max(1,c.cols||1),rows=Math.max(1,c.rows||Math.ceil(c.luminarias/cols));
       for(let k=0;k<c.luminarias;k++){const [cx,cy]=P(x+L*((k%cols)+0.5)/cols,y+W*(Math.floor(k/cols)+0.5)/rows);SIM(pp,"lum",cx,cy,s0);}
       T(pp,a.nome.slice(0,36),px+4,py+W*sc-11,7,FB,INK);T(pp,`${c.luminarias} lum. · Em ${fmt0(c.em)} lx`,px+4,py+W*sc-20,6,FB,ok?ACC:RED);});
     // escala gráfica
@@ -2041,7 +2048,7 @@ async function gerarPDF(){
     pos.forEach(({a})=>{const c=calcularAmbiente(a),ok=c.em>=(+a.lux||0)-0.5;
       T(pp,a.nome.slice(0,44),lx,ly,7.5,FB);ly-=10;
       T(pp,`${fmt(+a.comprimento||0,1)} × ${fmt(+a.largura||0,1)} m · H ${fmt(+a.altura||0,1)} m · ${fmt0(c.area)} m² · K ${fmt(c.k,2)}`,lx,ly,6.5,F,MUT);ly-=9;
-      T(pp,`${a.lux} lx exig. · Em ${fmt0(c.em)} lx · ${c.luminarias} lum. × ${fmt(a.lm,0)} lm · ${fmt0(c.potencia)} W · ${fmt(c.dens,1)} W/m²`,lx,ly,6.5,FB,ok?ACC:RED);ly-=9;
+      T(pp,`${a.lux} lx exig. · Em ${fmt0(c.em)} lx · ${c.luminarias} lum. (${c.cols} × ${c.rows}${c.luminarias>c.nCalc?`, +${c.luminarias-c.nCalc} p/ fechar a grade`:""}) × ${fmt(a.lm,0)} lm · ${fmt0(c.potencia)} W · ${fmt(c.dens,1)} W/m²`,lx,ly,6.5,FB,ok?ACC:RED);ly-=9;
       T(pp,`FU ${fmt(+a.uf,2)} · FM ${fmt(+a.mf,2)}`,lx,ly,6.5,F,MUT);ly-=14;});
     T(pp,"Estudo preliminar: confirmar iluminância, refletâncias, luminária e uniformidade conforme uso e norma aplicável.",50,80,8,FB,RED);
     carimbo(pp,w,"Luminotécnico","LUM-01");
