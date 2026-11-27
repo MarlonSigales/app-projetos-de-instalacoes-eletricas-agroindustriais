@@ -20,7 +20,7 @@ function blank(){
     v:1,
     id:{cliente:"",obra:"",atividade:"",local:"",municipio:"",uc:"",distribuidora:"",rt:"",crea:"",art:"",projetista:"",data:new Date().toISOString().slice(0,10)},
     projetos:{eletrico:true,luminotecnico:false,spda:false},
-    forn:{sistema:"380/220",atend:"BT",classe:"rural",subclasse:"Agroindustrial",tensaoPrim:13.8,subterraneo:false,modalidade:"",iccMT:"",Lmt:30,trafo:false,trafoKVA:"",rede:"",distRede:"",Lent:15,metEnt:"D",aterr:"TN-S",aerea:true,aq:"AQ2",spda:false,rhoEletrica:"",ra:30,ul:50,obs:""},
+    forn:{espComp:"",espLarg:"",sistema:"380/220",atend:"BT",classe:"rural",subclasse:"Agroindustrial",tensaoPrim:13.8,subterraneo:false,modalidade:"",iccMT:"",Lmt:30,trafo:false,trafoKVA:"",rede:"",distRede:"",Lent:15,metEnt:"D",aterr:"TN-S",aerea:true,aq:"AQ2",spda:false,rhoEletrica:"",ra:30,ul:50,obs:""},
     par:{temp:30,tempSolo:20,rhoSolo:2.5,metDist:"B1",metBaix:"B1",agrDist:"feixe",espEnt:"nula",arrF:"trifolio",arrG:"horizontal",ipin:7,dvPartida:10,simular:true,softLim:3,invLim:1.5,bobina:"220 Vca",icc:6,dpsSempre:false,dvTerm:4,dvTotal:5,dvEnt:1,rho:0.0206,curva:"C",curvaMotor:"D",reserva:20,sobra:10,neutroRed:false,ocupCan:40,espSupCan:1.5,baixAparente:true,xCabo:0.08,rTerra:10,nEquip:6,lEquip:10,corrFP:true,fpAlvo:0.92,emerg:true,zTrafo:4.5,tipoSub:"poste"},
     quadros:[{nome:"QGBT",L:0,met:"B1",pai:"",infl:"seco",x:"",y:""}],
     ambientes:[],
@@ -47,7 +47,7 @@ function sample(){
   s.exemplo=true;
   s.id={cliente:"Agroindústria Exemplo Ltda. (dados fictícios)",obra:"Mini-indústria de beneficiamento de grãos",atividade:"Secagem, descascamento, moagem e ensacamento de grãos",local:"Estrada rural, km 8",municipio:"Pelotas/RS",uc:"0000000",distribuidora:"CEEE Equatorial",rt:"Nome do responsável técnico",crea:"RS000000",art:"",projetista:"Turma 2026.2",data:new Date().toISOString().slice(0,10)};
   s.projetos={eletrico:true,luminotecnico:true,spda:true};
-  s.forn={sistema:"380/220",atend:"BT",classe:"rural",subclasse:"Agroindustrial",tensaoPrim:13.8,subterraneo:false,modalidade:"Convencional monômia",trafo:false,trafoKVA:"",rede:"Rede secundária trifásica 380/220 V da distribuidora",distRede:"30 m",Lent:12,metEnt:"D",aterr:"TN-S",aerea:true,aq:"AQ2",spda:true,rhoEletrica:"",ra:30,ul:50,obs:"Padrão de entrada trifásico com medição direta, conforme categoria do RIC da distribuidora."};
+  s.forn={espComp:40,espLarg:16,sistema:"380/220",atend:"BT",classe:"rural",subclasse:"Agroindustrial",tensaoPrim:13.8,subterraneo:false,modalidade:"Convencional monômia",trafo:false,trafoKVA:"",rede:"Rede secundária trifásica 380/220 V da distribuidora",distRede:"30 m",Lent:12,metEnt:"D",aterr:"TN-S",aerea:true,aq:"AQ2",spda:true,rhoEletrica:"",ra:30,ul:50,obs:"Padrão de entrada trifásico com medição direta, conforme categoria do RIC da distribuidora."};
   s.quadros=[{nome:"QGBT",L:0,met:"B1",pai:"",infl:"seco",x:27,y:12},{nome:"QF-PROD",L:25,met:"D",pai:"QGBT",infl:"poeira",x:22,y:6},{nome:"QL-ADM",L:18,met:"D",pai:"QGBT",infl:"seco",x:29,y:9},{nome:"QD-SECADOR",L:15,met:"B1",pai:"QF-PROD",infl:"poeiraAlta",x:4,y:2}];
   s.ambientes=[
     {id:"secagem",nome:"Galpão de secagem",comprimento:24,largura:12,altura:6,lux:200,lm:4000,w:40,uf:0.65,mf:0.8,espTomadas:5,espLum:1.5,infl:"poeiraAlta",zona:"22",saidas:2,x:0,y:0},
@@ -743,6 +743,34 @@ function clsCard(){const c=R.cls,sys=R.sys;
   <div class="card"><h3>Tarifa</h3><div style="font-weight:600">${esc(c.modalidade)}</div><div style="font-size:12.5px;color:var(--muted)">${c.grupo==="A"?"com demanda contratada (mín. 30 kW)":"cobrança por consumo (kWh)"}</div></div>
   <div class="card"><h3>Alimentação</h3><div style="font-weight:600">${esc(sys.nome)}</div><div class="mono" style="font-size:12px;color:var(--muted)">${sys.fases} fase(s) · ${sys.vfn} V F-N${sys.vff?` · ${sys.vff} V F-F`:""}</div></div>
   </div>${c.avisos.map(a=>`<p class="note warn" style="margin-top:8px">${a}</p>`).join("")}`;}
+function ambienteSitRow(a,i){const c=calcularAmbiente(a),nc=S.circ.filter(x=>x.ambiente===a.id).length;return `<tr>
+<td><input data-amb="${i}" data-f="nome" value="${esc(a.nome)}" aria-label="Nome do ambiente" style="min-width:170px"></td>
+<td><input type="number" min="0" step="0.1" data-amb="${i}" data-f="comprimento" value="${a.comprimento}" aria-label="Comprimento em metros (eixo X)"></td>
+<td><input type="number" min="0" step="0.1" data-amb="${i}" data-f="largura" value="${a.largura}" aria-label="Largura em metros (eixo Y)"></td>
+<td><input type="number" min="0" step="0.1" data-amb="${i}" data-f="altura" value="${a.altura}" aria-label="Altura em metros"></td>
+<td><select style="min-width:160px" data-amb="${i}" data-f="infl" aria-label="Influências externas do ambiente">${Object.entries(INFL).map(([k,v])=>`<option value="${k}" ${(a.infl||"seco")===k?"selected":""}>${v.t} · ${v.ip}</option>`).join("")}</select></td>
+<td><input type="number" class="w-s" step="0.5" data-amb="${i}" data-f="x" value="${a.x??""}" placeholder="auto" aria-label="Posição X"></td><td><input type="number" class="w-s" step="0.5" data-amb="${i}" data-f="y" value="${a.y??""}" placeholder="auto" aria-label="Posição Y"></td>
+<td class="num" data-live="amb-area-${i}">${fmt0(c.area)} m²</td><td class="num">${nc}</td>
+<td><button class="btn small danger" type="button" data-delamb="${i}" aria-label="Remover ambiente">Remover</button></td></tr>`;}
+function croquiSit(){
+  if(!S.ambientes.length&&!S.quadros.some(temXY))return `<p class="note">O croqui do espaço aparece aqui assim que houver ambientes.</p>`;
+  const P=layoutPlanta(),eC=+S.forn.espComp||0,eL=+S.forn.espLarg||0;
+  let x1=0,y1=0,x2=Math.max(eC,1),y2=Math.max(eL,1);
+  P.amb.forEach(r=>{x1=Math.min(x1,r.x);y1=Math.min(y1,r.y);x2=Math.max(x2,r.x+r.L);y2=Math.max(y2,r.y+r.W);});
+  P.quad.forEach(r=>{x1=Math.min(x1,r.x-0.5);y1=Math.min(y1,r.y-0.5);x2=Math.max(x2,r.x+0.5);y2=Math.max(y2,r.y+0.5);});
+  const m=1.5,W=x2-x1+2*m,H=y2-y1+2*m,sx=v=>v-x1+m,sy=v=>y2-v+m,fs=Math.max(0.35,Math.min(W,H)/32);
+  const avisos=[];
+  if(eC&&eL)P.amb.forEach(r=>{if(r.x<-1e-6||r.y<-1e-6||r.x+r.L>eC+1e-6||r.y+r.W>eL+1e-6)avisos.push(`${esc(r.a.nome)} sai do espaço total (${fmt(eC,1)} × ${fmt(eL,1)} m)`);});
+  for(let i=0;i<P.amb.length;i++)for(let j=i+1;j<P.amb.length;j++){const a=P.amb[i],b=P.amb[j];if(a.x<b.x+b.L-1e-6&&b.x<a.x+a.L-1e-6&&a.y<b.y+b.W-1e-6&&b.y<a.y+a.W-1e-6)avisos.push(`${esc(a.a.nome)} e ${esc(b.a.nome)} se sobrepõem`);}
+  const auto=P.amb.filter(r=>!temXY(r.a)).map(r=>esc(r.a.nome));
+  const svg=`<svg viewBox="0 0 ${W.toFixed(2)} ${H.toFixed(2)}" style="width:100%;max-height:420px;background:#fff;border:1px solid var(--line,#ccc);border-radius:6px" role="img" aria-label="Croqui do espaço com os ambientes">
+${eC&&eL?`<rect x="${sx(0)}" y="${sy(eL)}" width="${eC}" height="${eL}" fill="#f4f7f2" stroke="#2e5d34" stroke-width="${fs/6}" stroke-dasharray="${fs/2} ${fs/4}"/><text x="${sx(0)+fs/3}" y="${sy(eL)-fs/3}" font-size="${fs*0.8}" fill="#2e5d34">Espaço total ${fmt(eC,1)} × ${fmt(eL,1)} m</text>`:""}
+${P.amb.map(r=>`<rect x="${sx(r.x)}" y="${sy(r.y+r.W)}" width="${r.L}" height="${r.W}" fill="${temXY(r.a)?"#dfe9f5":"#fff4d6"}" stroke="#1f3b5a" stroke-width="${fs/8}" ${temXY(r.a)?"":`stroke-dasharray="${fs/3} ${fs/5}"`}/><text x="${sx(r.x+r.L/2)}" y="${sy(r.y+r.W/2)}" font-size="${fs}" text-anchor="middle" fill="#1f3b5a">${esc(r.a.nome)}</text><text x="${sx(r.x+r.L/2)}" y="${sy(r.y+r.W/2)+fs*1.2}" font-size="${fs*0.75}" text-anchor="middle" fill="#555">${fmt(r.L,1)} × ${fmt(r.W,1)} m · (${fmt(r.x,1)}; ${fmt(r.y,1)})</text>`).join("")}
+${P.quad.map(r=>`<rect x="${sx(r.x)-fs/3}" y="${sy(r.y)-fs/3}" width="${fs*2/3}" height="${fs*2/3}" fill="#b3261e"/><text x="${sx(r.x)+fs/2}" y="${sy(r.y)+fs/3}" font-size="${fs*0.75}" fill="#b3261e">${esc(r.q.nome)}</text>`).join("")}
+<circle cx="${sx(0)}" cy="${sy(0)}" r="${fs/4}" fill="#000"/><text x="${sx(0)+fs/3}" y="${sy(0)+fs}" font-size="${fs*0.7}">(0; 0)</text>
+</svg>`;
+  return `<p class="note" style="margin:10px 0 6px">Croqui (sem escala gráfica): ambientes em azul com posição informada, em amarelo tracejado com posição automática; quadros em vermelho (posição na etapa 04).</p>${svg}
+${auto.length?`<p class="note">Posição automática (preencha X e Y para fixar): ${auto.join(", ")}.</p>`:""}${avisos.length?`<p class="note warn">${avisos.join(" · ")}.</p>`:""}`;}
 V.prel=()=>`${head(1)}
 <p class="intro">Informações preliminares (item A): classe do consumidor, condições de fornecimento informadas pela distribuidora, planta de situação e tipo de atendimento. Consulte o regulamento de instalações consumidoras (RIC) da distribuidora local.</p>
 <div class="block" style="margin-top:0;border-top:0;padding-top:0"><h3>Classificação da unidade consumidora (REN ANEEL nº 1.000/2021)</h3>
@@ -772,6 +800,18 @@ ${chkT("par.dpsSempre","Incluir DPS mesmo quando não obrigatório","Recomendado
 <div data-live="dps">${dpsCard()}</div>
 ${S.forn.atend==="MT"?`<div class="block"><h3>Subestação (NBR 14039)</h3><div data-live="mt">${mtCard()}</div></div>`:""}
 <div class="block">${fld("forn.obs","Observações sobre o fornecimento",{type:"textarea",ph:"Restrições da rede, garantia de suprimento, gerador de emergência, previsão de ampliação..."})}</div>
+<div class="block"><h3>Planta de situação: espaço e ambientes</h3>
+<p class="note">Descreva o espaço total (terreno ou edificação) e cada ambiente dentro dele, com nome, dimensões e posição. A origem (0; 0) é o canto inferior esquerdo do espaço total; X cresce para a direita e Y para cima. Os ambientes cadastrados aqui aparecem na coluna “Ambiente” da distribuição dos circuitos (etapa 04), no projeto luminotécnico (etapa 08), na planta do PDF e no DXF.</p>
+<div class="grid">
+${fld("forn.espComp","Comprimento do espaço total — eixo X (m)",{type:"number",step:"0.5",ph:"auto",hint:"Em branco: ajustado aos ambientes."})}
+${fld("forn.espLarg","Largura do espaço total — eixo Y (m)",{type:"number",step:"0.5",ph:"auto",hint:"Em branco: ajustado aos ambientes."})}
+</div>
+<div class="tbl ct"><table><thead><tr>${[["Ambiente","nome"],["Comp. X (m)","comprimento"],["Larg. Y (m)","largura"],["Alt. (m)","altura"],["Influências","infl"],["X (m)","x"],["Y (m)","y"]].map(([t,k])=>thT(t,TIPS_COL.amb[k])).join("")}${thT("Área","Comprimento × largura.","r")}${thT("Circuitos","Circuitos vinculados a este ambiente na etapa 04.","r")}<th></th></tr></thead><tbody>
+${S.ambientes.map(ambienteSitRow).join("")||`<tr><td colspan="10" style="padding:12px;color:var(--muted)">Nenhum ambiente cadastrado. Use “+ Ambiente”.</td></tr>`}
+</tbody></table></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small primary" type="button" id="addAmb">+ Ambiente</button></div>
+<div data-live="croqui">${croquiSit()}</div>
+</div>
 <div class="block"><h3>Anexo desta etapa</h3>${attBlock("situacao")}</div>${nav()}`;
 
 V.par=()=>{const p=S.par;return `${head(2)}
@@ -877,6 +917,7 @@ ${quadrosEmArvore().map(q=>{const j=S.quadros.indexOf(q),niv=nivelQ(q);const pro
 </tbody></table></div><p class="note">Cada quadro é alimentado por um quadro de origem: o QGBT ou um quadro intermediário (sub-quadro). O comprimento é o do trecho desde a origem; a distância ao QGBT é a soma dos trechos. O alimentador de um quadro intermediário é dimensionado com a demanda dele mais a dos sub-quadros, e a queda de tensão se acumula ao longo da cadeia.</p><div><button class="btn small" type="button" id="addQ" data-tip="Cria um quadro alimentado pelo QGBT. Depois escolha outro quadro em 'Alimentado por' para torná-lo sub-quadro.">+ Quadro</button></div></div>
 ${R.incompat.length?`<p class="note bad"><b>Ligação incompatível com o sistema ${esc(R.sys.nome)}:</b> circuitos ${R.incompat.map(o=>o.i+1).join(", ")}. Escolha outra ligação ou mude o tipo de alimentação na etapa 02.</p>`:""}
 <div class="block"><h3>Circuitos</h3>
+<p class="note${S.ambientes.length?"":" warn"}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${S.ambientes.length?`Ambientes disponíveis na coluna “Ambiente”: ${S.ambientes.map(a=>esc(a.nome)).join(", ")}.`:"Nenhum ambiente cadastrado: a coluna “Ambiente” só oferece “Manual”."}<button class="btn small" type="button" data-step="1">${S.ambientes.length?"Editar":"Cadastrar"} ambientes (etapa 02)</button></p>
 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span style="font-size:13px;color:var(--muted)">Adicionar circuito:</span><button class="btn small" type="button" data-add="ilum">+ Iluminação</button><button class="btn small" type="button" data-add="tug">+ TUG</button><button class="btn small" type="button" data-add="tue">+ TUE</button><button class="btn small primary" type="button" data-add="motor">+ Motor</button></div>
 <div class="tbl ct"><table><thead><tr><th>#</th>${[["Quadro","q"],["Descrição","nome"],["Ambiente","ambiente"],["Tipo","tipo"],["Ligação","lig"],["Nº cargas","qtd"],["Pot. unit.","pot"],["Unid.","unid"],["FP","fp"],["η","eta"],["FS","fs"],["Fu","fu"],["FD","fd"],["Local","local"],["DR","dr"],["Canaleta(s)","can"],["L can. (m)","ld"],["L baix. (m)","lb"]].map(([t,k])=>thT(t,TIPS_COL.c[k])).join("")}${thT("S (VA)","Potência aparente total do circuito, calculada.","r")}${thT("Ib (A)","Corrente de projeto do circuito, calculada (motores: In × FS).","r")}<th></th></tr></thead>
 <tbody>${S.circ.map(circRow).join("")||`<tr><td colspan="22" style="padding:18px;color:var(--muted)">Nenhum circuito. Use os botões “Adicionar circuito” para incluir o primeiro.</td></tr>`}</tbody></table></div>
@@ -985,7 +1026,7 @@ function ambienteRow(a,i){const c=calcularAmbiente(a);return `<tr>
 V.des=()=>`${head(7)}
 <p class="intro">Desenhos das plantas (item D), quadros e diagramas (item F) e detalhes construtivos (item G). Anexe as pranchas produzidas em CAD. Elas entram no PDF final na ordem da documentação do projeto.</p>
 <div class="block" style="margin-top:0;border-top:0;padding-top:0"><h3>Ambientes e dimensões</h3>
-<p class="note">Tomadas TUG: contagem geométrica por perímetro e espaçamento adotado, no mínimo uma por ambiente (9.5.2.2.1). Iluminação: método dos lúmens, N = E × A / (φ × FU × FM), e espaçamento máximo S/Hm; a altura define Hm = altura − 0,8 m. Iluminâncias de referência: NBR ISO/CIE 8995-1 (ex.: depósitos 100–200 lx, processamento industrial 300 lx, escritórios 500 lx). Vincule os circuitos de iluminação e TUG a um ambiente na etapa 04 para usar estas quantidades.</p>
+<p class="note">Nome, dimensões e posição dos ambientes são cadastrados na etapa 02 (planta de situação) <button class="btn small" type="button" data-step="1">Ir para a etapa 02</button>; aqui ficam os parâmetros de iluminação, tomadas, influências e emergência. Tomadas TUG: contagem geométrica por perímetro e espaçamento adotado, no mínimo uma por ambiente (9.5.2.2.1). Iluminação: método dos lúmens, N = E × A / (φ × FU × FM), e espaçamento máximo S/Hm; a altura define Hm = altura − 0,8 m. Iluminâncias de referência: NBR ISO/CIE 8995-1 (ex.: depósitos 100–200 lx, processamento industrial 300 lx, escritórios 500 lx). Vincule os circuitos de iluminação e TUG a um ambiente na etapa 04 para usar estas quantidades.</p>
 <div class="tbl ct"><table><thead><tr>${[["Ambiente","nome"],["Comp. (m)","comprimento"],["Larg. (m)","largura"],["Alt. (m)","altura"],["Lux","lux"],["lm/luminária","lm"],["W/luminária","w"],["FU","uf"],["FM","mf"],["Esp. TUG (m)","espTomadas"],["S/Hm máx.","espLum"],["Influências","infl"],["Poeira comb.","zona"],["Saídas","saidas"],["X (m)","x"],["Y (m)","y"]].map(([t,k])=>thT(t,TIPS_COL.amb[k])).join("")}${thT("Área","Comprimento × largura.","r")}${thT("K","Índice do recinto K = A / (Hm × (C + L)). Use-o para ler o FU na tabela da luminária.","r")}${thT("TUG","Número de tomadas de uso geral calculado.","r")}${thT("Luminárias","Maior valor entre o método dos lúmens e o espaçamento máximo.","r")}${thT("Em obtida","Iluminância média mantida com o número de luminárias adotado. Deve ser ≥ ao valor exigido.","r")}${thT("Emerg.","Luminárias de emergência (NBR 10898): espaçamento ≤ 4 × altura de instalação, máx. 15 m.","r")}<th></th></tr></thead><tbody>
 ${S.ambientes.map(ambienteRow).join("")||`<tr><td colspan="23" style="padding:12px;color:var(--muted)">Nenhum ambiente cadastrado.</td></tr>`}
 </tbody></table></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" id="addAmb">+ Ambiente</button><button class="btn small primary" type="button" id="btnDxf" data-tip="Gera a planta baixa em escala real (metros) com ambientes, luminárias, tomadas, emergência, quadros e rotas das canaletas, em camadas, para abrir no AutoCAD, LibreCAD ou DraftSight.">Exportar planta (DXF)</button></div>
@@ -1367,7 +1408,7 @@ function atualizarTotais(){
 function render(keepScroll){calc();esconderTip();renderSteps();renderStamp();renderSummary();
   const sh=document.getElementById("sheet");sh.innerHTML=V[STEPS[cur].k]();liveCells();
   if(!keepScroll)sh.scrollIntoView({block:"start",behavior:"auto"});}
-function soft(){calc();renderSteps();renderStamp();renderSummary();liveCells();
+function soft(){calc();renderSteps();renderStamp();renderSummary();liveCells();document.querySelectorAll('[data-live="croqui"]').forEach(el=>el.innerHTML=croquiSit());
   document.querySelectorAll('[data-live="cls"]').forEach(el=>el.innerHTML=clsCard());
   document.querySelectorAll('[data-live="dps"]').forEach(el=>el.innerHTML=dpsCard());
   document.querySelectorAll('[data-live="spda"]').forEach(el=>el.innerHTML=spdaCard());

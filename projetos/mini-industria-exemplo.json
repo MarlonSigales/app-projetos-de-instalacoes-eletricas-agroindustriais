@@ -20,6 +20,8 @@
     "spda": true
   },
   "forn": {
+    "espComp": 40,
+    "espLarg": 16,
     "sistema": "380/220",
     "atend": "BT",
     "classe": "rural",
