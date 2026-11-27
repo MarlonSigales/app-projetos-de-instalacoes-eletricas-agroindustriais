@@ -98,7 +98,7 @@
       "y": 11.5
     },
     {
-      "nome": "QF-PROD",
+      "nome": "QLF-PROD",
       "L": 25,
       "met": "B1",
       "pai": "QGBT",
@@ -107,7 +107,7 @@
       "y": 6.5
     },
     {
-      "nome": "QL-ADM",
+      "nome": "QLF-ADM",
       "L": 18,
       "met": "B1",
       "pai": "QGBT",
@@ -119,7 +119,7 @@
       "nome": "QD-SECADOR",
       "L": 15,
       "met": "B1",
-      "pai": "QF-PROD",
+      "pai": "QLF-PROD",
       "infl": "poeiraAlta",
       "x": 0.15,
       "y": 3
@@ -266,6 +266,9 @@
       "larg": 1.5
     }
   ],
+  "guias": [],
+  "vias": {},
+  "viasNovas": [],
   "circ": [
     {
       "q": "QD-SECADOR",
@@ -310,7 +313,7 @@
       "ambiente": "secagem"
     },
     {
-      "q": "QF-PROD",
+      "q": "QLF-PROD",
       "nome": "Descascador",
       "tipo": "motor",
       "lig": "3F",
@@ -331,7 +334,7 @@
       "ambiente": "moagem"
     },
     {
-      "q": "QF-PROD",
+      "q": "QLF-PROD",
       "nome": "Moedor (moinho de martelos)",
       "tipo": "motor",
       "lig": "3F",
@@ -352,7 +355,7 @@
       "ambiente": "moagem"
     },
     {
-      "q": "QF-PROD",
+      "q": "QLF-PROD",
       "nome": "Ensacadeira com costuradora de sacaria",
       "tipo": "motor",
       "lig": "3F",
@@ -373,7 +376,7 @@
       "ambiente": "secagem"
     },
     {
-      "q": "QF-PROD",
+      "q": "QLF-PROD",
       "nome": "Iluminação do galpão (LED)",
       "tipo": "ilum",
       "lig": "F+N",
@@ -390,7 +393,7 @@
       "ambiente": "secagem"
     },
     {
-      "q": "QF-PROD",
+      "q": "QLF-PROD",
       "nome": "Iluminação da sala de moagem (LED)",
       "tipo": "ilum",
       "lig": "F+N",
@@ -407,7 +410,7 @@
       "ambiente": "moagem"
     },
     {
-      "q": "QF-PROD",
+      "q": "QLF-PROD",
       "nome": "TUG do galpão (manutenção)",
       "tipo": "tug",
       "lig": "F+N",
@@ -425,7 +428,7 @@
       "local": "externo"
     },
     {
-      "q": "QF-PROD",
+      "q": "QLF-PROD",
       "nome": "TUG da sala de moagem",
       "tipo": "tug",
       "lig": "F+N",
@@ -442,7 +445,7 @@
       "ambiente": "moagem"
     },
     {
-      "q": "QF-PROD",
+      "q": "QLF-PROD",
       "nome": "Tomada industrial 3P+T (manutenção)",
       "tipo": "tue",
       "lig": "3F+N",
@@ -460,7 +463,7 @@
       "ambiente": "moagem"
     },
     {
-      "q": "QL-ADM",
+      "q": "QLF-ADM",
       "nome": "Iluminação escritório (LED)",
       "tipo": "ilum",
       "lig": "F+N",
@@ -477,7 +480,7 @@
       "ambiente": "escritorio"
     },
     {
-      "q": "QL-ADM",
+      "q": "QLF-ADM",
       "nome": "TUG escritório",
       "tipo": "tug",
       "lig": "F+N",
@@ -494,7 +497,7 @@
       "ambiente": "escritorio"
     },
     {
-      "q": "QL-ADM",
+      "q": "QLF-ADM",
       "nome": "Aquecedor de ambiente do escritório",
       "tipo": "tue",
       "cargaTipo": "aquecedor",
@@ -512,7 +515,7 @@
       "ambiente": "escritorio"
     },
     {
-      "q": "QL-ADM",
+      "q": "QLF-ADM",
       "nome": "Ar-condicionado do escritório (TUE)",
       "tipo": "tue",
       "cargaTipo": "arcond",
@@ -651,5 +654,5 @@
   "chk": {},
   "exemplo": true,
   "formato": "projeto-eletrico-agro",
-  "exportadoEm": "2026-11-27T20:06:32.634Z"
+  "exportadoEm": "2026-11-27T20:50:56.994Z"
 }

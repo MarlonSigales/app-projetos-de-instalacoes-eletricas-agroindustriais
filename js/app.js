@@ -23,7 +23,7 @@ function blank(){
     forn:{espComp:"",espLarg:"",entLado:"",entPos:"",sistema:"380/220",atend:"BT",classe:"rural",subclasse:"Agroindustrial",tensaoPrim:13.8,subterraneo:false,modalidade:"",iccMT:"",Lmt:30,trafo:false,trafoKVA:"",rede:"",distRede:"",Lent:15,metEnt:"D",aterr:"TN-S",aerea:true,aq:"AQ2",spda:false,rhoEletrica:"",ra:30,ul:50,obs:""},
     par:{temp:30,tempSolo:20,rhoSolo:2.5,metDist:"B1",metBaix:"B1",agrDist:"feixe",espEnt:"nula",arrF:"trifolio",arrG:"horizontal",ipin:7,dvPartida:10,simular:true,softLim:3,invLim:1.5,bobina:"220 Vca",icc:6,dpsSempre:false,distAuto:true,dvTerm:4,dvTotal:5,dvEnt:1,rho:0.0206,curva:"C",curvaMotor:"D",reserva:20,sobra:10,neutroRed:false,ocupCan:40,espSupCan:1.5,baixAparente:true,xCabo:0.08,rTerra:10,nEquip:6,lEquip:10,corrFP:true,fpAlvo:0.92,emerg:true,zTrafo:4.5,tipoSub:"poste"},
     quadros:[{nome:"QGBT",L:0,met:"B1",pai:"",infl:"seco",x:"",y:""}],
-    ambientes:[],aberturas:[],guias:[],vias:{},
+    ambientes:[],aberturas:[],guias:[],vias:{},viasNovas:[],
     circ:[],
     canaletas:{},
     anexos:Object.fromEntries(ANEXOS.map(a=>[a.k,[]])),
@@ -48,7 +48,7 @@ function sample(){
   s.id={cliente:"Agroindústria Exemplo Ltda. (dados fictícios)",obra:"Mini-indústria de beneficiamento de grãos",atividade:"Secagem, descascamento, moagem e ensacamento de grãos",local:"Estrada rural, km 8",municipio:"Pelotas/RS",uc:"0000000",distribuidora:"CEEE Equatorial",rt:"Nome do responsável técnico",crea:"RS000000",art:"",projetista:"Turma 2026.2",data:new Date().toISOString().slice(0,10)};
   s.projetos={eletrico:true,luminotecnico:true,spda:true};
   s.forn={espComp:40,espLarg:16,entLado:"dir",entPos:12,sistema:"380/220",atend:"BT",classe:"rural",subclasse:"Agroindustrial",tensaoPrim:13.8,subterraneo:false,modalidade:"Convencional monômia",trafo:false,trafoKVA:"",rede:"Rede secundária trifásica 380/220 V da distribuidora",distRede:"30 m",Lent:21,metEnt:"D",aterr:"TN-S",aerea:true,aq:"AQ2",spda:true,rhoEletrica:"",ra:30,ul:50,obs:"Padrão de entrada trifásico com medição direta, conforme categoria do RIC da distribuidora."};
-  s.quadros=[{nome:"QGBT",L:0,met:"B1",pai:"",infl:"seco",x:29.85,y:11.5},{nome:"QF-PROD",L:25,met:"B1",pai:"QGBT",infl:"poeira",x:23.85,y:6.5},{nome:"QL-ADM",L:18,met:"B1",pai:"QGBT",infl:"seco",x:29.85,y:9.3},{nome:"QD-SECADOR",L:15,met:"B1",pai:"QF-PROD",infl:"poeiraAlta",x:0.15,y:3}];
+  s.quadros=[{nome:"QGBT",L:0,met:"B1",pai:"",infl:"seco",x:29.85,y:11.5},{nome:"QLF-PROD",L:25,met:"B1",pai:"QGBT",infl:"poeira",x:23.85,y:6.5},{nome:"QLF-ADM",L:18,met:"B1",pai:"QGBT",infl:"seco",x:29.85,y:9.3},{nome:"QD-SECADOR",L:15,met:"B1",pai:"QLF-PROD",infl:"poeiraAlta",x:0.15,y:3}];
   s.ambientes=[
     {id:"secagem",nome:"Galpão de secagem",comprimento:24,largura:12,altura:6,lux:200,lm:4000,w:40,uf:0.65,mf:0.8,espTomadas:5,espLum:1.5,infl:"poeiraAlta",zona:"22",saidas:2,x:0,y:0},
     {id:"moagem",nome:"Sala de moagem",comprimento:12,largura:8,altura:4,lux:300,lm:4000,w:40,uf:0.6,mf:0.8,espTomadas:5,espLum:1.5,infl:"poeiraAlta",zona:"22",saidas:1,x:24,y:0},
@@ -61,22 +61,22 @@ function sample(){
     {amb:"moagem",tipo:"porta",modelo:"correr",parede:"inf",pos:4,larg:2},{amb:"moagem",tipo:"porta",modelo:"dupla",parede:"esq",pos:1,larg:1.6},{amb:"moagem",tipo:"janela",modelo:"maximar",parede:"dir",pos:3,larg:2},
     {amb:"escritorio",tipo:"porta",modelo:"giro",parede:"inf",pos:1,larg:0.9},{amb:"escritorio",tipo:"janela",modelo:"correr",parede:"sup",pos:2,larg:1.5}
   ];
-  const m=(nome,cv,eta,fp,ld,lb,fd=1,fu=0.87)=>({q:"QF-PROD",nome,tipo:"motor",lig:"3F",qtd:1,pot:cv,unid:"cv",fp,eta,fs:1.25,fu,fd,can:"CN-1",ld,lb,prot:"dj",partida:"direta",fusTipo:"gG"});
+  const m=(nome,cv,eta,fp,ld,lb,fd=1,fu=0.87)=>({q:"QLF-PROD",nome,tipo:"motor",lig:"3F",qtd:1,pot:cv,unid:"cv",fp,eta,fs:1.25,fu,fd,can:"CN-1",ld,lb,prot:"dj",partida:"direta",fusTipo:"gG"});
   s.circ=[
     Object.assign(m("Secador — ventilador",10,0.895,0.85,8,4),{q:"QD-SECADOR",can:"CN-3",partida:"yd",prot:"fus",ambiente:"secagem"}),
     Object.assign(m("Secador — rosca de descarga",3,0.86,0.82,10,3),{q:"QD-SECADOR",can:"CN-3",ambiente:"secagem"}),
     Object.assign(m("Descascador",7.5,0.895,0.83,14,3),{partida:"inv",ambiente:"moagem"}),
     Object.assign(m("Moedor (moinho de martelos)",15,0.91,0.85,10,3),{partida:"soft",ambiente:"moagem"}),
     Object.assign(m("Ensacadeira com costuradora de sacaria",2,0.83,0.80,8,2.5,0.8),{prot:"djm",ambiente:"secagem"}),
-    {q:"QF-PROD",nome:"Iluminação do galpão (LED)",tipo:"ilum",lig:"F+N",qtd:12,pot:40,unid:"W",fp:0.95,eta:1,fu:1,fd:1,can:"CN-1",ld:25,lb:4,ambiente:"secagem"},
-    {q:"QF-PROD",nome:"Iluminação da sala de moagem (LED)",tipo:"ilum",lig:"F+N",qtd:12,pot:40,unid:"W",fp:0.95,eta:1,fu:1,fd:1,can:"CN-1",ld:16,lb:3,ambiente:"moagem"},
-    {q:"QF-PROD",nome:"TUG do galpão (manutenção)",tipo:"tug",lig:"F+N",qtd:6,pot:200,unid:"VA",fp:0.8,eta:1,fu:1,fd:0.3,can:"CN-1",ld:18,lb:1.5,ambiente:"secagem",local:"externo"},
-    {q:"QF-PROD",nome:"TUG da sala de moagem",tipo:"tug",lig:"F+N",qtd:6,pot:200,unid:"VA",fp:0.8,eta:1,fu:1,fd:0.3,can:"CN-1",ld:14,lb:1.5,ambiente:"moagem"},
-    {q:"QF-PROD",nome:"Tomada industrial 3P+T (manutenção)",tipo:"tue",lig:"3F+N",qtd:1,pot:3000,unid:"VA",fp:0.8,eta:1,fu:1,fd:0.5,can:"CN-1, CN-2",ld:15,lb:1.5,local:"molhado",ambiente:"moagem"},
-    {q:"QL-ADM",nome:"Iluminação escritório (LED)",tipo:"ilum",lig:"F+N",qtd:6,pot:36,unid:"W",fp:0.95,eta:1,fu:1,fd:1,can:"CN-2",ld:8,lb:3,ambiente:"escritorio"},
-    {q:"QL-ADM",nome:"TUG escritório",tipo:"tug",lig:"F+N",qtd:6,pot:200,unid:"VA",fp:0.8,eta:1,fu:1,fd:0.7,can:"CN-2",ld:10,lb:1.5,ambiente:"escritorio"},
-    {q:"QL-ADM",nome:"Aquecedor de ambiente do escritório",tipo:"tue",cargaTipo:"aquecedor",lig:"F+N",qtd:1,pot:1500,unid:"W",fp:1,eta:1,fu:1,fd:1,can:"CN-2",ld:9,lb:1.5,ambiente:"escritorio"},
-    {q:"QL-ADM",nome:"Ar-condicionado do escritório (TUE)",tipo:"tue",cargaTipo:"arcond",lig:"F+F",qtd:1,pot:1800,unid:"W",fp:0.9,eta:1,fu:1,fd:1,can:"CN-2",ld:9,lb:2,ambiente:"escritorio",dr:"sim"}
+    {q:"QLF-PROD",nome:"Iluminação do galpão (LED)",tipo:"ilum",lig:"F+N",qtd:12,pot:40,unid:"W",fp:0.95,eta:1,fu:1,fd:1,can:"CN-1",ld:25,lb:4,ambiente:"secagem"},
+    {q:"QLF-PROD",nome:"Iluminação da sala de moagem (LED)",tipo:"ilum",lig:"F+N",qtd:12,pot:40,unid:"W",fp:0.95,eta:1,fu:1,fd:1,can:"CN-1",ld:16,lb:3,ambiente:"moagem"},
+    {q:"QLF-PROD",nome:"TUG do galpão (manutenção)",tipo:"tug",lig:"F+N",qtd:6,pot:200,unid:"VA",fp:0.8,eta:1,fu:1,fd:0.3,can:"CN-1",ld:18,lb:1.5,ambiente:"secagem",local:"externo"},
+    {q:"QLF-PROD",nome:"TUG da sala de moagem",tipo:"tug",lig:"F+N",qtd:6,pot:200,unid:"VA",fp:0.8,eta:1,fu:1,fd:0.3,can:"CN-1",ld:14,lb:1.5,ambiente:"moagem"},
+    {q:"QLF-PROD",nome:"Tomada industrial 3P+T (manutenção)",tipo:"tue",lig:"3F+N",qtd:1,pot:3000,unid:"VA",fp:0.8,eta:1,fu:1,fd:0.5,can:"CN-1, CN-2",ld:15,lb:1.5,local:"molhado",ambiente:"moagem"},
+    {q:"QLF-ADM",nome:"Iluminação escritório (LED)",tipo:"ilum",lig:"F+N",qtd:6,pot:36,unid:"W",fp:0.95,eta:1,fu:1,fd:1,can:"CN-2",ld:8,lb:3,ambiente:"escritorio"},
+    {q:"QLF-ADM",nome:"TUG escritório",tipo:"tug",lig:"F+N",qtd:6,pot:200,unid:"VA",fp:0.8,eta:1,fu:1,fd:0.7,can:"CN-2",ld:10,lb:1.5,ambiente:"escritorio"},
+    {q:"QLF-ADM",nome:"Aquecedor de ambiente do escritório",tipo:"tue",cargaTipo:"aquecedor",lig:"F+N",qtd:1,pot:1500,unid:"W",fp:1,eta:1,fu:1,fd:1,can:"CN-2",ld:9,lb:1.5,ambiente:"escritorio"},
+    {q:"QLF-ADM",nome:"Ar-condicionado do escritório (TUE)",tipo:"tue",cargaTipo:"arcond",lig:"F+F",qtd:1,pot:1800,unid:"W",fp:0.9,eta:1,fu:1,fd:1,can:"CN-2",ld:9,lb:2,ambiente:"escritorio",dr:"sim"}
   ];
   s.extras=[
     {g:"cond",d:"Caixa de passagem em alumínio 200 × 200 × 100 mm com tampa",un:"pç",q:6,pu:85},
@@ -150,6 +150,13 @@ function circDaBiblioteca(it,q,amb,px,py){const sy=SISTEMAS[S.forn.sistema],lp=l
   return {q,nome:it.nome,tipo:"tue",cargaTipo:it.cargaTipo||"geral",lig:lp(it.pot>=8000?["3F","F+F","F+N"]:it.pot>=4000?["F+F","F+N"]:["F+N","F+F"]),qtd:1,pot:it.pot,unid:"W",fp:it.fp,eta:1,fu:1,fd:1,can:"CN-1",ld:10,lb:1.5,ambiente:amb||"",...(px!=null?{px,py}:{}),bib:it.id};}
 function optsBiblioteca(tipo,sel_){const gs=[...new Set(CATALOGO_CARGAS.filter(c=>!tipo||c.tipo===tipo).map(c=>c.g))];
   return gs.map(g=>`<optgroup label="${esc(g)}">${CATALOGO_CARGAS.filter(c=>c.g===g&&(!tipo||c.tipo===tipo)).map(c=>`<option value="${c.id}" ${sel_===c.id?"selected":""}>${esc(c.nome)} — ${fmtN(c.pot)} ${c.unid}</option>`).join("")}</optgroup>`).join("");}
+// sigla obrigatória pelo conteúdo: só iluminação → QL; iluminação com tomadas/força (ou tomadas) → QLF (ou QDC, se escolhido)
+// vale para os nomes QL-, QLF-, QDC-, QD- e QF- (o sufixo é mantido); só força (motores) continua QF/QD; QGBT e outros prefixos não mudam
+function siglaQuadros(){let n=0;S.quadros.forEach((q,j)=>{if(j===0)return;const m=/^(QL|QLF|QDC|QD|QF)-(.+)$/i.exec(q.nome||"");if(!m)return;
+  const cs=S.circ.filter(c=>c.q===q.nome);if(!cs.length)return;const il=cs.some(c=>c.tipo==="ilum"),out=cs.some(c=>c.tipo!=="ilum"),tom=cs.some(c=>c.tipo==="tug"||c.tipo==="tue");
+  let alvo=m[1].toUpperCase();if(il&&!out)alvo="QL";else if(il||tom)alvo=q.sigla==="QDC"||alvo==="QDC"?"QDC":"QLF";else if(alvo==="QL")alvo="QLF";
+  if(alvo!==m[1].toUpperCase()){let nn=`${alvo}-${m[2]}`,k=2;while(S.quadros.some(z=>z!==q&&z.nome===nn))nn=`${alvo}-${m[2]}${k++}`;const old=q.nome;q.nome=nn;
+    S.circ.forEach(c=>{if(c.q===old)c.q=nn;});S.quadros.forEach(z=>{if(z.pai===old)z.pai=nn;});n++;}});return n;}
 function calcularAmbiente(a){
   const L=Math.max(0,+a.comprimento||0),W=Math.max(0,+a.largura||0),H=Math.max(0,+a.altura||0);
   const area=L*W,perimetro=2*(L+W),hm=Math.max(0.5,H-0.8);
@@ -204,7 +211,7 @@ function sizeCable({ib,iuse,cosf,nc,vref,kdv,segs,smin,dvLim,start=null,prot="dj
 }
 
 let R; // resultados
-function calc(){
+function calc(){siglaQuadros();
   const p=S.par, sys=SISTEMAS[S.forn.sistema];
   // agrupamento nas canaletas
   if(!sys){S.forn.sistema="380/220";return calc();}
@@ -1468,9 +1475,9 @@ function editarTracado(E_,d){const P=layoutPlanta(),{t,a,b}=E_.ch,hz=t==="h",lin
       novo=Math.abs(co(dn[i0])-movel)<=Math.abs(co(dn[i1])-movel)?[...dn.slice(0,i0+1),off(dn[i0]),off(dn[ig]),...dn.slice(ig)]:[...dn.slice(0,ig+1),off(dn[ig]),off(dn[i1]),...dn.slice(i1)];}
     const q=[];novo.forEach(p=>{p=[Math.round(p[0]*1000)/1000,Math.round(p[1]*1000)/1000];if(q.length&&Math.abs(q[q.length-1][0]-p[0])<1e-6&&Math.abs(q[q.length-1][1]-p[1])<1e-6)return;q.push(p);});
     for(let k=q.length-2;k>0;k--){const [A,B,C]=[q[k-1],q[k],q[k+1]];if((Math.abs(A[0]-B[0])<1e-6&&Math.abs(B[0]-C[0])<1e-6)||(Math.abs(A[1]-B[1])<1e-6&&Math.abs(B[1]-C[1])<1e-6))q.splice(k,1);}
-    S.vias[key]=q;n++;});return n;}
+    S.vias[key]=q;S.viasNovas=[...new Set([...(S.viasNovas||[]),key])];n++;});return n;}
 function tracadoEditado(ch){return [...(ch.ligs||[])].some(k=>S.vias&&S.vias[k])||guiasDoTrecho(ch).length>0;}
-function restaurarTrecho(ch){let n=0;[...(ch.ligs||[])].forEach(k=>{if(S.vias&&S.vias[k]){delete S.vias[k];n++;}});return n+tirarGuias(ch);}
+function restaurarTrecho(ch){let n=0;[...(ch.ligs||[])].forEach(k=>{if(S.vias&&S.vias[k]){delete S.vias[k];n++;}});S.viasNovas=(S.viasNovas||[]).filter(k=>S.vias&&S.vias[k]);return n+tirarGuias(ch);}
 function tirarGuias(ch){const ts=new Set(guiasDoTrecho(ch));S.guias=(S.guias||[]).filter(g=>!ts.has(g));return ts.size;}
 function edSnap(){ED_UNDO.push(JSON.stringify(S));if(ED_UNDO.length>30)ED_UNDO.shift();}
 // com o editor na tela, atualiza só o conteúdo dele (recriar o painel tiraria a tela cheia); fora dele, redesenha a etapa
@@ -1522,7 +1529,7 @@ function editorSVG(){
     <text x="${X(r.x+0.3)}" y="${(+Y(r.y+r.W-0.3)+f).toFixed(3)}" font-size="${f}" fill="#1f3b5a" pointer-events="none">${esc(r.a.nome)} · ${fmt(r.L,1)} × ${fmt(r.W,1)} m</text>
     <rect data-drag="res" data-i="${i}" x="${(+X(r.x+r.L)-f*0.5).toFixed(3)}" y="${(+Y(r.y+r.W)-f*0.5).toFixed(3)}" width="${f}" height="${f}" fill="#1f3b5a" style="cursor:nwse-resize"><title>Arraste para mudar comprimento e largura</title></rect>`;});
   (S.guias||[]).forEach(g=>{s+=ln(g.a[0],g.a[1],g.b[0],g.b[1],"#2563eb",f/5,`${f/3} ${f/4}`);});
-  P.chains.forEach(ch=>{const ed_=[...ch.ligs].some(k=>S.vias&&S.vias[k]);s+=ln(ch.a[0],ch.a[1],ch.b[0],ch.b[1],ed_?"#2563eb":"#7a5c00",ch.circ.length>=4?f/3:ed_?f/6:f/9);});
+  P.chains.forEach(ch=>{const ed_=[...ch.ligs].some(k=>S.vias&&S.vias[k]&&(S.viasNovas||[]).includes(k));s+=ln(ch.a[0],ch.a[1],ch.b[0],ch.b[1],ed_?"#2563eb":"#7a5c00",ch.circ.length>=4?f/3:ed_?f/6:f/9);});
   P.alim.forEach(a=>{for(let k=1;k<a.pts.length;k++)s+=ln(a.pts[k-1][0],a.pts[k-1][1],a.pts[k][0],a.pts[k][1],"#333",f/7);});
   P.chains.forEach((ch,k)=>{if(ch.len<0.4)return;s+=`<line data-drag="ch" data-i="${k}" x1="${X(ch.a[0])}" y1="${Y(ch.a[1])}" x2="${X(ch.b[0])}" y2="${Y(ch.b[1])}" stroke="#000" stroke-opacity="0" stroke-width="${f*0.7}" style="cursor:${ED_TOOL==="dobrar"?"crosshair":ch.t==="h"?"ns-resize":"ew-resize"}"><title>Eletroduto — circuito(s) ${ch.circ.join(", ")} · ${fmt(ch.len,2)} m — arraste para mover; ferramenta Dobrar para criar curva; botão direito para restaurar</title></line>`;});
   if(P.entRota)for(let k=1;k<P.entRota.pts.length;k++){const [a,b]=P.entRota.pts[k-1],[c,d]=P.entRota.pts[k];s+=ln(a,b,c,d,"#000",f/6,P.dentroDe((a+c)/2,(b+d)/2)?"":`${f/2} ${f/3}`);}
@@ -1545,7 +1552,7 @@ function editorTabela(){const d=distanciasDesenho(),r=[];
   const dif=r.filter(([,a,b])=>Math.abs(a-b)>0.01).length;
   return `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0"><button type="button" class="btn small" id="edMed" title="Mede de novo todos os trechos pelo desenho atual">Atualizar medições</button><button type="button" class="btn small primary" id="edApl" ${dif?"":"disabled"}>Aplicar todas no cálculo${dif?` (${dif})`:""}</button><span style="font-size:12px;color:var(--muted,#666)">${dif?`${dif} trecho(s) diferente(s) do desenho`:"Os comprimentos do cálculo correspondem ao desenho."}</span></div>
   <div class="tbl"><table><thead><tr><th>Trecho</th><th class="num">Usado no cálculo (m)</th><th class="num">Medido no desenho (m)</th><th></th></tr></thead><tbody>${r.map(([t,a,b,k])=>{const df=Math.abs(a-b)>0.01;return `<tr><td>${esc(t)}</td><td class="num">${fmtN(a)}</td><td class="num" ${df?'style="color:#b3261e;font-weight:600"':""}>${fmtN(b)}</td><td>${df?`<button type="button" class="btn small" data-edrow="${k}" data-v="${b}">Aplicar</button>`:""}</td></tr>`;}).join("")}</tbody></table></div>`;}
-const ED_DICA={sel:"Arraste para mover (eletrodutos se movem em paralelo e continuam ligados; editados ficam em azul) · botão direito em qualquer elemento para editar",dobrar:"Pressione num ponto do eletroduto e arraste: o trecho a partir dali se desloca e forma uma dobra",amb:"Pressione e arraste no espaço vazio para desenhar um ambiente",porta:"Clique perto da parede de um ambiente",janela:"Clique perto da parede de um ambiente",quadro:"Clique perto de uma parede",maq:"Escolha a máquina na biblioteca e clique dentro do ambiente onde ela fica",tue:"Escolha o tipo de carga e clique perto da parede onde ela fica",tug:"Clique dentro do ambiente para acrescentar uma tomada",lum:"Clique dentro do ambiente para acrescentar uma luminária",del:"Clique no elemento a apagar"};
+const ED_DICA={sel:"Arraste para mover (eletrodutos se movem em paralelo e continuam ligados; movidos ficam em azul até você clicar em Atualizar) · botão direito em qualquer elemento para editar",dobrar:"Pressione num ponto do eletroduto e arraste: o trecho a partir dali se desloca e forma uma dobra",amb:"Pressione e arraste no espaço vazio para desenhar um ambiente",porta:"Clique perto da parede de um ambiente",janela:"Clique perto da parede de um ambiente",quadro:"Clique perto de uma parede",maq:"Escolha a máquina na biblioteca e clique dentro do ambiente onde ela fica",tue:"Escolha o tipo de carga e clique perto da parede onde ela fica",tug:"Clique dentro do ambiente para acrescentar uma tomada",lum:"Clique dentro do ambiente para acrescentar uma luminária",del:"Clique no elemento a apagar"};
 function editorBarra(){return `${ED_TOOLS.map(([k,t,d])=>`<button type="button" class="ed-tool${ED_TOOL===k?" on":""}" data-edtool="${k}" title="${t}" aria-label="${t}" aria-pressed="${ED_TOOL===k}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="${d}"/></svg></button>`).join("")}
   <span class="ed-sep"></span><button type="button" class="ed-tool" id="edUndo" title="Desfazer" aria-label="Desfazer" ${ED_UNDO.length?"":"disabled"}><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>`;}
 function editorOpcoes(){if(ED_TOOL==="porta"||ED_TOOL==="janela")return `<select id="edMod" aria-label="Modelo">${Object.entries(MODELOS_AB[ED_TOOL]).map(([k,[t,sg]])=>`<option value="${k}" ${ED_MOD[ED_TOOL]===k?"selected":""}>${t} (${sg})</option>`).join("")}</select>`;
@@ -1554,7 +1561,7 @@ function editorOpcoes(){if(ED_TOOL==="porta"||ED_TOOL==="janela")return `<select
 function editorPainel(){return `<div id="edPanel" class="ed-panel${ED_FLOAT?" ed-float":""}${PIP?" ed-pip":""}">
   <div class="ed-top"><b>Editor dos desenhos</b><span class="ed-dica" id="edDica">${ED_DICA[ED_TOOL]}</span><span data-live="edopc">${editorOpcoes()}</span><span class="ed-acoes">
     <label class="ed-chk" title="Ao soltar, grava nos cálculos os comprimentos medidos no desenho"><input type="checkbox" id="edAuto" ${S.par.distAuto?"checked":""}> distâncias automáticas</label>
-    <button type="button" class="btn small" id="edDist" title="Abre a tabela de distâncias medidas no desenho">Distâncias</button><button type="button" class="btn small" id="edSnap">Quadros nas paredes</button><button type="button" class="btn small" id="edSup" title="Exporta a planta para o Supervisório MQTT (app de sinóticos)">Exportar sinótico</button>
+    <button type="button" class="btn small primary" id="edAtu" title="Confirma os eletrodutos movidos ou dobrados (voltam à cor original) e recalcula as distâncias">Atualizar</button><button type="button" class="btn small" id="edDist" title="Abre a tabela de distâncias medidas no desenho">Distâncias</button><button type="button" class="btn small" id="edSnap">Quadros nas paredes</button><button type="button" class="btn small" id="edSup" title="Exporta a planta para o Supervisório MQTT (app de sinóticos)">Exportar sinótico</button>
     ${PIP?`<button type="button" class="btn small" id="edPipX">Voltar para a página</button>`:`<button type="button" class="btn small" id="edPip" title="Abre o editor numa janela flutuante, fora da página (sempre visível)">Janela flutuante</button><button type="button" class="btn small" id="edFloat">${ED_FLOAT?"Recolher":"Expandir"}</button><button type="button" class="btn small" id="edFull">Tela cheia</button>`}</span></div>
   <div class="ed-corpo"><div class="ed-barra" role="toolbar" aria-label="Ferramentas" data-live="edbarra">${editorBarra()}</div><div class="ed-tela" data-live="editor">${editorSVG()}</div></div>
   <div class="ed-msg" id="edMsg"></div><div id="edCtx" class="ed-ctx" hidden></div>
@@ -1593,7 +1600,7 @@ function edCtxAbrir(ev,g){const D=edDoc(),box=D.getElementById("edCtx");if(!box)
   const inp=(n,l,v,t="text",st="")=>`<label>${l}<input name="${n}" type="${t}" ${st} value="${esc(String(v??""))}"></label>`,sel=(n,l,o)=>`<label>${l}<select name="${n}">${o}</select></label>`;
   if(tp==="amb"||tp==="res"){const a=S.ambientes[i];ttl="Ambiente";h=inp("nome","Nome",a.nome)+inp("comprimento","Comprimento X (m)",a.comprimento,"number",'step="0.1"')+inp("largura","Largura Y (m)",a.largura,"number",'step="0.1"')+inp("altura","Altura (m)",a.altura,"number",'step="0.1"')+inp("lux","Iluminância (lx)",a.lux,"number",'step="10"')+inp("w","W por luminária",a.w,"number")+sel("infl","Influências",opts(Object.entries(INFL).map(([k,v])=>[k,v.t]),a.infl||"seco"))+sel("zona","Poeira comb.",opts(Object.keys(ZONAS).map(k=>[k,k?"Zona "+k:"Não classificada"]),a.zona||""));}
   else if(tp==="ab"){const o=S.aberturas[i];ttl=o.tipo==="porta"?"Porta":"Janela";h=sel("tipo","Tipo",opts([["porta","Porta"],["janela","Janela"]],o.tipo))+sel("modelo","Modelo",opts([...Object.entries(MODELOS_AB.porta).map(([k,[t]])=>[k,"Porta "+t.toLowerCase()]),...Object.entries(MODELOS_AB.janela).map(([k,[t]])=>["j:"+k,"Janela "+t.toLowerCase()])],o.tipo==="janela"?"j:"+o.modelo:o.modelo))+sel("amb","Ambiente",aOpts(o.amb))+sel("parede","Parede",opts([["inf","Inferior"],["sup","Superior"],["esq","Esquerda"],["dir","Direita"]],o.parede))+inp("pos","Posição (m)",o.pos,"number",'step="0.1"')+inp("larg","Largura (m)",o.larg,"number",'step="0.1"');}
-  else if(tp==="q"){const q=S.quadros[i];ttl="Quadro";h=inp("nome","Nome",q.nome)+(i?sel("pai","Alimentado por",opts(S.quadros.filter(z=>z!==q&&!cadeia(z).includes(q)).map(z=>[z.nome,z.nome]),q.pai)):"")+sel("met","Método do alimentador",opts(Object.keys(METODOS).map(m=>[m,m]),q.met))+sel("infl","Influências",opts(Object.entries(INFL).map(([k,v])=>[k,v.t]),q.infl||"seco"));}
+  else if(tp==="q"){const q=S.quadros[i];ttl="Quadro";h=inp("nome","Nome",q.nome)+(i?sel("pai","Alimentado por",opts(S.quadros.filter(z=>z!==q&&!cadeia(z).includes(q)).map(z=>[z.nome,z.nome]),q.pai)):"")+(i?sel("sigla","Sigla com tomadas",opts([["QLF","QLF — luz e força"],["QDC","QDC — distribuição de circuitos"]],q.sigla==="QDC"||/^QDC-/.test(q.nome)?"QDC":"QLF")):"")+sel("met","Método do alimentador",opts(Object.keys(METODOS).map(m=>[m,m]),q.met))+sel("infl","Influências",opts(Object.entries(INFL).map(([k,v])=>[k,v.t]),q.infl||"seco"));}
   else if(tp==="maq"||tp==="tue"){const x=S.circ[c],sy=SISTEMAS[S.forn.sistema];ttl=`Circuito C${c+1} — ${tp==="maq"?"máquina":"uso específico"}`;
     h=sel("bib","Biblioteca",`<option value="">— manter —</option>${optsBiblioteca(tp==="maq"?"motor":"tue",x.bib||"")}`)+inp("nome","Nome da carga",x.nome)+(tp==="tue"?sel("cargaTipo","Tipo de carga",opts(Object.entries(CARGAS_TUE).map(([k,v])=>[k,v.t]),x.cargaTipo||"geral")):"")+inp("pot","Potência",x.pot,"number",'step="0.1"')+sel("unid","Unidade",opts(tp==="maq"?[["cv","cv"],["kW","kW"]]:[["W","W"],["VA","VA"],["kW","kW"]],x.unid))+sel("lig","Ligação",opts(Object.keys(LIG).filter(l=>ligOK(l,sy)).map(l=>[l,LIG[l].txt]),x.lig))+sel("q","Quadro",qOpts(x.q))+sel("ambiente","Ambiente",aOpts(x.ambiente))
       +(tp==="maq"?sel("partida","Partida",opts(Object.entries(PARTIDAS),x.partida||"direta"))+sel("prot","Proteção",opts(Object.entries(PROTS),x.prot||"dj")):"");}
@@ -1611,7 +1618,7 @@ function edCtxAplicar(f){const tp=f.dataset.tp,i=+f.dataset.i,c=+f.dataset.c,v=n
   if(tp==="amb"||tp==="res"){const a=S.ambientes[i];a.nome=v("nome")||a.nome;a.comprimento=Math.max(0.5,num("comprimento"));a.largura=Math.max(0.5,num("largura"));a.altura=Math.max(2,num("altura"));a.lux=num("lux");a.w=num("w")||a.w;a.infl=v("infl");a.zona=v("zona");}
   else if(tp==="ab"){const o=S.aberturas[i];const md=v("modelo")||"";o.tipo=md.startsWith("j:")?"janela":(MODELOS_AB.porta[md]?"porta":v("tipo"));o.modelo=md.replace(/^j:/,"");if(!MODELOS_AB[o.tipo][o.modelo])o.modelo=o.tipo==="janela"?"correr":"giro";o.amb=v("amb");o.parede=v("parede");o.pos=Math.max(0,num("pos"));o.larg=Math.max(0.3,num("larg"));}
   else if(tp==="q"){const q=S.quadros[i],old=q.nome,nn=(v("nome")||old).trim();if(nn!==old&&!S.quadros.some(z=>z!==q&&z.nome===nn)){q.nome=nn;S.circ.forEach(x=>{if(x.q===old)x.q=nn;});S.quadros.forEach(x=>{if(x.pai===old)x.pai=nn;});}
-    if(i&&v("pai"))q.pai=v("pai");q.met=v("met");q.infl=v("infl");}
+    if(i&&v("pai"))q.pai=v("pai");q.met=v("met");q.infl=v("infl");if(i&&v("sigla")){q.sigla=v("sigla");const m=/^(QLF|QDC)-(.+)$/.exec(q.nome);if(m&&m[1]!==q.sigla){const old=q.nome,nn=`${q.sigla}-${m[2]}`;if(!S.quadros.some(z=>z!==q&&z.nome===nn)){q.nome=nn;S.circ.forEach(x=>{if(x.q===old)x.q=nn;});S.quadros.forEach(x=>{if(x.pai===old)x.pai=nn;});}}}}
   else if(tp==="maq"||tp==="tue"){const x=S.circ[c],r=posAmbientes().find(z=>z.a.id===x.ambiente),it=v("bib")&&v("bib")!==(x.bib||"")?CATALOGO_CARGAS.find(z=>z.id===v("bib")):null;
     if(it){const nv=circDaBiblioteca(it,x.q,x.ambiente,x.px,x.py);Object.assign(x,{nome:nv.nome,pot:nv.pot,unid:nv.unid,fp:nv.fp,eta:nv.eta,bib:it.id},it.tipo==="motor"?{partida:nv.partida}:{cargaTipo:nv.cargaTipo,lig:nv.lig});edCtxFechar();return edFim(`${it.nome}: valores típicos aplicados (confira na placa).`);}
     x.nome=v("nome")||x.nome;x.pot=num("pot");x.unid=v("unid");x.lig=v("lig");x.ambiente=v("ambiente");x.q=quadroDe(v("q"),r?r.x+r.L/2:0,r?r.y:0);if(tp==="maq"){x.partida=v("partida");x.prot=v("prot");}
@@ -1625,7 +1632,7 @@ function edCtxAplicar(f){const tp=f.dataset.tp,i=+f.dataset.i,c=+f.dataset.c,v=n
     else{const ct=S.circ[+alvo];if(ct&&cs&&ct!==cs){if(fix(ct))ct.qtdAmb=+ct.qtdAmb+1;if(fix(cs))cs.qtdAmb=Math.max(0,+cs.qtdAmb-1);else{cs.qtdAmb=Math.max(0,qtdAt(cs)-1);if(fix(ct))ct.qtdAmb=qtdAt(ct)+1;else ct.qtdAmb="";}}
       if(ct)ct.q=qn;}
     if(tp==="tug"){const ct=alvo==="__novo"?S.circ[S.circ.length-1]:S.circ[+alvo];if(ct)ct.pot=num("pot")||ct.pot;}else a.w=num("w")||a.w;}
-  else if(tp==="ch"){const ch=layoutPlanta().chains[i];if(v("acao")==="auto"&&ch)restaurarTrecho(ch);else if(v("acao")==="tudo"){S.guias=[];S.vias={};}else{ED_UNDO.pop();edCtxFechar();return;}}
+  else if(tp==="ch"){const ch=layoutPlanta().chains[i];if(v("acao")==="auto"&&ch)restaurarTrecho(ch);else if(v("acao")==="tudo"){S.guias=[];S.vias={};S.viasNovas=[];}else{ED_UNDO.pop();edCtxFechar();return;}}
   else if(tp==="ent"){S.forn.entLado=v("entLado");S.forn.entPos=num("entPos");S.forn.Lent=num("Lent");}
   edCtxFechar();edFim("Alterações aplicadas.");}
 function edCtxFechar(){const b=edEl("edCtx");if(b){b.hidden=true;b.innerHTML="";}}
@@ -1682,6 +1689,7 @@ function edClick(ev){const sm=ev.target.closest&&ev.target.closest("#edTabD > su
   if(b.dataset.edtool){ED_TOOL=b.dataset.edtool;edAtualizar(true);return;}
   const id=b.id||"";if(!id&&!b.dataset.edrow)return;
   if(id==="edUndo"){const j=ED_UNDO.pop();if(j){S=normalizar(JSON.parse(j));calc();persist();soft();edAtualizar(true);edRender();edToast("Alteração desfeita.");}return;}
+  if(id==="edAtu"){const n=(S.viasNovas||[]).length;S.viasNovas=[];edSnap();calc();const m=aplicarDistancias();persist();soft();edAtualizar(true);edRender();edToast(`Desenho atualizado${n?`: ${n} traçado(s) confirmado(s)`:""}${m?`, ${m} comprimento(s) recalculado(s)`:""}.`);return;}
   if(id==="edMed"){calc();edAtualizar(true);edToast("Medições atualizadas pelo desenho.");return;}
   if(id==="edDist"){const d=edEl("edTabD");if(d){d.open=true;ED_TABAB=true;d.scrollIntoView({block:"nearest"});}return;}
   if(b.dataset.edrow){edSnap();const [k,ix]=b.dataset.edrow.split(":"),v=+b.dataset.v;if(k==="q")S.quadros[+ix].L=v;else if(k==="ent")S.forn.Lent=v;else if(k==="ld")S.circ[+ix].ld=v;else if(k==="lb")S.circ[+ix].lb=v;
@@ -1939,6 +1947,7 @@ function normalizar(d){
   n.orc=Object.assign(b.orc,d.orc||{});if(d.orc&&d.orc.impostos!=null&&!d.orc.trib&&+d.orc.impostos>0)n.orc.trib=null;n.orc.servicos=Array.isArray(d.orc?.servicos)?d.orc.servicos.map(s=>({cat:CAT_SERV[s.cat]?s.cat:"outro",d:String(s.d||""),h:+s.h||0,vh:+s.vh||0})):b.orc.servicos;
   n.estrutura=Object.assign(b.estrutura,d.estrutura||{});if(!NP5419[n.estrutura.np])n.estrutura.np="III";
   n.vias=d.vias&&typeof d.vias==="object"?Object.fromEntries(Object.entries(d.vias).filter(([,v])=>Array.isArray(v)&&v.length>=2).map(([k,v])=>[k,v.map(p=>[+p[0]||0,+p[1]||0])])):{};
+  n.viasNovas=Array.isArray(d.viasNovas)?d.viasNovas.map(String):[];
   n.guias=Array.isArray(d.guias)?d.guias.filter(g=>g&&Array.isArray(g.a)&&Array.isArray(g.b)).map(g=>({a:[+g.a[0]||0,+g.a[1]||0],b:[+g.b[0]||0,+g.b[1]||0]})):[];
   n.aberturas=Array.isArray(d.aberturas)?d.aberturas.map(o=>({modelo:MODELOS_AB[o.tipo==="janela"?"janela":"porta"][o.modelo]?o.modelo:(o.tipo==="janela"?"correr":"giro"),amb:String(o.amb||""),tipo:o.tipo==="janela"?"janela":"porta",parede:["inf","sup","esq","dir"].includes(o.parede)?o.parede:"inf",pos:+o.pos||0,larg:Math.max(0.3,+o.larg||0.9)})):[];
   n.ambientes=Array.isArray(d.ambientes)?d.ambientes.map((a,i)=>{const x=Object.assign({id:`amb-${i+1}`,nome:`Ambiente ${i+1}`,comprimento:0,largura:0,altura:3,lux:300,lm:4000,w:40,uf:0.6,mf:0.8,espTomadas:5,espLum:1.5,infl:"seco",zona:"",saidas:1,x:"",y:""},a,{id:String(a.id||`amb-${i+1}`)});if(!INFL[x.infl])x.infl="seco";if(!ZONAS[x.zona||""])x.zona="";return x;}):[];
