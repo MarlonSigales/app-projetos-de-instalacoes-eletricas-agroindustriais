@@ -2364,32 +2364,106 @@ async function gerarPDF(){
   function simMultifilar(){
     const ms=R.out.filter(o=>o.mp);
     if(!ms.length){const {pp,w}=simPage(A4L,"Diagramas multifilares");T(pp,"Não há motores no projeto: diagramas de força e comando não se aplicam.",60,440,11);carimbo(pp,w,"Multifilar","MUL-01");return;}
-    ms.forEach((o,k)=>{const {pp,w,h}=simPage(A4L,`Força e comando — C${o.i+1} ${o.c.nome}`);const m=o.mp;
-      const xs=[90,120,150].slice(0,o.L.nf),top=h-100;T(pp,"FORÇA",60,top+6,9,FB);
-      xs.forEach((x,i)=>{TC(pp,["L1","L2","L3"][i],x,top-2,8,FB);Ln(pp,x,top-8,x,120,1);});
-      const x0=xs[0]-14,wd=xs[xs.length-1]-xs[0]+28;
-      const blk=(y,lab,sub,fill=rgb(1,1,1))=>{Bx(pp,x0,y,wd,26,{fill,bw:1.2});TC(pp,lab,x0+wd/2,y+10,8,FB);if(sub)T(pp,sub,x0+wd+10,y+9,7.5);};
-      let y=top-60;
-      blk(y,o.prot==="fus"?"F1-F3":o.prot==="djm"?"Q1":"Q1",o.prot==="fus"?m.fusTxt:o.prot==="djm"?m.djmTxt:`Disjuntor ${o.L.polos}P ${o.inom} A curva ${o.curva}`);y-=50;
-      if(o.dr){blk(y,"DR",`IDR ${o.dr.polos}P ${o.dr.In} A ${o.dr.idn} mA tipo ${o.dr.tipo}`);y-=50;}
-      if(o.partida==="direta"||o.partida==="yd"){blk(y,"K1",`K1 ${m.cont[0].std} A AC-3 (linha)`,LG);y-=50;}
-      if(m.rele&&m.rele.f){blk(y,"F7",m.releTxt);y-=50;}
-      if(o.partida==="soft"){blk(y,"SOFT",`Soft-starter ${m.soft.std} A`,LG);y-=50;}
-      if(o.partida==="inv"){blk(y,"INV",`Inversor ${m.inv.std} A`,LG);y-=50;}
-      const mx=xs[Math.floor(xs.length/2)];Ci(pp,mx,95,22,{fill:rgb(1,1,1),bw:1.4});TC(pp,"M",mx,97,11,FB);TC(pp,o.L.nf===3?"3~":"1~",mx,84,8);
-      T(pp,`${fmt(m.cv,m.cv%1?1:0)} cv / ${fmt(m.kW,2)} kW · ${o.vref} V · In ${fmt(m.In1,1)} A`,mx+30,92,8);
-      if(o.partida==="yd"){Bx(pp,300,y+10,70,24,{fill:LG});TC(pp,`K2 ${m.cont[1].std} A`,335,y+19,7.5,FB);Bx(pp,300,y-30,70,24,{fill:LG});TC(pp,`K3 ${m.cont[2].std} A`,335,y-21,7.5,FB);
-        Ln(pp,x0+wd,y+22,300,y+22,0.8,INK,[3,2]);Ln(pp,370,y+22,400,y+22,0.8);T(pp,"K2: triângulo (W2-U2-V2)",405,y+19,7.5);Ln(pp,370,y-18,400,y-18,0.8);T(pp,"K3: estrela (fecha U2-V2-W2)",405,y-21,7.5);}
-      // comando
-      const cx=w-300;T(pp,`COMANDO — ${S.par.bobina}`,cx-40,top+6,9,FB);Ln(pp,cx,top-8,cx,110,1);TC(pp,"L",cx,top-2,8,FB);TC(pp,"N",cx,100,8,FB);
-      const el=(y,lab,fill=rgb(1,1,1))=>{Bx(pp,cx-45,y,90,18,{fill,bw:1});TC(pp,lab,cx,y+6,7,FB);};
-      let yc=top-50;el(yc,"F0 fusível cmd.");yc-=34;
-      if(o.partida==="soft"||o.partida==="inv"){el(yc,"S0 emergência NF");yc-=34;el(yc,"S1 liga → DI1");yc-=34;el(yc,o.partida==="inv"?"Inversor (DI)":"Soft (DI)",LG);
-        TW(pp,"Liga/desliga e emergência pelas entradas digitais do equipamento; parametrizar corrente nominal, rampas e proteções conforme o manual do fabricante.",cx+60,top-220,180,7.5);}
-      else{if(m.rele&&m.rele.f){el(yc,"F7 95-96 NF");yc-=34;}el(yc,"S0 desliga NF");yc-=34;el(yc,"S1 liga NA");Bx(pp,cx+60,yc,70,18);TC(pp,"K1 13-14 selo",cx+95,yc+6,7,FB);Ln(pp,cx+45,yc+9,cx+60,yc+9,0.8);yc-=34;
-        if(o.partida==="yd"){el(yc,"KT temporizador",LG);yc-=34;el(yc,"K1 · K2 · K3 bobinas",LG);TW(pp,"Sequência: S1 energiza K1 e K3 (estrela) e KT; após o tempo, KT desliga K3 e liga K2 (triângulo). K2 e K3 com intertravamento elétrico (contatos NF).",cx+60,top-300,180,7.5);}
-        else el(yc,"K1 bobina A1-A2",LG);}
-      T(pp,"Diagrama esquemático gerado dos cálculos: conferir bornes, numeração e intertravamentos.",60,40,8,FB,RED);carimbo(pp,w,`Força e comando C${o.i+1}`,`MUL-${String(k+1).padStart(2,"0")}`);});
+    const CF=rgb(0.78,0.1,0.1),CN=rgb(0.1,0.3,0.75),CPE=rgb(0.1,0.55,0.25);
+    ms.forEach((o,k)=>{
+      const m=o.mp,par=o.partida,prot=o.prot,nf=Math.max(1,Math.min(3,o.L.nf||3)),yd=par==="yd"&&nf===3,temRele=par!=="inv"&&prot!=="djm"&&m.rele;
+      const {pp,w,h}=simPage(A3L,`Força e comando — C${o.i+1} ${o.c.nome} (${PARTIDAS[par]||par}, ${PROTS[prot]||prot})`);
+      const W_=(x1,y1,x2,y2,c=INK,wd=0.9,d)=>Ln(pp,x1,y1,x2,y2,wd,c,d),dot=(x,y)=>Ci(pp,x,y,1.8,{fill:INK,bc:INK});
+      const TR=(s_,x,y,sz=7,f=FB,c=INK)=>T(pp,s_,x-f.widthOfTextAtSize(pt(s_),sz),y,sz,f,c);
+      // contato vertical (ya em cima, yb embaixo): NA ou NF; disjuntor (x), botão, emergência e temporizado
+      const ct=(x,ya,yb,tipo,o_={})=>{const mm=(ya+yb)/2,g=9;W_(x,ya,x,mm+g);W_(x,mm-g,x,yb);
+        if(tipo==="NA")W_(x,mm-g,x-7,mm+g-2,INK,1.1);else{W_(x,mm-g,x+7,mm+g+1,INK,1.1);W_(x,mm+g,x+8,mm+g,INK,0.9);}
+        if(o_.disj){W_(x-3,mm+g-3,x+3,mm+g+3,INK,0.9);W_(x-3,mm+g+3,x+3,mm+g-3,INK,0.9);}
+        if(o_.bot||o_.emerg){const bx=tipo==="NA"?x-3.5:x+3.5;W_(bx,mm+1,x-17,mm+1,INK,0.6,[2,1.5]);
+          if(o_.emerg){for(let i=0;i<8;i++){const a=Math.PI/2+Math.PI*i/8,b=Math.PI/2+Math.PI*(i+1)/8;W_(x-17+5*Math.cos(a),mm+1+5*Math.sin(a),x-17+5*Math.cos(b),mm+1+5*Math.sin(b),INK,0.9);}}
+          else{W_(x-17,mm-3,x-17,mm+5);W_(x-17,mm+5,x-20,mm+5);W_(x-17,mm-3,x-20,mm-3);}}
+        if(o_.temp){for(let i=0;i<6;i++){const a=Math.PI*i/6,b=Math.PI*(i+1)/6;W_(x-12+4*Math.cos(a),mm+3+4*Math.sin(a),x-12+4*Math.cos(b),mm+3+4*Math.sin(b),INK,0.7);}W_(x-12,mm+3,x-4,mm+3,INK,0.6);}
+        if(o_.t1)T(pp,o_.t1,x+3,mm+g+1,5.5,F,MUT);if(o_.t2)T(pp,o_.t2,x+3,mm-g-6,5.5,F,MUT);if(o_.nome)TR(o_.nome,x-(o_.bot||o_.emerg||o_.temp?23:10),mm-2,7);return mm;};
+      const bob=(x,y,nome,desc)=>{Bx(pp,x-9,y-6,18,12,{bw:1.1,fill:rgb(1,1,1)});T(pp,"A1",x+11,y+5,5.5,F,MUT);T(pp,"A2",x+11,y-10,5.5,F,MUT);TR(nome,x-12,y-2,7);if(desc)TR(desc,x-12,y-10,5.5,F,MUT);};
+      const lamp=(x,y,nome,desc)=>{Ci(pp,x,y,6,{fill:rgb(1,1,1),bw:1});W_(x-4.2,y-4.2,x+4.2,y+4.2);W_(x-4.2,y+4.2,x+4.2,y-4.2);T(pp,"X1",x+8,y+5,5.5,F,MUT);T(pp,"X2",x+8,y-10,5.5,F,MUT);TR(nome,x-9,y-2,7);if(desc)TR(desc,x-9,y-10,5.5,F,MUT);};
+      // ---- barramentos
+      const yb={L1:h-100,L2:h-114,L3:h-128,N:h-142,PE:h-156},xb0=56,xb1=w-60;
+      [["L1",CF],["L2",CF],["L3",CF],["N",CN],["PE",CPE]].forEach(([n,c])=>{if((n==="L2"&&nf<2)||(n==="L3"&&nf<3))return;W_(xb0,yb[n],xb1,yb[n],c,1,n==="PE"?[4,2]:undefined);Ci(pp,xb0-4,yb[n],3,{fill:rgb(1,1,1),bc:c});T(pp,n,xb0-24,yb[n]-3,7,FB,c);});
+      // ---- FORÇA
+      const px=[110,140,170].slice(0,nf),tag=["1","3","5"],tagb=["2","4","6"];T(pp,"CIRCUITO DE FORÇA",60,yb.PE-24,9,FB);
+      px.forEach((x,i)=>{const yy=yb[["L1","L2","L3"][i]];dot(x,yy);W_(x,yy,x,yb.PE-30);});
+      let y=yb.PE-30;const linkH=(ys,xs)=>W_(xs[0]-8,ys,xs[xs.length-1]-4,ys,INK,0.6,[2,1.5]);
+      const etapa=(fn,alt=46)=>{const ya=y,yb_=y-alt;fn(ya,yb_);y=yb_;};
+      const espec=[];
+      // proteção
+      if(prot==="fus"){etapa((ya,yb_)=>{px.forEach((x,i)=>{const mm=(ya+yb_)/2;W_(x,ya,x,mm+9);Bx(pp,x-3.5,mm-9,7,18,{bw:0.9,fill:rgb(1,1,1)});W_(x,mm+9,x,mm-9,INK,0.6);W_(x,mm-9,x,yb_);});TR(`F1${nf>1?"–F"+nf:""}`,px[0]-10,(ya+yb_)/2-2,7);});espec.push([`F1${nf>1?"–F"+nf:""}`,m.fusTxt||"fusíveis"]);}
+      else{etapa((ya,yb_)=>{let mm;px.forEach((x,i)=>{mm=ct(x,ya,yb_,"NA",{disj:true,t1:tag[i],t2:tagb[i]});});linkH(mm,px);
+        if(prot==="djm"){px.forEach(x=>{W_(x+4,mm-2,x+8,mm-2,INK,0.6);W_(x+8,mm-2,x+8,mm+3,INK,0.6);W_(x+8,mm+3,x+11,mm+3,INK,0.6);});}TR("Q1",px[0]-10,mm-2,7);});
+        espec.push(["Q1",prot==="djm"?m.djmTxt:`disjuntor ${o.L.polos}P ${o.inom} A curva ${o.curva}`]);}
+      if(o.dr){etapa((ya,yb_)=>{const mm=(ya+yb_)/2;px.forEach(x=>{W_(x,ya,x,yb_);});Bx(pp,px[0]-12,mm-9,px[px.length-1]-px[0]+24,18,{bw:1,fill:rgb(1,1,1)});TC(pp,"IDR",(px[0]+px[px.length-1])/2,mm-3,7,FB);TR("F0",px[0]-16,mm-2,7);},40);espec.push(["F0",`interruptor DR ${o.dr.polos}P ${o.dr.In} A ${o.dr.idn} mA tipo ${o.dr.tipo}`]);}
+      const yTap=y-8; // derivação do triângulo (estrela-triângulo)
+      if(yd){W_(px[0],y,px[0],yTap);px.forEach(x=>W_(x,y,x,yTap));y=yTap;}
+      const kNome=par==="soft"||par==="inv"?null:"K1";
+      if(kNome){etapa((ya,yb_)=>{let mm;px.forEach((x,i)=>{mm=ct(x,ya,yb_,"NA",{t1:tag[i],t2:tagb[i]});});linkH(mm,px);TR("K1",px[0]-10,mm-2,7);});espec.push(["K1",`contator ${m.cont[0]?.std??"—"} A AC-3${yd?" (linha)":""}`]);}
+      if(temRele){etapa((ya,yb_)=>{const mm=(ya+yb_)/2;px.forEach((x,i)=>{W_(x,ya,x,mm+6);W_(x,mm+6,x+4,mm+6);W_(x+4,mm+6,x+4,mm-6);W_(x+4,mm-6,x,mm-6);W_(x,mm-6,x,yb_);T(pp,tagb[i],x+3,yb_+2,5.5,F,MUT);});
+        Bx(pp,px[0]-8,mm-11,px[px.length-1]-px[0]+20,22,{bw:0.7,bc:MUT});TR(prot==="fus"?"F4":"F1",px[0]-12,mm-2,7);},44);espec.push([prot==="fus"?"F4":"F1",m.releTxt]);}
+      if(par==="soft"||par==="inv"){etapa((ya,yb_)=>{const x0=px[0]-16,x1=px[px.length-1]+16;Bx(pp,x0,yb_+8,x1-x0,ya-yb_-16,{bw:1.2,fill:LG});px.forEach((x,i)=>{W_(x,ya,x,ya-8);W_(x,yb_+8,x,yb_);
+          T(pp,par==="soft"?["1L1","3L2","5L3"][i]:["R","S","T"][i],x-5,ya-16,5.5,F,MUT);T(pp,par==="soft"?["2T1","4T2","6T3"][i]:["U","V","W"][i],x-5,yb_+11,5.5,F,MUT);});
+          TC(pp,par==="soft"?"SOFT-STARTER":"INVERSOR",(x0+x1)/2,(ya+yb_)/2-3,7,FB);TR(par==="soft"?"U1":"U1",x0-4,(ya+yb_)/2-2,7);},62);espec.push(["U1",par==="soft"?`soft-starter ${m.soft?.std??"—"} A (rampas e limite de corrente)`:`inversor de frequência ${m.inv?.std??"—"} A (proteção de sobrecarga parametrizada)`]);}
+      // motor
+      const yM=Math.max(150,y-46),cxm=px[Math.floor(px.length/2)];
+      px.forEach((x,i)=>{W_(x,y,x,yM+28);W_(x,yM+28,cxm+(i-(px.length-1)/2)*12,yM+20);T(pp,["U1","V1","W1"][i],x+3,yM+30,5.5,FB,MUT);});
+      Ci(pp,cxm,yM,22,{fill:rgb(1,1,1),bw:1.3});TC(pp,"M",cxm,yM+1,11,FB);TC(pp,nf===3?"3~":"1~",cxm,yM-10,7);TR("M1",cxm-26,yM-2,8);
+      const xpe=px[px.length-1]+40;dot(xpe,yb.PE);W_(xpe,yb.PE,xpe,yM-14,CPE,0.9,[4,2]);W_(xpe,yM-14,cxm+18,yM-14,CPE,0.9,[4,2]);T(pp,"PE",xpe+3,yM-12,5.5,FB,CPE);
+      T(pp,`${fmt(m.cv,m.cv%1?1:0)} cv · ${fmt(m.kW,2)} kW · ${o.vref} V · In ${fmt(m.In1,1)} A`,cxm-60,yd?yM-150:yM-40,7,F,INK);
+      // estrela-triângulo: K2 (triângulo) derivado da linha e K3 (estrela) fechando U2-V2-W2
+      if(yd){const k2=[260,290,320],k3=[400,430,460],lv=[yM-56,yM-66,yM-76]; // níveis de U2, V2, W2
+        px.forEach((x,i)=>{dot(x,yTap);W_(x,yTap,k2[i],yTap);});
+        let mm;k2.forEach((x,i)=>{W_(x,yTap,x,yTap-12);mm=ct(x,yTap-12,yTap-58,"NA",{t1:tag[i],t2:tagb[i]});});linkH(mm,k2);TR("K2",k2[0]-10,mm-2,7);
+        // saídas do motor U2 V2 W2 (por baixo)
+        px.forEach((x,i)=>{const xm=cxm+(i-1)*12;W_(xm,yM-20,xm,lv[i]);dot(xm,lv[i]);W_(xm,lv[i],k3[2]+10,lv[i]);T(pp,["U2","V2","W2"][i],xm+3,yM-30,5.5,FB,MUT);});
+        // K2: L1→W2, L2→U2, L3→V2
+        [2,0,1].forEach((lvl,i)=>{W_(k2[i],yTap-58,k2[i],lv[lvl]);dot(k2[i],lv[lvl]);});
+        let m3;k3.forEach((x,i)=>{W_(x,lv[i],x,lv[i]-6);dot(x,lv[i]);m3=ct(x,lv[i]-6,lv[2]-52,"NA",{t1:tag[i],t2:tagb[i]});});linkH(m3,k3);TR("K3",k3[0]-10,m3-2,7);W_(k3[0],lv[2]-52,k3[2],lv[2]-52,INK,1);
+        espec.push(["K2",`contator ${m.cont[1]?.std??"—"} A AC-3 (triângulo)`],["K3",`contator ${m.cont[2]?.std??"—"} A AC-3 (estrela)`],["KT","relé temporizador estrela-triângulo (≈ 5 a 10 s)"]);}
+      // ---- COMANDO
+      const bob_=String(S.par.bobina||"220 Vca"),cc=/cc/i.test(bob_),v380=/380/.test(bob_),xc=640,yTop=yb.PE-30,yN=150;
+      T(pp,`CIRCUITO DE COMANDO — ${bob_}`,xc-30,yb.PE-24,9,FB);
+      const ref=cc||/24|110|127/.test(bob_)&&!/220/.test(bob_)?"T1":null;
+      dot(xc,yb.L1);W_(xc,yb.L1,xc,yTop,CF);
+      const xr=w-90,ref2=v380&&nf>1?"L2":"N";dot(xr,yb[ref2]);W_(xr,yb[ref2],xr,yN,ref2==="N"?CN:CF);W_(xc,yN,xr,yN,ref2==="N"?CN:CF,1);T(pp,ref2,xr+4,yN-3,7,FB,ref2==="N"?CN:CF);
+      let yc=yTop;const serie=(fn,alt=40)=>{const a=yc,b=yc-alt;fn(a,b);yc=b;};
+      serie((a,b)=>ct(xc,a,b,"NA",{disj:true,nome:"Q2",t1:"1",t2:"2"}));espec.push(["Q2",`disjuntor de comando 1P 2 A curva C${ref?` + ${cc?"fonte":"transformador"} de comando ${bob_}`:""}`]);
+      const yQ2=yc; // depois do Q2: alimenta a sinalização de falha
+      if(temRele)serie((a,b)=>ct(xc,a,b,"NF",{nome:prot==="fus"?"F4":"F1",t1:"95",t2:"96"}));
+      if(prot==="djm")serie((a,b)=>ct(xc,a,b,"NA",{nome:"Q1",t1:"13",t2:"14"}));
+      if(par==="soft"||par==="inv")serie((a,b)=>ct(xc,a,b,"NF",{nome:"U1",t1:"falha",t2:""}));
+      serie((a,b)=>ct(xc,a,b,"NF",{emerg:true,nome:"S0",t1:"11",t2:"12"}));
+      serie((a,b)=>ct(xc,a,b,"NF",{bot:true,nome:"S1",t1:"21",t2:"22"}));
+      espec.push(["S0","botão de emergência cogumelo com trava, NF (NR-12)"],["S1","botoeira desliga, NF (vermelha)"],["S2","botoeira liga, NA (verde)"]);
+      const yA=yc;dot(xc,yA);
+      // liga com selo
+      const kc=par==="soft"||par==="inv"?"KA1":"K1";
+      serie((a,b)=>{ct(xc,a,b,"NA",{bot:true,nome:"S2",t1:"13",t2:"14"});const xs=xc+44;dot(xc,a);dot(xc,b);W_(xc,a,xs,a);W_(xc,b,xs,b);ct(xs,a,b,"NA",{t1:"13",t2:"14"});T(pp,kc,xs+10,(a+b)/2-2,7,FB);},44);
+      const yB=yc;dot(xc,yB);
+      const ramal=(x,itens)=>{let yy=yB;if(x!==xc){dot(xc,yB);W_(xc,yB,x,yB);}itens.forEach(([fn,alt])=>{fn(yy,yy-alt);yy-=alt;});W_(x,yy,x,yN);dot(x,yN);};
+      const lampadas=[];
+      if(yd){ramal(xc,[[(a,b)=>{W_(xc,a,xc,b+14);bob(xc,b+8,"K1","linha");W_(xc,b+2,xc,b);},60]]);
+        ramal(xc+90,[[(a,b)=>{W_(xc+90,a,xc+90,b+14);bob(xc+90,b+8,"KT","tempor.");W_(xc+90,b+2,xc+90,b);},60]]);
+        ramal(xc+190,[[(a,b)=>ct(xc+190,a,b,"NF",{temp:true,nome:"KT",t1:"15",t2:"16"}),40],[(a,b)=>ct(xc+190,a,b,"NF",{nome:"K2",t1:"21",t2:"22"}),40],[(a,b)=>{W_(xc+190,a,xc+190,b+14);bob(xc+190,b+8,"K3","estrela");W_(xc+190,b+2,xc+190,b);},40]]);
+        ramal(xc+290,[[(a,b)=>ct(xc+290,a,b,"NA",{temp:true,nome:"KT",t1:"15",t2:"18"}),40],[(a,b)=>ct(xc+290,a,b,"NF",{nome:"K3",t1:"21",t2:"22"}),40],[(a,b)=>{W_(xc+290,a,xc+290,b+14);bob(xc+290,b+8,"K2","triângulo");W_(xc+290,b+2,xc+290,b);},40]]);
+        lampadas.push([xc+380,"K2","43","44","H1","em regime"]);}
+      else if(par==="soft"||par==="inv"){ramal(xc,[[(a,b)=>{W_(xc,a,xc,b+14);bob(xc,b+8,"KA1","aux.");W_(xc,b+2,xc,b);},60]]);
+        // sinal de partida para o equipamento: contato de KA1 na entrada digital
+        const xd=xc+130;Bx(pp,xd-40,yB-120,80,30,{bw:1,fill:LG});TC(pp,par==="soft"?"U1 — entrada RUN":"U1 — DI1 (liga)",xd,yB-103,6.5,FB);TC(pp,"e COM do equipamento",xd,yB-112,5.5,F,MUT);
+        ct(xd,yB-40,yB-90,"NA",{nome:"KA1",t1:"23",t2:"24"});W_(xd,yB-40,xd,yB-30);T(pp,"COM",xd+4,yB-30,5.5,F,MUT);W_(xd,yB-90,xd,yB-90);
+        lampadas.push([xc+250,"KA1","43","44","H1","em operação"]);}
+      else{ramal(xc,[[(a,b)=>{W_(xc,a,xc,b+14);bob(xc,b+8,"K1","");W_(xc,b+2,xc,b);},60]]);lampadas.push([xc+120,"K1","23","24","H1","ligado"]);}
+      lampadas.forEach(([x,kk,t1,t2,hn,hd])=>{ramal(x,[[(a,b)=>ct(x,a,b,"NA",{nome:kk,t1,t2}),44],[(a,b)=>{W_(x,a,x,b+14);lamp(x,b+8,hn,hd);W_(x,b+2,x,b);},50]]);});
+      // sinalização de falha (relé térmico, disjuntor-motor ou equipamento)
+      {const xf=xr-60,nm=temRele?(prot==="fus"?"F4":"F1"):prot==="djm"?"Q1":(par==="soft"||par==="inv")?"U1":null;
+        if(nm){dot(xc,yQ2);W_(xc,yQ2,xf,yQ2);ct(xf,yQ2,yQ2-44,"NA",{nome:nm,t1:temRele?"97":"falha",t2:temRele?"98":""});W_(xf,yQ2-44,xf,yQ2-60);lamp(xf,yQ2-66,"H2","falha");W_(xf,yQ2-72,xf,yN);dot(xf,yN);
+          espec.push(["H1/H2","sinaleiros verde (operação) e vermelho (falha), "+bob_]);}}
+      // ---- lista de componentes
+      let ly=118;const lx=60;T(pp,"Componentes",lx,ly,8.5,FB);ly-=11;
+      espec.forEach(([n,t],i)=>{const cx_=lx+(i%2)*420,cy_=ly-Math.floor(i/2)*9.5;T(pp,n,cx_,cy_,6.5,FB);T(pp,String(t||"").slice(0,90),cx_+34,cy_,6.5,F,INK);});
+      T(pp,"Diagrama gerado dos cálculos (simbologia IEC 60617): conferir bornes, numeração e intertravamentos com os catálogos dos fabricantes.",60,32,7.5,FB,RED);
+      carimbo(pp,w,`Força e comando C${o.i+1}`,`MUL-${String(k+1).padStart(2,"0")}`);});
   }
   // ---- Detalhes
   function simDetalhes(){
