@@ -34,12 +34,12 @@ body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:
 h1,h2,h3{font-family:var(--display);letter-spacing:.01em;text-wrap:balance;margin:0}
 h1{font-size:34px;font-weight:700;line-height:1.05}
 h2{font-size:26px;font-weight:600;line-height:1.1}
-h3{font-size:18px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+h3{font-size:18px;font-weight:600;letter-spacing:.02em;color:var(--muted)}
 p{margin:0}
 .mono,.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
 /* cabeçalho em forma de carimbo */
 .top{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end;padding-block:22px 16px;border-bottom:2px solid var(--ink);margin-bottom:18px}
-.top .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.top .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--muted);margin-bottom:6px}
 .top .lead{color:var(--muted);max-width:70ch;margin-top:6px}
 .stamp{display:grid;grid-template-columns:auto auto;border:1.5px solid var(--ink);font-size:12px;background:var(--sheet)}
 .stamp div{padding:4px 10px;border-bottom:1px solid var(--line)}
@@ -108,7 +108,7 @@ input[type=number]{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .tbl{overflow-x:auto;border:1px solid var(--line)}
 table{border-collapse:collapse;width:100%;font-size:12.5px}
 th,td{padding:5px 7px;border-bottom:1px solid var(--line-2);text-align:left;white-space:nowrap;vertical-align:middle}
-th{font-family:var(--mono);font-weight:500;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:var(--sheet-2);position:sticky;top:0}
+th{font-family:var(--mono);font-weight:500;font-size:10.5px;letter-spacing:.02em;color:var(--muted);background:var(--sheet-2);position:sticky;top:0}
 td.r,th.r{text-align:right}
 td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
 tr.sub td{background:var(--sheet-2);font-weight:600}
