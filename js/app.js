@@ -139,6 +139,10 @@ function quadrosEmArvore(){const out=[];const vis=new Set();const rec=(q)=>{if(v
 // grade fechada de luminárias: colunas = ⌈√(N·C/L)⌉ (sempre para cima, nunca subdimensiona) e linhas = N/colunas;
 // se as linhas não derem inteiras, soma uma luminária e recalcula (colunas limitadas a N)
 function gradeLum(n,L,W){for(let N=Math.max(1,n);;N++){const c=Math.min(N,Math.max(1,Math.ceil(Math.sqrt(N*L/W)-1e-9)));if(N%c===0)return {n:N,cols:c,rows:N/c};}}
+// pontos de um ambiente divididos entre os circuitos do mesmo tipo: quem tem "qtdAmb" fica com essa quantidade; o primeiro sem ela, com o restante
+function qtdNoAmbiente(c,calcAmb){const tot=c.tipo==="ilum"?calcAmb.luminarias:calcAmb.tomadas,irm=S.circ.filter(x=>x.ambiente===c.ambiente&&x.tipo===c.tipo);
+  const fix=x=>x.qtdAmb!==""&&x.qtdAmb!=null&&isFinite(+x.qtdAmb);if(fix(c))return Math.max(0,Math.min(tot,Math.round(+c.qtdAmb)));
+  const usados=irm.filter(fix).reduce((s,x)=>s+Math.max(0,Math.round(+x.qtdAmb)),0),primeiro=irm.find(x=>!fix(x));return primeiro===c?Math.max(0,tot-usados):0;}
 function calcularAmbiente(a){
   const L=Math.max(0,+a.comprimento||0),W=Math.max(0,+a.largura||0),H=Math.max(0,+a.altura||0);
   const area=L*W,perimetro=2*(L+W),hm=Math.max(0.5,H-0.8);
@@ -202,7 +206,7 @@ function calc(){
   const out=S.circ.map((c,i)=>{
     const L=LIG[c.lig]||LIG["F+N"];const itSemN=S.forn.aterr==="IT"&&L.n;const ok=ligOK(c.lig,sys)&&!itSemN;
     const ambiente=S.ambientes.find(a=>a.id===c.ambiente),calcAmb=ambiente?calcularAmbiente(ambiente):null;
-    const qtd=calcAmb&&(c.tipo==="ilum"||c.tipo==="tug")?(c.tipo==="ilum"?calcAmb.luminarias:calcAmb.tomadas):(+c.qtd||0),pot=calcAmb&&c.tipo==="ilum"?(+ambiente.w||0):(+c.pot||0),fp=Math.min(Math.max(+c.fp||1,0.1),1),eta=Math.min(Math.max(+c.eta||1,0.1),1);
+    const qtd=calcAmb&&(c.tipo==="ilum"||c.tipo==="tug")?qtdNoAmbiente(c,calcAmb):(+c.qtd||0),pot=calcAmb&&c.tipo==="ilum"?(+ambiente.w||0):(+c.pot||0),fp=Math.min(Math.max(+c.fp||1,0.1),1),eta=Math.min(Math.max(+c.eta||1,0.1),1);
     let P,Sva;
     if(c.tipo==="motor"){P=qtd*pot*(c.unid==="kW"?1000:735.5)/eta;Sva=P/fp;}
     else if(c.unid==="VA"){Sva=qtd*pot;P=Sva*fp;}
@@ -1418,14 +1422,13 @@ function pendencias(){
   ];
 }
 /* ============================================================
-   EDITOR DOS DESENHOS — arrastar ambientes, quadros, entrada, aberturas e máquinas; distâncias recalculadas
+   EDITOR DOS DESENHOS — barra fixa (estilo Paint), janela flutuante (picture-in-picture), menu do botão direito
    ============================================================ */
 // comprimentos a partir do desenho: alimentadores, entrada e, por circuito, trecho horizontal (até o ponto mais distante) e baixada
 function distanciasDesenho(){const P=layoutPlanta(),out={quadros:[],ent:null,circ:[]};
   P.alim.forEach(a=>{let L=0;for(let k=1;k<a.pts.length;k++)L+=Math.abs(a.pts[k][0]-a.pts[k-1][0])+Math.abs(a.pts[k][1]-a.pts[k-1][1]);out.quadros.push({q:a.q,L:Math.max(1,Math.ceil(L*2)/2)});});
   if(P.entRota)out.ent=Math.max(1,Math.ceil(P.entRota.L));
   R.out.forEach(o=>{const ls=P.lig.filter(l=>l.c===o.i+1);if(!ls.length)return;const Q=P.quad.find(r=>r.q.nome===o.c.q);if(!Q)return;
-    // grafo dos trechos do circuito; distância do quadro até o ponto mais afastado
     const key=p=>Math.round(p[0]*4)+","+Math.round(p[1]*4),adj=new Map(),add=(a,b,d)=>{if(!adj.has(a))adj.set(a,[]);adj.get(a).push([b,d]);};
     ls.forEach(l=>{for(let k=1;k<l.pts.length;k++){const a=key(l.pts[k-1]),b=key(l.pts[k]),d=Math.abs(l.pts[k][0]-l.pts[k-1][0])+Math.abs(l.pts[k][1]-l.pts[k-1][1]);add(a,b,d);add(b,a,d);}});
     const s0=key([Q.x,Q.y]),dist=new Map([[s0,0]]),fila=[s0];while(fila.length){fila.sort((u,v)=>dist.get(u)-dist.get(v));const u=fila.shift();(adj.get(u)||[]).forEach(([v,d])=>{const nd=dist.get(u)+d;if(!dist.has(v)||nd<dist.get(v)){dist.set(v,nd);fila.push(v);}});}
@@ -1436,95 +1439,163 @@ function distanciasDesenho(){const P=layoutPlanta(),out={quadros:[],ent:null,cir
 function aplicarDistancias(){const d=distanciasDesenho();let n=0;
   d.quadros.forEach(({q,L})=>{if(Math.abs((+q.L||0)-L)>0.01){q.L=L;n++;}});if(d.ent!=null&&Math.abs((+S.forn.Lent||0)-d.ent)>0.01){S.forn.Lent=d.ent;n++;}
   d.circ.forEach(({o,ld,lb})=>{const c=S.circ[o.i];if(!c)return;if(Math.abs((+c.ld||0)-ld)>0.01||Math.abs((+c.lb||0)-lb)>0.01){c.ld=ld;c.lb=lb;n++;}});return n;}
-// ---- ferramentas de desenho do editor: cada elemento desenhado vira dado do projeto e realimenta os cálculos
-let ED_TOOL="sel",ED_UNDO=[],ED_NOVO=null;
-const ED_TOOLS=[["sel","Selecionar / arrastar"],["amb","Ambiente (arraste um retângulo)"],["porta","Porta"],["janela","Janela"],["quadro","Quadro"],["maq","Máquina (motor)"],["tue","Ponto de uso específico"],["tug","Tomada (TUG)"],["lum","Luminária"],["del","Apagar"]];
+let ED_TOOL="sel",ED_UNDO=[],ED_NOVO=null,EDT=null,PIP=null,ED_FLOAT=false;
+const edDoc=()=>PIP?PIP.document:document,edEl=id=>edDoc().getElementById(id);
+const ED_TOOLS=[["sel","Selecionar e arrastar","M5 3l13 8-6 1 4 7-2 1-4-7-5 4z"],["amb","Ambiente — arraste um retângulo","M3 5h18v14H3z"],["porta","Porta — clique perto da parede","M4 20V4h9v16M13 4c5 0 7 4 7 8"],
+  ["janela","Janela — clique perto da parede","M3 9h18M3 12h18M3 15h18"],["quadro","Quadro — clique perto da parede","M5 4h14v16H5zM5 4l14 16"],["maq","Máquina (motor)","M12 3a9 9 0 1 0 .01 0zM8 16V8l4 5 4-5v8"],
+  ["tue","Ponto de uso específico","M6 18l6-12 6 12zM12 18v3"],["tug","Tomada (TUG)","M6 18l6-12 6 12z"],["lum","Luminária","M3 9h18v6H3zM12 12m-2 0a2 2 0 1 0 4 0 2 2 0 1 0-4 0"],["del","Apagar","M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"]];
 function edSnap(){ED_UNDO.push(JSON.stringify(S));if(ED_UNDO.length>30)ED_UNDO.shift();}
-function edFim(msg){calc();if(S.par.distAuto)aplicarDistancias();persist();render(true);if(msg)toast(msg);}
+function edFim(msg){calc();if(S.par.distAuto)aplicarDistancias();persist();soft();edAtualizar(true);if(!PIP)render(true);if(msg)edToast(msg);}
+function edToast(m){if(PIP){const t=edEl("edMsg");if(t){t.textContent=m;t.style.opacity=1;clearTimeout(edToast.t);edToast.t=setTimeout(()=>t.style.opacity=0,3500);}}else toast(m);}
 function ambEm(x,y){return posAmbientes().find(r=>r.L>0&&r.W>0&&x>=r.x-0.05&&x<=r.x+r.L+0.05&&y>=r.y-0.05&&y<=r.y+r.W+0.05);}
-function ambPerto(x,y){const ps=posAmbientes().filter(r=>r.L>0&&r.W>0);let b=null,bd=Infinity;ps.forEach(r=>{const dx=Math.max(r.x-x,0,x-(r.x+r.L)),dy=Math.max(r.y-y,0,y-(r.y+r.W)),d=Math.hypot(dx,dy);if(d<bd){bd=d;b=r;}});return b;}
-function quadroDoAmbiente(r){const P=layoutPlanta();const q=P.quad.find(z=>z.x>=r.x-0.3&&z.x<=r.x+r.L+0.3&&z.y>=r.y-0.3&&z.y<=r.y+r.W+0.3);
+function ambPerto(x,y){let b=null,bd=Infinity;posAmbientes().filter(r=>r.L>0&&r.W>0).forEach(r=>{const d=Math.hypot(Math.max(r.x-x,0,x-(r.x+r.L)),Math.max(r.y-y,0,y-(r.y+r.W)));if(d<bd){bd=d;b=r;}});return b;}
+function quadroDoAmbiente(r){const P=layoutPlanta(),q=P.quad.find(z=>z.x>=r.x-0.3&&z.x<=r.x+r.L+0.3&&z.y>=r.y-0.3&&z.y<=r.y+r.W+0.3);
   if(q)return q.q.nome;let b=P.quad[0],bd=Infinity;P.quad.forEach(z=>{const d=Math.abs(z.x-(r.x+r.L/2))+Math.abs(z.y-(r.y+r.W/2));if(d<bd){bd=d;b=z;}});return b?b.q.nome:S.quadros[0].nome;}
+function novoQuadro(x,y,pai){let n=S.quadros.length,nm;do nm="QD-"+n++;while(S.quadros.some(q=>q.nome===nm));const P=layoutPlanta(),w_=P.amb.length?paredeMaisProxima(P,x,y):null;
+  S.quadros.push({nome:nm,L:10,met:"B1",pai:pai||S.quadros[0].nome,infl:"seco",x:w_?Math.round(w_.x*100)/100:x,y:w_?Math.round(w_.y*100)/100:y});return nm;}
 function edFerramenta(x,y){const r=ambEm(x,y),rp=r||ambPerto(x,y),t=ED_TOOL;
-  if(t==="porta"||t==="janela"){if(!rp)return toast("Desenhe um ambiente primeiro.");edSnap();
-    // parede mais próxima do clique
+  if(t==="porta"||t==="janela"){if(!rp)return edToast("Desenhe um ambiente primeiro.");edSnap();
     const ds=[["inf",Math.abs(y-rp.y)],["sup",Math.abs(y-(rp.y+rp.W))],["esq",Math.abs(x-rp.x)],["dir",Math.abs(x-(rp.x+rp.L))]].sort((a,b)=>a[1]-b[1])[0][0],hz=ds==="inf"||ds==="sup",larg=t==="porta"?0.9:1.5,lim=hz?rp.L:rp.W;
-    S.aberturas.push({amb:rp.a.id,tipo:t,parede:ds,pos:Math.round(Math.max(0,Math.min(lim-larg,(hz?x-rp.x:y-rp.y)-larg/2))*10)/10,larg});return edFim(`${t==="porta"?"Porta":"Janela"} incluída em ${rp.a.nome}.`);}
-  if(t==="quadro"){edSnap();let n=S.quadros.length,nm;do nm="QD-"+n++;while(S.quadros.some(q=>q.nome===nm));const P=layoutPlanta(),w_=P.amb.length?paredeMaisProxima(P,x,y):null;
-    S.quadros.push({nome:nm,L:10,met:"B1",pai:S.quadros[0].nome,infl:rp?rp.a.infl||"seco":"seco",x:w_?Math.round(w_.x*100)/100:x,y:w_?Math.round(w_.y*100)/100:y});return edFim(`${nm} incluído na parede, alimentado pelo ${S.quadros[0].nome}. Ajuste a origem na etapa 04 se preciso.`);}
-  if(!r)return toast("Clique dentro de um ambiente.");
+    S.aberturas.push({amb:rp.a.id,tipo:t,parede:ds,pos:Math.round(Math.max(0,Math.min(lim-larg,(hz?x-rp.x:y-rp.y)-larg/2))*10)/10,larg});return edFim(`${t==="porta"?"Porta":"Janela"} incluída em ${rp.a.nome}. Botão direito para editar.`);}
+  if(t==="quadro"){edSnap();const nm=novoQuadro(x,y);return edFim(`${nm} incluído na parede, alimentado pelo ${S.quadros[0].nome}. Botão direito para editar.`);}
+  if(!r)return edToast("Clique dentro de um ambiente.");
   const q=quadroDoAmbiente(r),sy=SISTEMAS[S.forn.sistema];
   if(t==="maq"){edSnap();const n=S.circ.filter(c=>c.tipo==="motor").length+1;let lig="3F";if(!ligOK(lig,sy))lig=["F+F","F+N"].find(l=>ligOK(l,sy))||"F+N";
     S.circ.push({q,nome:`Máquina ${n}`,tipo:"motor",lig,qtd:1,pot:1,unid:"cv",fp:0.83,eta:0.85,fs:1.25,fu:0.87,fd:1,can:"CN-1",ld:10,lb:3,prot:"dj",partida:"direta",fusTipo:"gG",ambiente:r.a.id,px:Math.round(x*4)/4,py:Math.round(y*4)/4});
-    return edFim(`Máquina ${n} (1 cv, ${q}) incluída em ${r.a.nome}. Informe nome e potência na etapa 04.`);}
+    return edFim(`Máquina ${n} (1 cv, ${q}) incluída em ${r.a.nome}. Botão direito para nome, potência e partida.`);}
   if(t==="tue"){edSnap();const n=S.circ.filter(c=>c.tipo==="tue").length+1;
     S.circ.push({q,nome:`Uso específico ${n}`,tipo:"tue",lig:ligOK("F+N",sy)?"F+N":"F+F",qtd:1,pot:1500,unid:"W",fp:0.95,eta:1,fu:1,fd:1,can:"CN-1",ld:10,lb:1.5,ambiente:r.a.id,px:Math.round(x*4)/4,py:Math.round(y*4)/4});
-    return edFim(`Ponto de uso específico (1.500 W, ${q}) incluído em ${r.a.nome}. Ajuste na etapa 04.`);}
+    return edFim(`Ponto de uso específico (1.500 W, ${q}) incluído em ${r.a.nome}. Botão direito para editar.`);}
   if(t==="tug"||t==="lum"){edSnap();const tp=t==="tug"?"tug":"ilum",tem=S.circ.some(c=>c.ambiente===r.a.id&&c.tipo===tp);
     if(!tem)S.circ.push(tp==="tug"?{q,nome:`TUG ${r.a.nome}`,tipo:"tug",lig:"F+N",qtd:1,pot:200,unid:"VA",fp:0.8,eta:1,fu:1,fd:0.7,can:"CN-1",ld:10,lb:1.5,ambiente:r.a.id}
       :{q,nome:`Iluminação ${r.a.nome}`,tipo:"ilum",lig:"F+N",qtd:1,pot:+r.a.w||40,unid:"W",fp:0.95,eta:1,fu:1,fd:1,can:"CN-1",ld:10,lb:0.5,ambiente:r.a.id});
     else{const a=r.a;if(tp==="tug")a.tugExtra=(+a.tugExtra||0)+1;else a.lumExtra=(+a.lumExtra||0)+1;}
-    return edFim(tem?`${tp==="tug"?"Tomada":"Luminária"} acrescentada em ${r.a.nome}${tp==="ilum"?" (a grade é fechada para cima)":""}.`:`Circuito de ${tp==="tug"?"tomadas":"iluminação"} criado para ${r.a.nome} (${q}).`);}}
-function edApagar(g){const tp=g.dataset.drag,i=+g.dataset.i,c=+g.dataset.c;edSnap();
-  if(tp==="amb"||tp==="res"){const a=S.ambientes.splice(i,1)[0];S.aberturas=S.aberturas.filter(o=>o.amb!==a.id);S.circ.forEach(x=>{if(x.ambiente===a.id)x.ambiente="";});return edFim(`${a.nome} apagado (circuitos vinculados ficaram sem ambiente). Use Desfazer para voltar.`);}
+    return edFim(tem?`${tp==="tug"?"Tomada":"Luminária"} acrescentada em ${r.a.nome}. Botão direito no ponto para mudar de circuito.`:`Circuito de ${tp==="tug"?"tomadas":"iluminação"} criado para ${r.a.nome} (${q}).`);}}
+function edApagar(g){const tp=g.dataset.drag||g.dataset.pt,i=+g.dataset.i,c=+g.dataset.c;edSnap();
+  if(tp==="amb"||tp==="res"){const a=S.ambientes.splice(i,1)[0];S.aberturas=S.aberturas.filter(o=>o.amb!==a.id);S.circ.forEach(x=>{if(x.ambiente===a.id)x.ambiente="";});return edFim(`${a.nome} apagado (os circuitos ficaram sem ambiente). Use Desfazer para voltar.`);}
   if(tp==="ab"){S.aberturas.splice(i,1);return edFim("Abertura apagada.");}
-  if(tp==="q"){if(i===0){ED_UNDO.pop();return toast("O quadro geral não pode ser apagado.");}const q=S.quadros.splice(i,1)[0],pai=q.pai||S.quadros[0].nome;S.circ.forEach(x=>{if(x.q===q.nome)x.q=pai;});S.quadros.forEach(x=>{if(x.pai===q.nome)x.pai=pai;});return edFim(`${q.nome} apagado; circuitos e sub-quadros passaram para o ${pai}.`);}
+  if(tp==="q"){if(i===0){ED_UNDO.pop();return edToast("O quadro geral não pode ser apagado.");}const q=S.quadros.splice(i,1)[0],pai=q.pai||S.quadros[0].nome;S.circ.forEach(x=>{if(x.q===q.nome)x.q=pai;});S.quadros.forEach(x=>{if(x.pai===q.nome)x.pai=pai;});return edFim(`${q.nome} apagado; circuitos e sub-quadros passaram para o ${pai}.`);}
   if(tp==="maq"||tp==="tue"){const x=S.circ.splice(c,1)[0];return edFim(`Circuito ${x.nome} apagado.`);}
+  if(tp==="tug"||tp==="lum"){const a=S.ambientes.find(z=>z.id===g.dataset.amb);if(a){const k=tp==="tug"?"tugExtra":"lumExtra";a[k]=(+a[k]||0)-1;}return edFim(`${tp==="tug"?"Tomada":"Luminária"} retirada (a quantidade calculada do ambiente diminui uma unidade).`);}
   if(tp==="ent"){S.forn.entLado="";return edFim("Entrada retirada do limite (posição suposta).");}
   ED_UNDO.pop();}
-let EDT=null; // arrasto em andamento
 function editorSVG(){
-  if(!S.ambientes.length)return `<p class="note warn">Cadastre os ambientes na etapa 02 para editar o desenho.</p>`;
+  if(!S.ambientes.length)return `<p class="note warn" style="margin:12px">Desenhe um ambiente com a ferramenta Ambiente (ou cadastre na etapa 02).</p><svg id="edSvg" viewBox="0 0 40 20" style="width:100%;height:100%;background:#fff;touch-action:none" data-x1="0" data-y2="20"><rect id="edPrev" x="0" y="0" width="0" height="0" fill="#1f3b5a" fill-opacity="0.12"/></svg>`;
   const P=layoutPlanta(),bb=P.bb,m=1.5,x1=bb.x1-m,y2=bb.y2+m,W=bb.x2-bb.x1+2*m,H=bb.y2-bb.y1+2*m,X=v=>(v-x1).toFixed(3),Y=v=>(y2-v).toFixed(3),f=Math.max(0.3,Math.min(W,H)/45);
-  const ln=(a,b,c,d,st,w,da="")=>`<line x1="${X(a)}" y1="${Y(b)}" x2="${X(c)}" y2="${Y(d)}" stroke="${st}" stroke-width="${w}" ${da?`stroke-dasharray="${da}"`:""}/>`;
-  let s=`<svg id="edSvg" viewBox="0 0 ${W.toFixed(2)} ${H.toFixed(2)}" style="width:100%;max-height:640px;background:#fff;border:1px solid var(--line,#ccc);border-radius:6px;touch-action:none;user-select:none" data-x1="${x1}" data-y2="${y2}">`;
+  const ln=(a,b,c,d,st,w,da="")=>`<line x1="${X(a)}" y1="${Y(b)}" x2="${X(c)}" y2="${Y(d)}" stroke="${st}" stroke-width="${w}" ${da?`stroke-dasharray="${da}"`:""} pointer-events="none"/>`;
+  let s=`<svg id="edSvg" viewBox="0 0 ${W.toFixed(2)} ${H.toFixed(2)}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;display:block;background:#fff;touch-action:none;user-select:none" data-x1="${x1}" data-y2="${y2}">`;
   if(P.esp)s+=`<rect x="${X(0)}" y="${Y(P.esp.L)}" width="${P.esp.C}" height="${P.esp.L}" fill="#f6f8f4" stroke="#2e5d34" stroke-width="${f/6}" stroke-dasharray="${f} ${f/4} ${f/8} ${f/4} ${f/8} ${f/4}"/>`;
-  P.amb.forEach((r,i)=>{s+=`<rect data-drag="amb" data-i="${i}" x="${X(r.x)}" y="${Y(r.y+r.W)}" width="${r.L}" height="${r.W}" fill="${temXY(r.a)?"#dfe9f5":"#fff4d6"}" fill-opacity="0.85" stroke="#1f3b5a" stroke-width="${f/5}" style="cursor:move"/>
-    <text x="${X(r.x+0.3)}" y="${Y(r.y+r.W-0.3)-(-f)}" font-size="${f}" fill="#1f3b5a" pointer-events="none">${esc(r.a.nome)} · ${fmt(r.L,1)} × ${fmt(r.W,1)} m</text>
-    <rect data-drag="res" data-i="${i}" x="${X(r.x+r.L)-f*0.5}" y="${Y(r.y+r.W)-f*0.5}" width="${f}" height="${f}" fill="#1f3b5a" style="cursor:nwse-resize"><title>Arraste para mudar comprimento e largura</title></rect>`;});
+  P.amb.forEach((r,i)=>{s+=`<rect data-drag="amb" data-i="${i}" x="${X(r.x)}" y="${Y(r.y+r.W)}" width="${r.L}" height="${r.W}" fill="${temXY(r.a)?"#dfe9f5":"#fff4d6"}" fill-opacity="0.85" stroke="#1f3b5a" stroke-width="${f/5}" style="cursor:move"><title>${esc(r.a.nome)} — arraste; botão direito para editar</title></rect>
+    <text x="${X(r.x+0.3)}" y="${(+Y(r.y+r.W-0.3)+f).toFixed(3)}" font-size="${f}" fill="#1f3b5a" pointer-events="none">${esc(r.a.nome)} · ${fmt(r.L,1)} × ${fmt(r.W,1)} m</text>
+    <rect data-drag="res" data-i="${i}" x="${(+X(r.x+r.L)-f*0.5).toFixed(3)}" y="${(+Y(r.y+r.W)-f*0.5).toFixed(3)}" width="${f}" height="${f}" fill="#1f3b5a" style="cursor:nwse-resize"><title>Arraste para mudar comprimento e largura</title></rect>`;});
   P.chains.forEach(ch=>{s+=ln(ch.a[0],ch.a[1],ch.b[0],ch.b[1],"#7a5c00",ch.circ.length>=4?f/3:f/9);});
   P.alim.forEach(a=>{for(let k=1;k<a.pts.length;k++)s+=ln(a.pts[k-1][0],a.pts[k-1][1],a.pts[k][0],a.pts[k][1],"#333",f/7);});
   if(P.entRota)for(let k=1;k<P.entRota.pts.length;k++){const [a,b]=P.entRota.pts[k-1],[c,d]=P.entRota.pts[k];s+=ln(a,b,c,d,"#000",f/6,P.dentroDe((a+c)/2,(b+d)/2)?"":`${f/2} ${f/3}`);}
-  P.amb.forEach(r=>{r.lum.forEach(([a,b])=>{s+=`<rect x="${X(a)-f*0.35}" y="${Y(b)-f*0.18}" width="${f*0.7}" height="${f*0.36}" fill="none" stroke="#555" stroke-width="${f/14}" pointer-events="none"/>`;});
-    r.tug.forEach(([a,b])=>{s+=`<circle cx="${X(a)}" cy="${Y(b)}" r="${f*0.18}" fill="#555" pointer-events="none"/>`;});
-    if(r.inter)s+=`<circle cx="${X(r.inter[0])}" cy="${Y(r.inter[1])}" r="${f*0.2}" fill="#fff" stroke="#000" stroke-width="${f/12}" pointer-events="none"/>`;
-    r.fix.forEach(fx=>{if(fx.maq)s+=`<g data-drag="maq" data-c="${fx.o.i}" style="cursor:move"><circle cx="${X(fx.p[0])}" cy="${Y(fx.p[1])}" r="${f*0.7}" fill="#fff" stroke="#000" stroke-width="${f/8}"/><text x="${X(fx.p[0])}" y="${Y(fx.p[1])-(-f*0.3)}" font-size="${f*0.8}" text-anchor="middle" pointer-events="none">M</text><text x="${X(fx.p[0]+0.9)}" y="${Y(fx.p[1])}" font-size="${f*0.7}" pointer-events="none">${esc(fx.o.c.nome.replace(/\s*\([^)]*\)/g,""))}</text></g>`;
-      else s+=`<circle data-drag="tue" data-c="${fx.o.i}" cx="${X(fx.p[0])}" cy="${Y(fx.p[1])}" r="${f*0.35}" fill="#a33" style="cursor:move"><title>${esc(fx.o.c.nome)} — arraste ao longo das paredes</title></circle>`;});
-    r.ab.forEach((o,j)=>{const gi=S.aberturas.indexOf(S.aberturas.filter(z=>z.amb===r.a.id)[j]);s+=`<line data-drag="ab" data-i="${gi}" x1="${X(o.A[0])}" y1="${Y(o.A[1])}" x2="${X(o.B[0])}" y2="${Y(o.B[1])}" stroke="${o.tipo==="porta"?"#c2410c":"#0369a1"}" stroke-width="${f*0.6}" stroke-linecap="butt" style="cursor:grab"><title>${o.tipo==="porta"?"Porta":"Janela"} ${fmt(o.larg,2)} m — arraste ao longo da parede</title></line>`;});});
-  P.quad.forEach((r,i)=>{s+=`<g data-drag="q" data-i="${i}" style="cursor:move"><rect x="${X(r.x)-f*0.6}" y="${Y(r.y)-f*0.6}" width="${f*1.2}" height="${f*1.2}" fill="${r.naParede?"#b3261e":"#fff"}" stroke="#b3261e" stroke-width="${f/8}"/><text x="${X(r.x)-(-f*0.8)}" y="${Y(r.y)-f*0.7}" font-size="${f*0.85}" fill="#b3261e" font-weight="bold" pointer-events="none">${esc(r.q.nome)}</text></g>`;});
-  if(P.ent)s+=`<polygon data-drag="ent" points="${[[0,1],[0.9,-0.6],[-0.9,-0.6]].map(([u,v])=>`${(+X(P.ent.x)+u*f).toFixed(3)},${(+Y(P.ent.y)-v*f).toFixed(3)}`).join(" ")}" fill="#e8a400" stroke="#000" stroke-width="${f/10}" style="cursor:grab"><title>Entrada de energia — arraste ao longo do limite da área</title></polygon>`;
+  const corC=c=>`hsl(${(c*67)%360} 65% 38%)`;
+  P.amb.forEach(r=>{r.lum.forEach(([a,b],k)=>{s+=`<g data-pt="lum" data-amb="${r.a.id}" data-k="${k}" data-c="${r.lumC[k]}" style="cursor:context-menu"><rect x="${(+X(a)-f*0.4).toFixed(3)}" y="${(+Y(b)-f*0.22).toFixed(3)}" width="${f*0.8}" height="${f*0.44}" fill="#fff" stroke="${corC(r.lumC[k])}" stroke-width="${f/10}"/><title>Luminária — circuito ${r.lumC[k]||"—"} (${r.lumL[k]||""}); botão direito para trocar de circuito</title></g>`;});
+    r.tug.forEach(([a,b,,,c],k)=>{s+=`<circle data-pt="tug" data-amb="${r.a.id}" data-k="${k}" data-c="${c}" cx="${X(a)}" cy="${Y(b)}" r="${f*0.25}" fill="${corC(c)}" style="cursor:context-menu"><title>Tomada — circuito ${c||"—"}; botão direito para trocar de circuito</title></circle>`;});
+    r.inters.forEach(it=>{s+=`<circle cx="${X(it.p[0])}" cy="${Y(it.p[1])}" r="${f*0.2}" fill="#fff" stroke="#000" stroke-width="${f/12}" pointer-events="none"/><text x="${(+X(it.p[0])+f*0.3).toFixed(3)}" y="${Y(it.p[1])}" font-size="${f*0.7}" pointer-events="none">${it.letra}</text>`;});
+    r.fix.forEach(fx=>{if(fx.maq)s+=`<g data-drag="maq" data-c="${fx.o.i}" style="cursor:move"><circle cx="${X(fx.p[0])}" cy="${Y(fx.p[1])}" r="${f*0.7}" fill="#fff" stroke="#000" stroke-width="${f/8}"/><text x="${X(fx.p[0])}" y="${(+Y(fx.p[1])+f*0.3).toFixed(3)}" font-size="${f*0.8}" text-anchor="middle" pointer-events="none">M</text><text x="${X(fx.p[0]+0.9)}" y="${Y(fx.p[1])}" font-size="${f*0.7}" pointer-events="none">${esc(fx.o.c.nome.replace(/\s*\([^)]*\)/g,""))} · C${fx.o.i+1}</text><title>${esc(fx.o.c.nome)} — botão direito para editar</title></g>`;
+      else s+=`<circle data-drag="tue" data-c="${fx.o.i}" cx="${X(fx.p[0])}" cy="${Y(fx.p[1])}" r="${f*0.35}" fill="#a33" style="cursor:move"><title>${esc(fx.o.c.nome)} — arraste pelas paredes; botão direito para editar</title></circle>`;});
+    r.ab.forEach((o,j)=>{const gi=S.aberturas.indexOf(S.aberturas.filter(z=>z.amb===r.a.id)[j]);s+=`<line data-drag="ab" data-i="${gi}" x1="${X(o.A[0])}" y1="${Y(o.A[1])}" x2="${X(o.B[0])}" y2="${Y(o.B[1])}" stroke="${o.tipo==="porta"?"#c2410c":"#0369a1"}" stroke-width="${f*0.6}" style="cursor:grab"><title>${o.tipo==="porta"?"Porta":"Janela"} ${fmt(o.larg,2)} m — arraste pela parede; botão direito para editar</title></line>`;});});
+  P.quad.forEach((r,i)=>{s+=`<g data-drag="q" data-i="${i}" style="cursor:move"><rect x="${(+X(r.x)-f*0.6).toFixed(3)}" y="${(+Y(r.y)-f*0.6).toFixed(3)}" width="${f*1.2}" height="${f*1.2}" fill="${r.naParede?"#b3261e":"#fff"}" stroke="#b3261e" stroke-width="${f/8}"/><text x="${(+X(r.x)+f*0.8).toFixed(3)}" y="${(+Y(r.y)-f*0.7).toFixed(3)}" font-size="${f*0.85}" fill="#b3261e" font-weight="bold" pointer-events="none">${esc(r.q.nome)}</text><title>${esc(r.q.nome)} — botão direito para editar</title></g>`;});
+  if(P.ent)s+=`<polygon data-drag="ent" points="${[[0,1],[0.9,-0.6],[-0.9,-0.6]].map(([u,v])=>`${(+X(P.ent.x)+u*f).toFixed(3)},${(+Y(P.ent.y)-v*f).toFixed(3)}`).join(" ")}" fill="#e8a400" stroke="#000" stroke-width="${f/10}" style="cursor:grab"><title>Entrada de energia — arraste pelo limite; botão direito para editar</title></polygon>`;
   s+=`<rect id="edPrev" x="0" y="0" width="0" height="0" fill="#1f3b5a" fill-opacity="0.12" stroke="#1f3b5a" stroke-width="${f/6}" stroke-dasharray="${f/2} ${f/4}" pointer-events="none"/>`;
   return s+`</svg>`;}
 function editorTabela(){const d=distanciasDesenho(),r=[];
   d.quadros.forEach(({q,L})=>r.push([`Alimentador ${paiDe(q)?.nome||"QGBT"} → ${q.nome}`,+q.L||0,L]));
   if(d.ent!=null)r.push(["Alimentador de entrada (padrão → QGBT)",+S.forn.Lent||0,d.ent]);
   d.circ.forEach(({o,ld,lb})=>{const c=S.circ[o.i];r.push([`C${o.i+1} ${o.c.nome} — trecho horizontal`,+c.ld||0,ld],[`C${o.i+1} ${o.c.nome} — baixada`,+c.lb||0,lb]);});
-  return `<div class="tbl"><table><thead><tr><th>Trecho</th><th class="num">Usado no cálculo (m)</th><th class="num">Medido no desenho (m)</th></tr></thead><tbody>${r.map(([t,a,b])=>`<tr><td>${esc(t)}</td><td class="num">${fmtN(a)}</td><td class="num" ${Math.abs(a-b)>0.01?'style="color:var(--bad);font-weight:600"':""}>${fmtN(b)}</td></tr>`).join("")}</tbody></table></div>`;}
+  return `<div class="tbl"><table><thead><tr><th>Trecho</th><th class="num">Usado no cálculo (m)</th><th class="num">Medido no desenho (m)</th></tr></thead><tbody>${r.map(([t,a,b])=>`<tr><td>${esc(t)}</td><td class="num">${fmtN(a)}</td><td class="num" ${Math.abs(a-b)>0.01?'style="color:#b3261e;font-weight:600"':""}>${fmtN(b)}</td></tr>`).join("")}</tbody></table></div>`;}
+const ED_DICA={sel:"Arraste para mover · botão direito em qualquer elemento para editar",amb:"Pressione e arraste no espaço vazio para desenhar um ambiente",porta:"Clique perto da parede de um ambiente",janela:"Clique perto da parede de um ambiente",quadro:"Clique perto de uma parede",maq:"Clique dentro do ambiente onde a máquina fica",tue:"Clique perto da parede onde fica o ponto",tug:"Clique dentro do ambiente para acrescentar uma tomada",lum:"Clique dentro do ambiente para acrescentar uma luminária",del:"Clique no elemento a apagar"};
+function editorBarra(){return `${ED_TOOLS.map(([k,t,d])=>`<button type="button" class="ed-tool${ED_TOOL===k?" on":""}" data-edtool="${k}" title="${t}" aria-label="${t}" aria-pressed="${ED_TOOL===k}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="${d}"/></svg></button>`).join("")}
+  <span class="ed-sep"></span><button type="button" class="ed-tool" id="edUndo" title="Desfazer" aria-label="Desfazer" ${ED_UNDO.length?"":"disabled"}><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>`;}
+function editorPainel(){return `<div id="edPanel" class="ed-panel${ED_FLOAT?" ed-float":""}${PIP?" ed-pip":""}">
+  <div class="ed-top"><b>Editor dos desenhos</b><span class="ed-dica" id="edDica">${ED_DICA[ED_TOOL]}</span><span class="ed-acoes">
+    <label class="ed-chk" title="Ao soltar, grava nos cálculos os comprimentos medidos no desenho"><input type="checkbox" id="edAuto" ${S.par.distAuto?"checked":""}> distâncias automáticas</label>
+    <button type="button" class="btn small" id="edApl">Usar distâncias agora</button><button type="button" class="btn small" id="edSnap">Quadros nas paredes</button>
+    ${PIP?`<button type="button" class="btn small" id="edPipX">Voltar para a página</button>`:`<button type="button" class="btn small" id="edPip" title="Abre o editor numa janela flutuante, fora da página (sempre visível)">Janela flutuante</button><button type="button" class="btn small" id="edFloat">${ED_FLOAT?"Recolher":"Expandir"}</button><button type="button" class="btn small" id="edFull">Tela cheia</button>`}</span></div>
+  <div class="ed-corpo"><div class="ed-barra" role="toolbar" aria-label="Ferramentas" data-live="edbarra">${editorBarra()}</div><div class="ed-tela" data-live="editor">${editorSVG()}</div></div>
+  <div class="ed-msg" id="edMsg"></div><div id="edCtx" class="ed-ctx" hidden></div>
+  <details class="ed-tab"><summary>Distâncias (usado no cálculo × medido no desenho)</summary><div data-live="edtab">${editorTabela()}</div></details></div>`;}
+const ED_CSS=`.ed-panel{border:1px solid var(--line,#ccc);border-radius:8px;background:var(--sheet,#fff);display:flex;flex-direction:column;position:relative}
+.ed-panel.ed-float{position:fixed;inset:16px;z-index:9000;box-shadow:0 10px 40px rgba(0,0,0,.35);resize:both;overflow:auto}
+.ed-panel.ed-pip{border:0;border-radius:0;height:100vh}
+.ed-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 8px;border-bottom:1px solid var(--line,#ddd);font-size:13px}
+.ed-dica{color:var(--muted,#666);font-size:12px;flex:1;min-width:160px}.ed-acoes{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.ed-chk{font-size:12px;display:flex;gap:4px;align-items:center}
+.ed-corpo{display:flex;flex:1;min-height:440px}.ed-panel.ed-float .ed-corpo,.ed-panel.ed-pip .ed-corpo{min-height:0;height:calc(100% - 90px)}
+.ed-barra{display:flex;flex-direction:column;gap:4px;padding:6px;border-right:1px solid var(--line,#ddd);background:var(--sheet-2,#f5f5f2);position:sticky;top:0;align-self:flex-start}
+.ed-tool{width:36px;height:36px;display:grid;place-items:center;border:1px solid var(--line,#ccc);border-radius:6px;background:#fff;color:#333;cursor:pointer}
+.ed-tool.on{background:#1f3b5a;color:#fff;border-color:#1f3b5a}.ed-tool:disabled{opacity:.4;cursor:default}.ed-sep{height:6px}
+.ed-tela{flex:1;min-width:0;padding:6px;height:min(70vh,640px)}.ed-panel.ed-float .ed-tela,.ed-panel.ed-pip .ed-tela{height:auto}
+.ed-msg{position:absolute;left:56px;bottom:46px;background:#1f2a24;color:#fff;font-size:12px;padding:6px 10px;border-radius:6px;opacity:0;transition:opacity .3s;pointer-events:none}
+.ed-ctx{position:fixed;z-index:9500;background:#fff;border:1px solid #bbb;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.25);padding:10px;width:290px;font-size:12px}
+.ed-ctx h4{margin:0 0 8px;font-size:13px}.ed-ctx label{display:grid;grid-template-columns:110px 1fr;gap:6px;align-items:center;margin:4px 0}.ed-ctx input,.ed-ctx select{width:100%;font-size:12px;padding:3px 4px}
+.ed-ctx .ed-ctx-b{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}.ed-tab{padding:6px 8px;font-size:12px}`;
+(function(){const st=document.createElement("style");st.id="edCss";st.textContent=ED_CSS;document.head.appendChild(st);})();
 V.edit=()=>`${head(STEPS.findIndex(s=>s.k==="edit"))}
-<p class="intro">Arraste os elementos do desenho: ambientes (e o canto superior direito para mudar as dimensões), quadros (encaixam na parede mais próxima ao soltar), a entrada de energia (ao longo do limite da área), portas e janelas (ao longo da parede) e as máquinas. Tudo se reorganiza — pontos, eletrodutos e rotas — e as distâncias são recalculadas.</p>
-${chkT("par.distAuto","Atualizar automaticamente os comprimentos do cálculo com as distâncias do desenho","Ao soltar um elemento, grava nos alimentadores, na entrada e nos circuitos os comprimentos medidos no desenho: trecho horizontal até o ponto mais distante e baixada pela altura do ambiente.")}
-<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0" role="toolbar" aria-label="Ferramentas de desenho">${ED_TOOLS.map(([k,t])=>`<button type="button" class="btn small ${ED_TOOL===k?"primary":""}" data-edtool="${k}" aria-pressed="${ED_TOOL===k}">${t}</button>`).join("")}<button type="button" class="btn small" id="edUndo" ${ED_UNDO.length?"":"disabled"}>Desfazer</button></div>
-<p class="note">${({sel:"Arraste os elementos para movê-los.",amb:"Pressione e arraste no espaço vazio para desenhar um ambiente; ele vai para a etapa 02, onde você completa nome e parâmetros.",porta:"Clique perto da parede de um ambiente.",janela:"Clique perto da parede de um ambiente.",quadro:"Clique perto de uma parede: o quadro é criado nela, alimentado pelo quadro geral.",maq:"Clique dentro do ambiente onde a máquina fica: cria um circuito de motor (complete na etapa 04).",tue:"Clique perto da parede onde fica o ponto: cria um circuito de uso específico.",tug:"Clique dentro do ambiente: acrescenta uma tomada (ou cria o circuito de tomadas).",lum:"Clique dentro do ambiente: acrescenta uma luminária (ou cria o circuito de iluminação); a grade é fechada para cima.",del:"Clique no elemento a apagar (ambiente, abertura, quadro, máquina, ponto de uso específico ou entrada)."})[ED_TOOL]}</p>
-<div data-live="editor">${editorSVG()}</div>
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"><button class="btn small primary" type="button" id="edApl">Usar as distâncias do desenho agora</button><button class="btn small" type="button" id="snapQ">Ajustar quadros às paredes</button></div>
-<div class="block"><h3>Distâncias</h3><div data-live="edtab">${editorTabela()}</div></div>${nav()}`;
-function edPt(ev){const sv=document.getElementById("edSvg");const p=sv.createSVGPoint();p.x=ev.clientX;p.y=ev.clientY;const q=p.matrixTransform(sv.getScreenCTM().inverse());return [q.x+(+sv.dataset.x1),(+sv.dataset.y2)-q.y];}
-function edRedesenhar(){const el=document.querySelector('[data-live="editor"]');if(el)el.innerHTML=editorSVG();const t=document.querySelector('[data-live="edtab"]');if(t)t.innerHTML=editorTabela();}
-document.addEventListener("pointerdown",ev=>{const sv=document.getElementById("edSvg");if(!sv||!ev.target.closest||!ev.target.closest("#edSvg"))return;
-  const g0=ev.target.closest("[data-drag]");
+<p class="intro">Desenhe e ajuste a planta: use a barra à esquerda (estilo Paint) para selecionar, desenhar ambientes, portas, janelas, quadros, máquinas, pontos, tomadas e luminárias, ou apagar. Arraste os elementos para movê-los e clique com o <b>botão direito</b> em qualquer um para editar as características ali mesmo — inclusive o circuito e o quadro de cada ponto, ou criar um circuito ou quadro novo. Tudo realimenta o projeto: etapas 02 e 04, cálculos, comprimentos, plantas e diagramas.</p>
+${PIP?`<div class="block"><p class="note">O editor está aberto numa janela flutuante. <button class="btn small" type="button" id="edPipX">Trazer de volta</button></p></div>`:editorPainel()}${nav()}`;
+function edAtualizar(tudo){const D=edDoc(),set=(k,h)=>{const el=D.querySelector(`[data-live="${k}"]`);if(el)el.innerHTML=h;};set("editor",editorSVG());if(tudo){set("edtab",editorTabela());set("edbarra",editorBarra());const d=D.getElementById("edDica");if(d)d.textContent=ED_DICA[ED_TOOL];}}
+function edPt(ev){const sv=edEl("edSvg");const p=sv.createSVGPoint();p.x=ev.clientX;p.y=ev.clientY;const q=p.matrixTransform(sv.getScreenCTM().inverse());return [q.x+(+sv.dataset.x1),(+sv.dataset.y2)-q.y];}
+// ---- janela flutuante (Document Picture-in-Picture) com alternativa de painel sobreposto
+async function edAbrirPip(){if(!("documentPictureInPicture" in window)){ED_FLOAT=true;render(true);return toast("Este navegador não abre janelas flutuantes fora da página: o editor foi expandido sobre a página.");}
+  try{const w=await documentPictureInPicture.requestWindow({width:1100,height:720});PIP=w;
+    [...document.querySelectorAll('link[rel="stylesheet"],style')].forEach(n=>w.document.head.appendChild(n.cloneNode(true)));
+    w.document.body.style.margin="0";w.document.title="Editor dos desenhos";w.document.body.innerHTML=editorPainel();edLigar(w.document);
+    w.addEventListener("pagehide",()=>{PIP=null;render(true);});render(true);}catch(e){ED_FLOAT=true;render(true);toast("Não foi possível abrir a janela flutuante: o editor foi expandido sobre a página.");}}
+function edFecharPip(){if(PIP){const w=PIP;PIP=null;w.close();}render(true);}
+// ---- menu do botão direito: edição direta
+function opts(arr,v){return arr.map(([k,t])=>`<option value="${esc(String(k))}" ${String(k)===String(v)?"selected":""}>${esc(t)}</option>`).join("");}
+function edCtxAbrir(ev,g){const D=edDoc(),box=D.getElementById("edCtx");if(!box)return;const tp=g.dataset.drag||g.dataset.pt,i=+g.dataset.i,c=+g.dataset.c;let h="",ttl="";
+  const qOpts=(v)=>opts([...S.quadros.map(q=>[q.nome,q.nome]),["__novo","+ Novo quadro"]],v),aOpts=v=>opts(S.ambientes.map(a=>[a.id,a.nome]),v);
+  const inp=(n,l,v,t="text",st="")=>`<label>${l}<input name="${n}" type="${t}" ${st} value="${esc(String(v??""))}"></label>`,sel=(n,l,o)=>`<label>${l}<select name="${n}">${o}</select></label>`;
+  if(tp==="amb"||tp==="res"){const a=S.ambientes[i];ttl="Ambiente";h=inp("nome","Nome",a.nome)+inp("comprimento","Comprimento X (m)",a.comprimento,"number",'step="0.1"')+inp("largura","Largura Y (m)",a.largura,"number",'step="0.1"')+inp("altura","Altura (m)",a.altura,"number",'step="0.1"')+inp("lux","Iluminância (lx)",a.lux,"number",'step="10"')+inp("w","W por luminária",a.w,"number")+sel("infl","Influências",opts(Object.entries(INFL).map(([k,v])=>[k,v.t]),a.infl||"seco"))+sel("zona","Poeira comb.",opts(Object.keys(ZONAS).map(k=>[k,k?"Zona "+k:"Não classificada"]),a.zona||""));}
+  else if(tp==="ab"){const o=S.aberturas[i];ttl=o.tipo==="porta"?"Porta":"Janela";h=sel("tipo","Tipo",opts([["porta","Porta"],["janela","Janela"]],o.tipo))+sel("amb","Ambiente",aOpts(o.amb))+sel("parede","Parede",opts([["inf","Inferior"],["sup","Superior"],["esq","Esquerda"],["dir","Direita"]],o.parede))+inp("pos","Posição (m)",o.pos,"number",'step="0.1"')+inp("larg","Largura (m)",o.larg,"number",'step="0.1"');}
+  else if(tp==="q"){const q=S.quadros[i];ttl="Quadro";h=inp("nome","Nome",q.nome)+(i?sel("pai","Alimentado por",opts(S.quadros.filter(z=>z!==q&&!cadeia(z).includes(q)).map(z=>[z.nome,z.nome]),q.pai)):"")+sel("met","Método do alimentador",opts(Object.keys(METODOS).map(m=>[m,m]),q.met))+sel("infl","Influências",opts(Object.entries(INFL).map(([k,v])=>[k,v.t]),q.infl||"seco"));}
+  else if(tp==="maq"||tp==="tue"){const x=S.circ[c],sy=SISTEMAS[S.forn.sistema];ttl=`Circuito C${c+1} — ${tp==="maq"?"máquina":"uso específico"}`;
+    h=inp("nome","Nome",x.nome)+inp("pot","Potência",x.pot,"number",'step="0.1"')+sel("unid","Unidade",opts(tp==="maq"?[["cv","cv"],["kW","kW"]]:[["W","W"],["VA","VA"],["kW","kW"]],x.unid))+sel("lig","Ligação",opts(Object.keys(LIG).filter(l=>ligOK(l,sy)).map(l=>[l,LIG[l].txt]),x.lig))+sel("q","Quadro",qOpts(x.q))+sel("ambiente","Ambiente",aOpts(x.ambiente))
+      +(tp==="maq"?sel("partida","Partida",opts(Object.entries(PARTIDAS),x.partida||"direta"))+sel("prot","Proteção",opts(Object.entries(PROTS),x.prot||"dj")):"");}
+  else if(tp==="tug"||tp==="lum"){const a=S.ambientes.find(z=>z.id===g.dataset.amb),tipo=tp==="tug"?"tug":"ilum",irm=S.circ.map((x,j)=>[x,j]).filter(([x])=>x.ambiente===a.id&&x.tipo===tipo),cur=irm.find(([,j])=>j+1===c);
+    ttl=`${tp==="tug"?"Tomada":"Luminária"} em ${a.nome}`;h=sel("circ","Circuito",opts([...irm.map(([x,j])=>[j,`C${j+1} — ${x.nome}`]),["__novo","+ Novo circuito"]],cur?cur[1]:""))+sel("q","Quadro do circuito",qOpts(cur?cur[0].q:quadroDoAmbiente(posAmbientes().find(r=>r.a.id===a.id))))+inp("nomeC","Nome do circuito (novo)",`${tp==="tug"?"TUG":"Iluminação"} ${a.nome} ${irm.length+1}`)+(tp==="tug"?inp("pot","VA por tomada",cur?cur[0].pot:200,"number"):inp("w","W por luminária",a.w,"number"));}
+  else if(tp==="ent"){ttl="Entrada de energia";h=sel("entLado","Limite",opts([["inf","Inferior"],["sup","Superior"],["esq","Esquerdo"],["dir","Direito"]],S.forn.entLado))+inp("entPos","Posição (m)",S.forn.entPos,"number",'step="0.5"')+inp("Lent","Alimentador (m)",S.forn.Lent,"number",'step="0.5"');}
+  else return;
+  box.innerHTML=`<form id="edCtxF" data-tp="${tp}" data-i="${i}" data-c="${c}" data-amb="${g.dataset.amb||""}" data-k="${g.dataset.k||""}"><h4>${esc(ttl)}</h4>${h}<div class="ed-ctx-b"><button type="button" class="btn small" id="edCtxX">Fechar</button><button type="submit" class="btn small primary">Aplicar</button></div></form>`;
+  box.hidden=false;const vw=(PIP||window).innerWidth,vh=(PIP||window).innerHeight;box.style.left=Math.min(ev.clientX,vw-300)+"px";box.style.top=Math.max(4,Math.min(ev.clientY,vh-box.offsetHeight-8))+"px";}
+function edCtxAplicar(f){const tp=f.dataset.tp,i=+f.dataset.i,c=+f.dataset.c,v=n=>f.elements[n]?f.elements[n].value:undefined,num=n=>{const x=parseFloat(v(n));return isFinite(x)?x:0;};edSnap();
+  const quadroDe=(val,x,y)=>val==="__novo"?novoQuadro(x,y):val;
+  if(tp==="amb"||tp==="res"){const a=S.ambientes[i];a.nome=v("nome")||a.nome;a.comprimento=Math.max(0.5,num("comprimento"));a.largura=Math.max(0.5,num("largura"));a.altura=Math.max(2,num("altura"));a.lux=num("lux");a.w=num("w")||a.w;a.infl=v("infl");a.zona=v("zona");}
+  else if(tp==="ab"){const o=S.aberturas[i];o.tipo=v("tipo");o.amb=v("amb");o.parede=v("parede");o.pos=Math.max(0,num("pos"));o.larg=Math.max(0.3,num("larg"));}
+  else if(tp==="q"){const q=S.quadros[i],old=q.nome,nn=(v("nome")||old).trim();if(nn!==old&&!S.quadros.some(z=>z!==q&&z.nome===nn)){q.nome=nn;S.circ.forEach(x=>{if(x.q===old)x.q=nn;});S.quadros.forEach(x=>{if(x.pai===old)x.pai=nn;});}
+    if(i&&v("pai"))q.pai=v("pai");q.met=v("met");q.infl=v("infl");}
+  else if(tp==="maq"||tp==="tue"){const x=S.circ[c],r=posAmbientes().find(z=>z.a.id===x.ambiente);x.nome=v("nome")||x.nome;x.pot=num("pot");x.unid=v("unid");x.lig=v("lig");x.ambiente=v("ambiente");x.q=quadroDe(v("q"),r?r.x+r.L/2:0,r?r.y:0);if(tp==="maq"){x.partida=v("partida");x.prot=v("prot");}}
+  else if(tp==="tug"||tp==="lum"){const a=S.ambientes.find(z=>z.id===f.dataset.amb),tipo=tp==="tug"?"tug":"ilum",cs=S.circ[c-1],r=posAmbientes().find(z=>z.a.id===a.id),fix=x=>x.qtdAmb!==""&&x.qtdAmb!=null;
+    const qn=quadroDe(v("q"),r?r.x+r.L/2:0,r?r.y:0),alvo=v("circ");
+    const qtdAt=x=>{const o=R.out[S.circ.indexOf(x)];return o?(+o.c.qtd||0):0;};
+    if(alvo==="__novo"){const base=cs||{tipo,lig:"F+N",fp:tipo==="tug"?0.8:0.95,unid:tipo==="tug"?"VA":"W",pot:tipo==="tug"?200:+a.w||40,eta:1,fu:1,fd:tipo==="tug"?0.7:1,can:"CN-1",ld:10,lb:1.5};
+      const nv=Object.assign({},base,{q:qn,nome:v("nomeC")||`${tipo==="tug"?"TUG":"Iluminação"} ${a.nome}`,ambiente:a.id,qtdAmb:1});delete nv.px;delete nv.py;
+      if(cs&&fix(cs))cs.qtdAmb=Math.max(0,+cs.qtdAmb-1);S.circ.push(nv);}
+    else{const ct=S.circ[+alvo];if(ct&&cs&&ct!==cs){if(fix(ct))ct.qtdAmb=+ct.qtdAmb+1;if(fix(cs))cs.qtdAmb=Math.max(0,+cs.qtdAmb-1);else{cs.qtdAmb=Math.max(0,qtdAt(cs)-1);if(fix(ct))ct.qtdAmb=qtdAt(ct)+1;else ct.qtdAmb="";}}
+      if(ct)ct.q=qn;}
+    if(tp==="tug"){const ct=alvo==="__novo"?S.circ[S.circ.length-1]:S.circ[+alvo];if(ct)ct.pot=num("pot")||ct.pot;}else a.w=num("w")||a.w;}
+  else if(tp==="ent"){S.forn.entLado=v("entLado");S.forn.entPos=num("entPos");S.forn.Lent=num("Lent");}
+  edCtxFechar();edFim("Alterações aplicadas.");}
+function edCtxFechar(){const b=edEl("edCtx");if(b){b.hidden=true;b.innerHTML="";}}
+// ---- eventos (na página e na janela flutuante)
+function edDown(ev){const D=ev.target.ownerDocument;if(D!==edDoc()||!ev.target.closest||!ev.target.closest("#edSvg"))return;if(ev.button===2)return;edCtxFechar();
+  const g0=ev.target.closest("[data-drag],[data-pt]");
   if(ED_TOOL==="del"){ev.preventDefault();if(g0)edApagar(g0);return;}
   if(ED_TOOL==="amb"){ev.preventDefault();ED_NOVO=edPt(ev);return;}
   if(ED_TOOL!=="sel"){ev.preventDefault();const [x,y]=edPt(ev);edFerramenta(x,y);return;}
-  const g=g0;if(!g)return;ev.preventDefault();edSnap();
+  const g=g0&&g0.dataset.drag?g0:null;if(!g)return;ev.preventDefault();edSnap();
   const P=layoutPlanta(),tp=g.dataset.drag,i=+g.dataset.i,p0=edPt(ev);EDT={tp,i,c:+g.dataset.c,p0};
   if(tp==="amb"||tp==="res"){const r=P.amb[i];r.a.x=r.x;r.a.y=r.y;EDT.o={x:r.x,y:r.y,L:r.L,W:r.W};
-    // quadros (na parede ou dentro) e máquinas do ambiente acompanham o arrasto
     const den=(x,y)=>x>=r.x-0.3&&x<=r.x+r.L+0.3&&y>=r.y-0.3&&y<=r.y+r.W+0.3;
-    EDT.qs=P.quad.filter(z=>den(z.x,z.y)).map(z=>({q:z.q,x:z.x,y:z.y}));EDT.ms=r.fix.filter(z=>z.maq).map(z=>({c:S.circ[z.o.i],x:z.p[0],y:z.p[1]}));}
+    EDT.qs=P.quad.filter(z=>den(z.x,z.y)).map(z=>({q:z.q,x:z.x,y:z.y}));EDT.ms=r.fix.filter(z=>z.maq||z.o.c.px!=null&&z.o.c.px!=="").map(z=>({c:S.circ[z.o.i],x:z.p[0],y:z.p[1]}));}
   if(tp==="q"){const r=P.quad[i];EDT.o={x:r.x,y:r.y};}
-  if(tp==="maq"||tp==="tue"){const f=P.amb.flatMap(r=>r.fix).find(z=>z.o.i===EDT.c);EDT.o={x:f.p[0],y:f.p[1]};}});
-document.addEventListener("pointermove",ev=>{
-  if(ED_NOVO&&document.getElementById("edSvg")){const [x,y]=edPt(ev),pr=document.getElementById("edPrev"),sv=document.getElementById("edSvg"),x1=+sv.dataset.x1,y2=+sv.dataset.y2;
+  if(tp==="maq"||tp==="tue"){const f=P.amb.flatMap(r=>r.fix).find(z=>z.o.i===EDT.c);EDT.o={x:f.p[0],y:f.p[1]};}}
+function edMove(ev){if(ev.target.ownerDocument!==edDoc()&&!EDT&&!ED_NOVO)return;
+  if(ED_NOVO&&edEl("edSvg")){const [x,y]=edPt(ev),pr=edEl("edPrev"),sv=edEl("edSvg"),x1=+sv.dataset.x1,y2=+sv.dataset.y2;
     pr.setAttribute("x",Math.min(x,ED_NOVO[0])-x1);pr.setAttribute("y",y2-Math.max(y,ED_NOVO[1]));pr.setAttribute("width",Math.abs(x-ED_NOVO[0]));pr.setAttribute("height",Math.abs(y-ED_NOVO[1]));return;}
   if(!EDT)return;const [x,y]=edPt(ev),dx=x-EDT.p0[0],dy=y-EDT.p0[1],sn=v=>Math.round(v*2)/2;
   if(EDT.tp==="amb"){const a=S.ambientes[EDT.i];a.x=sn(EDT.o.x+dx);a.y=sn(EDT.o.y+dy);const ddx=a.x-EDT.o.x,ddy=a.y-EDT.o.y;
@@ -1534,16 +1605,32 @@ document.addEventListener("pointermove",ev=>{
   else if(EDT.tp==="maq"||EDT.tp==="tue"){const c=S.circ[EDT.c];c.px=Math.round((EDT.o.x+dx)*4)/4;c.py=Math.round((EDT.o.y+dy)*4)/4;}
   else if(EDT.tp==="ab"){const o=S.aberturas[EDT.i],r=posAmbientes().find(z=>z.a.id===o.amb);if(r){const hz=o.parede==="inf"||o.parede==="sup",lim=hz?r.L:r.W;o.pos=Math.round(Math.min(Math.max(0,lim-o.larg),Math.max(0,(hz?x-r.x:y-r.y)-o.larg/2))*10)/10;}}
   else if(EDT.tp==="ent"){const e=espacoTotal();if(e){const d=[["inf",Math.abs(y)],["sup",Math.abs(y-e.L)],["esq",Math.abs(x)],["dir",Math.abs(x-e.C)]].sort((a,b)=>a[1]-b[1])[0][0];S.forn.entLado=d;S.forn.entPos=Math.round(Math.min(d==="inf"||d==="sup"?e.C:e.L,Math.max(0,d==="inf"||d==="sup"?x:y))*2)/2;}}
-  edRedesenhar();});
-document.addEventListener("pointerup",ev=>{
-  if(ED_NOVO){const a0=ED_NOVO;ED_NOVO=null;if(!document.getElementById("edSvg"))return;const [x,y]=edPt(ev),sn=v=>Math.round(v*2)/2,X1=sn(Math.min(x,a0[0])),Y1=sn(Math.min(y,a0[1])),L=sn(Math.abs(x-a0[0])),W=sn(Math.abs(y-a0[1]));
-    if(L<1||W<1){edRedesenhar();return toast("Arraste para desenhar um ambiente de pelo menos 1 × 1 m.");}
+  edAtualizar(false);}
+function edUp(ev){
+  if(ED_NOVO){const a0=ED_NOVO;ED_NOVO=null;if(!edEl("edSvg"))return;const [x,y]=edPt(ev),sn=v=>Math.round(v*2)/2,X1=sn(Math.min(x,a0[0])),Y1=sn(Math.min(y,a0[1])),L=sn(Math.abs(x-a0[0])),W=sn(Math.abs(y-a0[1]));
+    if(L<1||W<1){edAtualizar(false);return edToast("Arraste para desenhar um ambiente de pelo menos 1 × 1 m.");}
     edSnap();const n=S.ambientes.length+1;S.ambientes.push({id:`amb-${Date.now()}`,nome:`Ambiente ${n}`,comprimento:L,largura:W,altura:3,lux:300,lm:4000,w:40,uf:0.6,mf:0.8,espTomadas:5,espLum:1.5,infl:"seco",zona:"",saidas:1,x:X1,y:Y1});
-    return edFim(`Ambiente ${n} (${fmt(L,1)} × ${fmt(W,1)} m) incluído. Complete nome e parâmetros na etapa 02 e inclua portas.`);}
+    return edFim(`Ambiente ${n} (${fmt(L,1)} × ${fmt(W,1)} m) incluído. Botão direito para nome e parâmetros.`);}
   if(!EDT)return;const tp=EDT.tp,i=EDT.i;EDT=null;
   if(tp==="q"){const P=layoutPlanta(),r=P.quad[i],w_=r&&paredeMaisProxima(P,r.x,r.y);if(w_){r.q.x=Math.round(w_.x*100)/100;r.q.y=Math.round(w_.y*100)/100;}}
-  if(S.par.distAuto){calc();const n=aplicarDistancias();if(n)toast(`${n} comprimento(s) atualizado(s) pelo desenho.`);}
-  persist();soft();edRedesenhar();});
+  if(S.par.distAuto){calc();const n=aplicarDistancias();if(n)edToast(`${n} comprimento(s) atualizado(s) pelo desenho.`);}
+  persist();soft();edAtualizar(true);}
+function edCtx(ev){if(!ev.target.closest||!ev.target.closest("#edSvg"))return;const g=ev.target.closest("[data-drag],[data-pt]");ev.preventDefault();if(g)edCtxAbrir(ev,g);}
+function edClick(ev){const b=ev.target.closest&&ev.target.closest("button,input");if(!b)return;
+  if(b.dataset.edtool){ED_TOOL=b.dataset.edtool;edAtualizar(true);return;}
+  const id=b.id;if(!id)return;
+  if(id==="edUndo"){const j=ED_UNDO.pop();if(j){S=normalizar(JSON.parse(j));calc();persist();soft();edAtualizar(true);if(!PIP)render(true);edToast("Alteração desfeita.");}return;}
+  if(id==="edApl"){calc();const n=aplicarDistancias();persist();soft();edAtualizar(true);if(!PIP)render(true);edToast(n?`${n} comprimento(s) atualizado(s) pelo desenho.`:"Os comprimentos já correspondem ao desenho.");return;}
+  if(id==="edSnap"){edSnap();const P_=layoutPlanta();P_.quad.forEach(r=>{const w_=paredeMaisProxima(P_,r.x,r.y);if(w_){r.q.x=Math.round(w_.x*100)/100;r.q.y=Math.round(w_.y*100)/100;}});return edFim("Quadros ajustados às paredes. Confira as posições.");}
+  if(id==="edAuto"){S.par.distAuto=b.checked;persist();return;}
+  if(id==="edPip"){edAbrirPip();return;}if(id==="edPipX"){edFecharPip();return;}
+  if(id==="edFloat"){ED_FLOAT=!ED_FLOAT;render(true);return;}
+  if(id==="edFull"){const p=edEl("edPanel");if(p&&p.requestFullscreen)(document.fullscreenElement?document.exitFullscreen():p.requestFullscreen());return;}
+  if(id==="edCtxX"){edCtxFechar();return;}}
+function edSubmit(ev){if(ev.target.id==="edCtxF"){ev.preventDefault();edCtxAplicar(ev.target);}}
+function edTecla(ev){if(ev.key==="Escape"){edCtxFechar();if(ED_FLOAT&&!PIP){ED_FLOAT=false;render(true);}}}
+function edLigar(D){D.addEventListener("pointerdown",edDown);D.addEventListener("pointermove",edMove);D.addEventListener("pointerup",edUp);D.addEventListener("contextmenu",edCtx);D.addEventListener("click",edClick);D.addEventListener("submit",edSubmit);D.addEventListener("keydown",edTecla);}
+edLigar(document);
 
 V.fim=()=>{const pd=pendencias(),ok=pd.filter(x=>x[1]).length;return `${head(STEPS.length-1)}
 <p class="intro">O PDF segue o fluxo da Aula 2 (slide 7), na mesma ordem do material de referência da Bysol. Cada seção abre com uma página separadora que indica a etapa e o que ela contém. Itens ainda não anexados aparecem como folha de pendência.</p>
@@ -1637,9 +1724,6 @@ document.addEventListener("click",e=>{
   if(b.id==="addAmb"){const i=S.ambientes.length+1;S.ambientes.push({id:`amb-${Date.now()}`,nome:`Ambiente ${i}`,comprimento:6,largura:5,altura:3,lux:300,lm:4000,w:40,uf:0.6,mf:0.8,espTomadas:5,espLum:1.5,infl:"seco",zona:"",saidas:1,x:"",y:""});persist();render(true);return;}
   if(b.dataset.addab){const a=S.ambientes[0];S.aberturas.push({amb:a.id,tipo:b.dataset.addab,parede:"inf",pos:0.5,larg:b.dataset.addab==="porta"?0.9:1.5});persist();render(true);return;}
   if(b.dataset.delab!=null){S.aberturas.splice(+b.dataset.delab,1);persist();render(true);return;}
-  if(b.dataset.edtool){ED_TOOL=b.dataset.edtool;render(true);return;}
-  if(b.id==="edUndo"){const j=ED_UNDO.pop();if(j){S=normalizar(JSON.parse(j));calc();persist();render(true);toast("Alteração desfeita.");}return;}
-  if(b.id==="edApl"){calc();const n=aplicarDistancias();persist();render(true);toast(n?`${n} comprimento(s) atualizado(s) pelo desenho.`:"Os comprimentos já correspondem ao desenho.");return;}
   if(b.id==="snapQ"){const P_=layoutPlanta();let n=0;P_.quad.forEach(r=>{const w_=paredeMaisProxima(P_,r.x,r.y);if(w_){r.q.x=Math.round(w_.x*100)/100;r.q.y=Math.round(w_.y*100)/100;n++;}});persist();render(true);toast(`${n} quadro(s) ajustado(s) às paredes. Confira as posições.`);return;}
   if(b.dataset.delamb!=null){const a=S.ambientes.splice(+b.dataset.delamb,1)[0];S.aberturas=S.aberturas.filter(o=>o.amb!==a.id);S.circ.forEach(c=>{if(c.ambiente===a.id)c.ambiente="";});persist();render(true);return;}
   if(b.dataset.del!=null){S.circ.splice(+b.dataset.del,1);persist();render(true);return;}
@@ -1879,26 +1963,33 @@ function layoutPlanta(){
   const amb=posAmbientes().map(({a,x,y,L,W})=>{
     const r0={a,x,y,L,W},ab=L>0&&W>0?abertDe(r0):[],portas=ab.filter(o=>o.tipo==="porta");
     const oc=R.out.filter(o=>o.c.ambiente===a.id),num=t=>oc.filter(o=>o.c.tipo===t);
-    const nLumC=Math.max(0,...num("ilum").map(o=>+o.c.qtd||0)),nLum=nLumC||calcularAmbiente(a).luminarias, // sem circuito vinculado: quantidade calculada do ambiente (grade fechada)
-      nTug=Math.max(0,...num("tug").map(o=>+o.c.qtd||0));
+    const cAmb=calcularAmbiente(a),nLum=L>0&&W>0?cAmb.luminarias:0, // total do ambiente (grade fechada), dividido entre os circuitos de iluminação
+      nTug=num("tug").length?cAmb.tomadas:0;
+    // a que circuito pertence cada ponto (na ordem: luminárias pela grade, tomadas pelo perímetro)
+    const dono=(lista,n)=>{const r_=[];lista.forEach(o=>{for(let k=0;k<(+o.c.qtd||0)&&r_.length<n;k++)r_.push(o.i+1);});while(r_.length<n)r_.push(lista[0]?lista[0].i+1:0);return r_;};
+    const lumC=dono(num("ilum"),nLum),tugC0=dono(num("tug"),nTug);
     const g=nLum&&L&&W?gradeLum(nLum,L,W):{cols:1,rows:1},lum=[];
     for(let k=0;k<nLum&&L&&W;k++)lum.push([x+L*((k%g.cols)+0.5)/g.cols,y+W*(Math.floor(k/g.cols)+0.5)/Math.ceil(nLum/g.cols)]);
     const lc=num("ilum")[0],tc=num("tug")[0],wLum=lc?lc.P/Math.max(1,+lc.c.qtd||1):(+a.w||0),vaTug=tc?tc.S/Math.max(1,+tc.c.qtd||1):0;
     // tomadas (TUG) e pontos de uso específico (TUE) nas paredes, fora das aberturas e dos cantos
     const tues=num("tue"),motores=num("motor"),nPar=nTug+tues.length,pp_=perimDistribui(r0,ab,nPar);
     const idxTue=new Set(tues.map((_,j)=>Math.min(nPar-1,Math.round((j+0.5)*nPar/Math.max(1,tues.length)-0.5))));
-    const tug=[],fix=[];let jt=0;pp_.forEach((p,k)=>{if(idxTue.has(k)&&jt<tues.length)fix.push({o:tues[jt++],p:[p[0],p[1]],parede:p[2],d:p[3]});else tug.push([p[0],p[1],p[2],p[3]]);});
+    const tug=[],fix=[];let jt=0,jg=0;pp_.forEach((p,k)=>{if(idxTue.has(k)&&jt<tues.length)fix.push({o:tues[jt++],p:[p[0],p[1]],parede:p[2],d:p[3]});else tug.push([p[0],p[1],p[2],p[3],tugC0[jg++]||0]);});
     // ponto de uso específico com posição escolhida no editor: vai para a parede mais próxima do ambiente
     fix.forEach(f=>{const c=f.o.c;if(c.px===""||c.px==null||c.py===""||c.py==null)return;const P1={amb:[{a,x,y,L,W,ab}]},w_=paredeMaisProxima(P1,+c.px,+c.py);if(w_){f.p=[w_.x,w_.y];f.parede=[0,1,2,3][[0,90,180,-90].indexOf(w_.ang)];}});
     // máquinas (motores): no meio do ambiente, entre as linhas de luminárias; a baixada desce até elas
     const ym=y+W*(g.rows>1?1/g.rows:0.3);motores.forEach((o,j)=>{const px_=o.c.px,py_=o.c.py,ok_=px_!==""&&px_!=null&&py_!==""&&py_!=null&&isFinite(+px_)&&isFinite(+py_);fix.push({o,p:ok_?[Math.min(x+L-0.3,Math.max(x+0.3,+px_)),Math.min(y+W-0.3,Math.max(y+0.3,+py_))]:[x+L*(j+1)/(motores.length+1),ym],maq:true});});
     // interruptor ao lado da primeira porta (no batente), saídas sobre as portas
-    let inter=null;if(nLum&&L&&W){if(portas.length){const d=portas[0],s_=d.p0-0.25>=0.3?d.p0-0.25:d.p1+0.25,hz=d.hz;
-        inter=hz?[x+s_,d.A[1]+d.nin[1]*0.15]:[d.A[0]+d.nin[0]*0.15,y+s_];}else inter=[x+Math.min(0.8,L/4),y+0.35];}
+    // um interruptor por circuito de iluminação, lado a lado junto à primeira porta
+    const cIl=[...new Set(lumC)].filter(Boolean),inters=[];
+    (cIl.length?cIl:(nLum?[0]:[])).forEach((c,j)=>{let p;if(portas.length){const d=portas[0],antes=d.p0-0.25-0.2*j>=0.3,s_=antes?d.p0-0.25-0.2*j:d.p1+0.25+0.2*j;
+        p=d.hz?[x+s_,d.A[1]+d.nin[1]*0.15]:[d.A[0]+d.nin[0]*0.15,y+s_];}else p=[x+Math.min(0.8,L/4)+0.25*j,y+0.35];inters.push({c,p,letra:String.fromCharCode(97+((nCmd+j)%26))});});
+    const inter=inters[0]?inters[0].p:null;
     const e=S.par.emerg?emergCalc(a):{n:0,saidas:0,esp:1};const ce=Math.max(1,Math.ceil(L/e.esp)),re=Math.max(1,Math.ceil(W/e.esp)),emg=[];
     for(let i=0;i<ce;i++)for(let j=0;j<re;j++)if(emg.length<e.n)emg.push([x+L*(i+0.5)/ce+0.6,y+W*(j+0.5)/re+0.6]);
     const sai=portas.length?portas.map(d=>[d.c[0]+d.nin[0]*0.35,d.c[1]+d.nin[1]*0.35,d]):[...Array(e.saidas)].map((_,k)=>[x+L*(k+1)/(e.saidas+1),y]);
-    return {a,x,y,L,W,ab,portas,lum,g,tug,fix,emg,sai,cI:num("ilum").map(o=>o.i+1),cT:num("tug").map(o=>o.i+1),nLum,wLum,vaTug,inter,letra:nLum?String.fromCharCode(97+(nCmd++%26)):""};});
+    const letraDe=c=>(inters.find(z=>z.c===c)||inters[0]||{}).letra||"",lumL=lumC.map(letraDe),letra=inters[0]?inters[0].letra:"";nCmd+=Math.max(inters.length,0);
+    return {a,x,y,L,W,ab,portas,lum,lumC,lumL,g,tug,fix,emg,sai,cI:num("ilum").map(o=>o.i+1),cT:num("tug").map(o=>o.i+1),nLum,wLum,vaTug,inter,inters,letra};});
   const bb={x1:0,y1:0,x2:1,y2:1};amb.forEach(r=>{bb.x1=Math.min(bb.x1,r.x);bb.y1=Math.min(bb.y1,r.y);bb.x2=Math.max(bb.x2,r.x+r.L);bb.y2=Math.max(bb.y2,r.y+r.W);});
   const ent=entradaPonto();
   if(esp){bb.x1=Math.min(bb.x1,0);bb.y1=Math.min(bb.y1,0);bb.x2=Math.max(bb.x2,esp.C);bb.y2=Math.max(bb.y2,esp.L);}
@@ -1921,19 +2012,19 @@ function layoutPlanta(){
   const dm=(a,b)=>Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1]);
   R.out.forEach(o=>{const r=ambOk.find(z=>z.a.id===o.c.ambiente),Q=qp(o.c.q);if(!r||!Q)return;
     const Lg=LIG[o.c.lig]||LIG["F+N"],c=o.i+1,base={F:Lg.nf,N:Lg.n?1:0,T:1},q0=[Q.x,Q.y];
-    if(o.c.tipo==="ilum"&&r.lum.length){
-      const lm=r.lum,fl=lm.reduce((b,p,k)=>dm(p,q0)<dm(lm[b],q0)?k:b,0);addLig(rota(q0,lm[fl]).pts,c,base);
-      if(r.cI[0]!==c)return; // demais circuitos de iluminação do ambiente: só a alimentação
+    if(o.c.tipo==="ilum"&&r.lum.some((_,k)=>r.lumC[k]===c)){
+      const lm=r.lum.filter((_,k)=>r.lumC[k]===c),fl=lm.reduce((b,p,k)=>dm(p,q0)<dm(lm[b],q0)?k:b,0);addLig(rota(q0,lm[fl]).pts,c,base);
+      const it=r.inters.find(z=>z.c===c)||r.inters[0],sw=it?it.p:null,let_=it?it.letra:r.letra;
       // árvore mínima entre as luminárias (Prim, distância ortogonal)
       const inT=new Set([fl]),ed=[];while(inT.size<lm.length){let bst=null;inT.forEach(i=>lm.forEach((p,j)=>{if(inT.has(j))return;const dd=dm(lm[i],p);if(!bst||dd<bst[2])bst=[i,j,dd];}));inT.add(bst[1]);ed.push([bst[0],bst[1]]);}
-      const sl=r.inter?lm.reduce((b,p,k)=>dm(p,r.inter)<dm(lm[b],r.inter)?k:b,0):fl;
+      const sl=sw?lm.reduce((b,p,k)=>dm(p,sw)<dm(lm[b],sw)?k:b,0):fl;
       // caminho na árvore entre a luminária alimentada e a do interruptor: por ele passa a fase até o interruptor
       const adj=lm.map(()=>[]);ed.forEach(([i,j])=>{adj[i].push(j);adj[j].push(i);});const pai=lm.map(()=>-1),vis=new Set([fl]),fila=[fl];while(fila.length){const u=fila.shift();adj[u].forEach(v=>{if(!vis.has(v)){vis.add(v);pai[v]=u;fila.push(v);}});}
       const comF=new Set();for(let v=sl;v!==fl&&v>=0;v=pai[v])comF.add(v+"-"+pai[v]);
-      ed.forEach(([i,j])=>addLig(Lz(lm[i],lm[j]),c,{F:comF.has(i+"-"+j)||comF.has(j+"-"+i)?1:0,N:Lg.n?1:0,T:1,R:[r.letra]}));
-      if(r.inter)addLig(Lz(lm[sl],r.inter),c,{F:1,R:[r.letra]});
-    }else if(o.c.tipo==="tug"&&r.tug.length){
-      const tp=r.tug,fi=tp.reduce((b,p,k)=>dm(p,q0)<dm(tp[b],q0)?k:b,0);addLig(rota(q0,[tp[fi][0],tp[fi][1]]).pts,c,base);
+      ed.forEach(([i,j])=>addLig(Lz(lm[i],lm[j]),c,{F:comF.has(i+"-"+j)||comF.has(j+"-"+i)?1:0,N:Lg.n?1:0,T:1,R:[let_]}));
+      if(sw)addLig(Lz(lm[sl],sw),c,{F:1,R:[let_]});
+    }else if(o.c.tipo==="tug"&&r.tug.some(t=>t[4]===c)){
+      const tp=r.tug.filter(t=>t[4]===c),fi=tp.reduce((b,p,k)=>dm(p,q0)<dm(tp[b],q0)?k:b,0);addLig(rota(q0,[tp[fi][0],tp[fi][1]]).pts,c,base);
       for(let k=0;k+1<tp.length;k++){const a=tp[k],b=tp[k+1],cruza=r.ab.some(op=>op.d[0]<b[3]&&op.d[1]>a[3]);
         // entre tomadas, embutido na parede; se houver abertura no caminho, passa pelo teto
         const pts=[];if(!cruza){for(let d=a[3];d<b[3];d+=0.25){const p=perimPt(r,d,0.15);pts.push([p[0],p[1]]);}pts.push([b[0],b[1]]);}
@@ -1988,9 +2079,9 @@ function exportarDXF(){
   if(Lp.ent){sim("QUADROS","med",Lp.ent.x,Lp.ent.y,0.5,{ang:Lp.ent.nx?90:0});tx("TEXTOS",Lp.ent.x+0.6,Lp.ent.y+0.6,0.25,"ENTRADA DE ENERGIA / MEDICAO");
     if(Lp.entRota){const p=Lp.entRota.pts;for(let k=1;k<p.length;k++)tr("ALIMENTADORES",p[k-1][0],p[k-1][1],p[k][0],p[k][1]);const e=R.ent;tx("TEXTOS",(p[0][0]+p[1][0])/2+0.2,(p[0][1]+p[1][1])/2+0.2,0.2,`ALIM. ENTRADA ${e&&e.s?e.txt+" mm² - ":""}${fmt(+S.forn.Lent||0,0)} m`);}}
   Lp.amb.forEach(r=>{rt("AMBIENTES",r.x,r.y,r.L,r.W);tx("TEXTOS",r.x+0.3,r.y+r.W-0.6,0.35,r.a.nome);tx("COTAS",r.x+0.3,r.y+r.W-1.1,0.22,`${fmt(r.L,2)} x ${fmt(r.W,2)} m - H ${fmt(+r.a.altura||0,2)} m${r.a.zona?` - ZONA ${r.a.zona}`:""}`);
-    r.lum.forEach(([x,y])=>{sim("ILUMINACAO","lum",x,y,0.25);if(r.letra)tx("ILUMINACAO",x+0.36,y+0.16,0.15,r.letra);});
+    r.lum.forEach(([x,y],k)=>{sim("ILUMINACAO","lum",x,y,0.25);if(r.lumL[k])tx("ILUMINACAO",x+0.36,y+0.16,0.15,r.lumL[k]);});
     if(r.lum.length)tx("ILUMINACAO",r.lum[0][0]-0.32,r.lum[0][1]-0.42,0.16,`${ct(r.cI)} ${r.nLum}x${fmt0(r.wLum)}W`);
-    if(r.inter){sim("INTERRUPTORES","inter",r.inter[0],r.inter[1],0.18);tx("INTERRUPTORES",r.inter[0]+0.12,r.inter[1]+0.1,0.15,r.letra);}
+    r.inters.forEach(it=>{sim("INTERRUPTORES","inter",it.p[0],it.p[1],0.18);tx("INTERRUPTORES",it.p[0]+0.12,it.p[1]+0.1,0.15,it.letra);});
     r.tug.forEach(([x,y,d])=>sim("TOMADAS","tom",x,y,0.2,{alt:"media",ang:[90,180,270,0][d||0]}));
     if(r.tug.length)tx("TOMADAS",r.tug[0][0]+0.3,r.tug[0][1]+0.3,0.16,`${ct(r.cT)}${Math.round(r.vaTug)!==100?` ${fmt0(r.vaTug)} VA`:""}`);
     r.fix.forEach(f=>{const {o:c,p:[x,y]}=f;if(f.maq){sim("FORCA","motor",x,y,0.35);sim("FORCA","desce",x-0.4,y+0.4,0.2);}else sim("FORCA","tom",x,y,0.22,{alt:"alta",ang:[90,180,270,0][f.parede||0]});tx("FORCA",x+0.45,y-0.08,0.16,`${ct([c.i+1])} ${c.c.tipo==="motor"?`${fmtN(c.c.pot)} ${c.c.unid}`:`${fmt(c.P/1000,1)} kW`} - ${c.c.nome}`);});
@@ -2307,7 +2398,7 @@ async function gerarPDF(){
       for(let i=1;i<=n;i++){const fi=i<n?!Lp.dentroDe(x1+(x2-x1)*(i+0.5)/n,y1+(y2-y1)*(i+0.5)/n):!f0;if(i===n||fi!==f0){const [a,b]=P(x1+(x2-x1)*i0/n,y1+(y2-y1)*i0/n),[c,d]=P(x1+(x2-x1)*i/n,y1+(y2-y1)*i/n);Ln(pp,a,b,c,d,lw,cor,f0?[4,3]:undefined);i0=i;f0=fi;}}}};
     // reserva antes dos rótulos: coluna da legenda e todos os símbolos
     ocAdd(X0+BW+20,0,w,h);{const box=(x,y,k=1.3)=>{const [cx,cy]=P(x,y);ocAdd(cx-k*s0,cy-k*s0,cx+k*s0,cy+k*s0);};
-      Lp.amb.forEach(r=>{r.lum.forEach(([a,b])=>box(a,b));r.tug.forEach(([a,b])=>box(a,b));r.fix.forEach(({p:[a,b]})=>box(a,b,1.8));r.emg.forEach(([a,b])=>box(a,b));if(r.inter)box(...r.inter,0.8);
+      Lp.amb.forEach(r=>{r.lum.forEach(([a,b])=>box(a,b));r.tug.forEach(([a,b])=>box(a,b));r.fix.forEach(({p:[a,b]})=>box(a,b,1.8));r.emg.forEach(([a,b])=>box(a,b));r.inters.forEach(it=>box(...it.p,0.8));
         r.sai.forEach(([a,b])=>{const [cx,cy]=P(a,b);ocAdd(cx-12,cy-4,cx+12,cy+5);});});
       Lp.quad.forEach(r=>box(r.x,r.y,2.2));if(Lp.ent)box(Lp.ent.x,Lp.ent.y,2.4);}
     // limite da área (traço-ponto-ponto)
@@ -2333,11 +2424,11 @@ async function gerarPDF(){
     // pontos de utilização
     Lp.amb.forEach(r=>{const [x,y]=P(r.x,r.y);
       TL(pp,r.a.nome.slice(0,34),x+4,y+r.W*sc-11,7,FB,INK);TL(pp,`${fmt(r.L,1)} × ${fmt(r.W,1)} m · H ${fmt(+r.a.altura||0,1)} m · ${(INFL[r.a.infl]||INFL.seco).ip}${r.a.zona?` · ZONA ${r.a.zona}`:""}`,x+4,y+r.W*sc-20,5.8,F,r.a.zona?RED:MUT);
-      r.lum.forEach(([a,b])=>{const [cx,cy]=P(a,b);SIMR(pp,"lum",cx,cy,s0);if(r.letra)TL(pp,r.letra,cx+1.4*s0,cy+0.5*s0,fs);});
-      if(r.lum.length){const [cx,cy]=P(...r.lum[0]);TL(pp,`${r.cI.map(n=>`-${n}-`).join(" ")} ${r.nLum}×${fmt0(r.wLum)} W`,cx-1.3*s0,cy-0.6*s0-fs-0.5,fs,FB,RED);}
-      if(r.inter){const [cx,cy]=P(...r.inter);SIMR(pp,"inter",cx,cy,s0);TL(pp,r.letra,cx+0.6*s0,cy+0.4*s0,fs);}
+      r.lum.forEach(([a,b],k)=>{const [cx,cy]=P(a,b);SIMR(pp,"lum",cx,cy,s0);if(r.lumL[k])TL(pp,r.lumL[k],cx+1.4*s0,cy+0.5*s0,fs);});
+      [...new Set(r.lumC)].forEach(c=>{const k=r.lumC.indexOf(c),n=r.lumC.filter(z=>z===c).length,[cx,cy]=P(...r.lum[k]);TL(pp,`${c?`-${c}- `:""}${n}×${fmt0(r.wLum)} W`,cx-1.3*s0,cy-0.6*s0-fs-0.5,fs,FB,RED);});
+      r.inters.forEach(it=>{const [cx,cy]=P(...it.p);SIMR(pp,"inter",cx,cy,s0);TL(pp,it.letra,cx+0.6*s0,cy+0.4*s0,fs);});
       r.tug.forEach(([a,b,d])=>{const [cx,cy]=P(a,b);SIMR(pp,"tom",cx,cy,s0,{alt:"media",ang:[90,180,270,0][d||0]});});
-      if(r.tug.length){const [cx,cy]=P(r.tug[0][0],r.tug[0][1]);TL(pp,`${r.cT.map(n=>`-${n}-`).join(" ")}${Math.round(r.vaTug)!==100?` ${fmt0(r.vaTug)} VA`:""}`,cx+1.2*s0,cy+1.2*s0,fs,FB,RED);}
+      [...new Set(r.tug.map(t=>t[4]))].forEach(c=>{const t=r.tug.find(z=>z[4]===c),[cx,cy]=P(t[0],t[1]);TL(pp,`${c?`-${c}-`:""}${Math.round(r.vaTug)!==100?` ${fmt0(r.vaTug)} VA`:""}`,cx+1.2*s0,cy+1.2*s0,fs,FB,RED);});
       r.fix.forEach(f=>{const {o,p:[a,b]}=f,[cx,cy]=P(a,b),pot=o.c.tipo==="motor"?`${fmtN(o.c.pot)} ${o.c.unid}`:`${fmt(o.P/1000,o.P<10000?1:0)} kW`;
         if(f.maq){SIMR(pp,"desce",cx-1.6*s0,cy+1.6*s0,s0*0.8);SIMR(pp,"motor",cx,cy,s0*1.4);TL(pp,o.c.nome.replace(/\s*\([^)]*\)/g,"").slice(0,30),cx+1.8*s0,cy+1,fs,FB,INK);TL(pp,`-${o.i+1}- ${pot}`,cx+1.8*s0,cy-fs,fs,FB,RED);}
         else{SIMR(pp,"tom",cx,cy,s0,{alt:"alta",ang:[90,180,270,0][f.parede||0]});TL(pp,`-${o.i+1}- ${o.c.nome.replace(/\s*\([^)]*\)/g,"").slice(0,30)} ${pot}`,cx+1.4*s0,cy+1.2*s0,fs,FB,RED);}});
