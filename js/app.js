@@ -23,7 +23,7 @@ function blank(){
     forn:{espComp:"",espLarg:"",entLado:"",entPos:"",sistema:"380/220",atend:"BT",classe:"rural",subclasse:"Agroindustrial",tensaoPrim:13.8,subterraneo:false,modalidade:"",iccMT:"",Lmt:30,trafo:false,trafoKVA:"",rede:"",distRede:"",Lent:15,metEnt:"D",aterr:"TN-S",aerea:true,aq:"AQ2",spda:false,rhoEletrica:"",ra:30,ul:50,obs:""},
     par:{temp:30,tempSolo:20,rhoSolo:2.5,metDist:"B1",metBaix:"B1",agrDist:"feixe",espEnt:"nula",arrF:"trifolio",arrG:"horizontal",ipin:7,dvPartida:10,simular:true,softLim:3,invLim:1.5,bobina:"220 Vca",icc:6,dpsSempre:false,distAuto:true,dvTerm:4,dvTotal:5,dvEnt:1,rho:0.0206,curva:"C",curvaMotor:"D",reserva:20,sobra:10,neutroRed:false,ocupCan:40,espSupCan:1.5,baixAparente:true,xCabo:0.08,rTerra:10,nEquip:6,lEquip:10,corrFP:true,fpAlvo:0.92,emerg:true,zTrafo:4.5,tipoSub:"poste"},
     quadros:[{nome:"QGBT",L:0,met:"B1",pai:"",infl:"seco",x:"",y:""}],
-    ambientes:[],aberturas:[],guias:[],
+    ambientes:[],aberturas:[],guias:[],vias:{},
     circ:[],
     canaletas:{},
     anexos:Object.fromEntries(ANEXOS.map(a=>[a.k,[]])),
@@ -1456,6 +1456,21 @@ const ED_TOOLS=[["sel","Selecionar e arrastar (inclusive eletrodutos)","M5 3l13 
 // guias que se sobrepõem a um trecho de eletroduto (mesma direção, mesma linha, trechos que se cruzam)
 function guiasDoTrecho(ch){const hz=ch.t==="h",lin=hz?ch.a[1]:ch.a[0],i0=Math.min(hz?ch.a[0]:ch.a[1],hz?ch.b[0]:ch.b[1]),i1=Math.max(hz?ch.a[0]:ch.a[1],hz?ch.b[0]:ch.b[1]);
   return (S.guias||[]).filter(g=>{const gh=Math.abs(g.a[1]-g.b[1])<1e-6;if(gh!==hz)return false;const gl=gh?g.a[1]:g.a[0],j0=Math.min(gh?g.a[0]:g.a[1],gh?g.b[0]:g.b[1]),j1=Math.max(gh?g.a[0]:g.a[1],gh?g.b[0]:g.b[1]);return Math.abs(gl-lin)<0.15&&j0<i1-0.05&&j1>i0+0.05;});}
+// move de fato o eletroduto: reescreve o traçado de cada ligação que passa pelo trecho (as pontas continuam nos mesmos pontos)
+function editarTracado(E_,d){const P=layoutPlanta(),{t,a,b}=E_.ch,hz=t==="h",lin=hz?a[1]:a[0],lo=Math.min(hz?a[0]:a[1],hz?b[0]:b[1]),hi=Math.max(hz?a[0]:a[1],hz?b[0]:b[1]);
+  const off=p=>hz?[p[0],p[1]+d]:[p[0]+d,p[1]],co=p=>hz?p[0]:p[1],onSeg=p=>Math.abs((hz?p[1]:p[0])-lin)<0.13&&co(p)>=lo-0.13&&co(p)<=hi+0.13;
+  const g=E_.gp,movel=Math.abs(co(g)-co(a))<=Math.abs(co(g)-co(b))?co(a):co(b);let n=0;S.vias=S.vias||{};
+  (E_.ch.ligs||[]).forEach(key=>{const l=P.lig.find(x=>x.key===key);if(!l)return;
+    const dn=[l.pts[0]];for(let k=1;k<l.pts.length;k++){const [x1,y1]=l.pts[k-1],[x2,y2]=l.pts[k],m=Math.max(1,Math.ceil((Math.abs(x2-x1)+Math.abs(y2-y1))/0.25));for(let i=1;i<=m;i++)dn.push([x1+(x2-x1)*i/m,y1+(y2-y1)*i/m]);}
+    let i0=dn.findIndex(onSeg);if(i0<0)return;let i1=i0;while(i1+1<dn.length&&onSeg(dn[i1+1]))i1++;if(i1===i0)return;
+    let novo;if(E_.tp==="ch")novo=[...dn.slice(0,i0+1),off(dn[i0]),off(dn[i1]),...dn.slice(i1)];
+    else{let ig=i0;for(let i=i0;i<=i1;i++)if(Math.abs(co(dn[i])-co(g))<Math.abs(co(dn[ig])-co(g)))ig=i;
+      novo=Math.abs(co(dn[i0])-movel)<=Math.abs(co(dn[i1])-movel)?[...dn.slice(0,i0+1),off(dn[i0]),off(dn[ig]),...dn.slice(ig)]:[...dn.slice(0,ig+1),off(dn[ig]),off(dn[i1]),...dn.slice(i1)];}
+    const q=[];novo.forEach(p=>{p=[Math.round(p[0]*1000)/1000,Math.round(p[1]*1000)/1000];if(q.length&&Math.abs(q[q.length-1][0]-p[0])<1e-6&&Math.abs(q[q.length-1][1]-p[1])<1e-6)return;q.push(p);});
+    for(let k=q.length-2;k>0;k--){const [A,B,C]=[q[k-1],q[k],q[k+1]];if((Math.abs(A[0]-B[0])<1e-6&&Math.abs(B[0]-C[0])<1e-6)||(Math.abs(A[1]-B[1])<1e-6&&Math.abs(B[1]-C[1])<1e-6))q.splice(k,1);}
+    S.vias[key]=q;n++;});return n;}
+function tracadoEditado(ch){return [...(ch.ligs||[])].some(k=>S.vias&&S.vias[k])||guiasDoTrecho(ch).length>0;}
+function restaurarTrecho(ch){let n=0;[...(ch.ligs||[])].forEach(k=>{if(S.vias&&S.vias[k]){delete S.vias[k];n++;}});return n+tirarGuias(ch);}
 function tirarGuias(ch){const ts=new Set(guiasDoTrecho(ch));S.guias=(S.guias||[]).filter(g=>!ts.has(g));return ts.size;}
 function edSnap(){ED_UNDO.push(JSON.stringify(S));if(ED_UNDO.length>30)ED_UNDO.shift();}
 // com o editor na tela, atualiza só o conteúdo dele (recriar o painel tiraria a tela cheia); fora dele, redesenha a etapa
@@ -1495,7 +1510,7 @@ function edApagar(g){const tp=g.dataset.drag||g.dataset.pt,i=+g.dataset.i,c=+g.d
   if(tp==="maq"||tp==="tue"){const x=S.circ.splice(c,1)[0];return edFim(`Circuito ${x.nome} apagado.`);}
   if(tp==="tug"||tp==="lum"){const a=S.ambientes.find(z=>z.id===g.dataset.amb);if(a){const k=tp==="tug"?"tugExtra":"lumExtra";a[k]=(+a[k]||0)-1;}return edFim(`${tp==="tug"?"Tomada":"Luminária"} retirada (a quantidade calculada do ambiente diminui uma unidade).`);}
   if(tp==="ent"){S.forn.entLado="";return edFim("Entrada retirada do limite (posição suposta).");}
-  if(tp==="ch"){const ch=layoutPlanta().chains[i],n=ch?tirarGuias(ch):0;if(!n){ED_UNDO.pop();return edToast("Este trecho já segue o traçado automático.");}return edFim("Traçado automático restaurado neste trecho.");}
+  if(tp==="ch"){const ch=layoutPlanta().chains[i],n=ch?restaurarTrecho(ch):0;if(!n){ED_UNDO.pop();return edToast("Este trecho já segue o traçado automático.");}return edFim("Traçado automático restaurado neste trecho.");}
   ED_UNDO.pop();}
 function editorSVG(){
   if(!S.ambientes.length)return `<p class="note warn" style="margin:12px">Desenhe um ambiente com a ferramenta Ambiente (ou cadastre na etapa 02).</p><svg id="edSvg" viewBox="0 0 40 20" style="width:100%;height:100%;background:#fff;touch-action:none" data-x1="0" data-y2="20"><rect id="edPrev" x="0" y="0" width="0" height="0" fill="#1f3b5a" fill-opacity="0.12"/></svg>`;
@@ -1507,7 +1522,7 @@ function editorSVG(){
     <text x="${X(r.x+0.3)}" y="${(+Y(r.y+r.W-0.3)+f).toFixed(3)}" font-size="${f}" fill="#1f3b5a" pointer-events="none">${esc(r.a.nome)} · ${fmt(r.L,1)} × ${fmt(r.W,1)} m</text>
     <rect data-drag="res" data-i="${i}" x="${(+X(r.x+r.L)-f*0.5).toFixed(3)}" y="${(+Y(r.y+r.W)-f*0.5).toFixed(3)}" width="${f}" height="${f}" fill="#1f3b5a" style="cursor:nwse-resize"><title>Arraste para mudar comprimento e largura</title></rect>`;});
   (S.guias||[]).forEach(g=>{s+=ln(g.a[0],g.a[1],g.b[0],g.b[1],"#2563eb",f/5,`${f/3} ${f/4}`);});
-  P.chains.forEach(ch=>{s+=ln(ch.a[0],ch.a[1],ch.b[0],ch.b[1],"#7a5c00",ch.circ.length>=4?f/3:f/9);});
+  P.chains.forEach(ch=>{const ed_=[...ch.ligs].some(k=>S.vias&&S.vias[k]);s+=ln(ch.a[0],ch.a[1],ch.b[0],ch.b[1],ed_?"#2563eb":"#7a5c00",ch.circ.length>=4?f/3:ed_?f/6:f/9);});
   P.alim.forEach(a=>{for(let k=1;k<a.pts.length;k++)s+=ln(a.pts[k-1][0],a.pts[k-1][1],a.pts[k][0],a.pts[k][1],"#333",f/7);});
   P.chains.forEach((ch,k)=>{if(ch.len<0.4)return;s+=`<line data-drag="ch" data-i="${k}" x1="${X(ch.a[0])}" y1="${Y(ch.a[1])}" x2="${X(ch.b[0])}" y2="${Y(ch.b[1])}" stroke="#000" stroke-opacity="0" stroke-width="${f*0.7}" style="cursor:${ED_TOOL==="dobrar"?"crosshair":ch.t==="h"?"ns-resize":"ew-resize"}"><title>Eletroduto — circuito(s) ${ch.circ.join(", ")} · ${fmt(ch.len,2)} m — arraste para mover; ferramenta Dobrar para criar curva; botão direito para restaurar</title></line>`;});
   if(P.entRota)for(let k=1;k<P.entRota.pts.length;k++){const [a,b]=P.entRota.pts[k-1],[c,d]=P.entRota.pts[k];s+=ln(a,b,c,d,"#000",f/6,P.dentroDe((a+c)/2,(b+d)/2)?"":`${f/2} ${f/3}`);}
@@ -1530,7 +1545,7 @@ function editorTabela(){const d=distanciasDesenho(),r=[];
   const dif=r.filter(([,a,b])=>Math.abs(a-b)>0.01).length;
   return `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0"><button type="button" class="btn small" id="edMed" title="Mede de novo todos os trechos pelo desenho atual">Atualizar medições</button><button type="button" class="btn small primary" id="edApl" ${dif?"":"disabled"}>Aplicar todas no cálculo${dif?` (${dif})`:""}</button><span style="font-size:12px;color:var(--muted,#666)">${dif?`${dif} trecho(s) diferente(s) do desenho`:"Os comprimentos do cálculo correspondem ao desenho."}</span></div>
   <div class="tbl"><table><thead><tr><th>Trecho</th><th class="num">Usado no cálculo (m)</th><th class="num">Medido no desenho (m)</th><th></th></tr></thead><tbody>${r.map(([t,a,b,k])=>{const df=Math.abs(a-b)>0.01;return `<tr><td>${esc(t)}</td><td class="num">${fmtN(a)}</td><td class="num" ${df?'style="color:#b3261e;font-weight:600"':""}>${fmtN(b)}</td><td>${df?`<button type="button" class="btn small" data-edrow="${k}" data-v="${b}">Aplicar</button>`:""}</td></tr>`;}).join("")}</tbody></table></div>`;}
-const ED_DICA={sel:"Arraste para mover (eletrodutos se movem em paralelo, sem se desligar) · botão direito em qualquer elemento para editar",dobrar:"Pressione num ponto do eletroduto e arraste: o trecho a partir dali se desloca e forma uma dobra",amb:"Pressione e arraste no espaço vazio para desenhar um ambiente",porta:"Clique perto da parede de um ambiente",janela:"Clique perto da parede de um ambiente",quadro:"Clique perto de uma parede",maq:"Escolha a máquina na biblioteca e clique dentro do ambiente onde ela fica",tue:"Escolha o tipo de carga e clique perto da parede onde ela fica",tug:"Clique dentro do ambiente para acrescentar uma tomada",lum:"Clique dentro do ambiente para acrescentar uma luminária",del:"Clique no elemento a apagar"};
+const ED_DICA={sel:"Arraste para mover (eletrodutos se movem em paralelo e continuam ligados; editados ficam em azul) · botão direito em qualquer elemento para editar",dobrar:"Pressione num ponto do eletroduto e arraste: o trecho a partir dali se desloca e forma uma dobra",amb:"Pressione e arraste no espaço vazio para desenhar um ambiente",porta:"Clique perto da parede de um ambiente",janela:"Clique perto da parede de um ambiente",quadro:"Clique perto de uma parede",maq:"Escolha a máquina na biblioteca e clique dentro do ambiente onde ela fica",tue:"Escolha o tipo de carga e clique perto da parede onde ela fica",tug:"Clique dentro do ambiente para acrescentar uma tomada",lum:"Clique dentro do ambiente para acrescentar uma luminária",del:"Clique no elemento a apagar"};
 function editorBarra(){return `${ED_TOOLS.map(([k,t,d])=>`<button type="button" class="ed-tool${ED_TOOL===k?" on":""}" data-edtool="${k}" title="${t}" aria-label="${t}" aria-pressed="${ED_TOOL===k}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="${d}"/></svg></button>`).join("")}
   <span class="ed-sep"></span><button type="button" class="ed-tool" id="edUndo" title="Desfazer" aria-label="Desfazer" ${ED_UNDO.length?"":"disabled"}><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>`;}
 function editorOpcoes(){if(ED_TOOL==="porta"||ED_TOOL==="janela")return `<select id="edMod" aria-label="Modelo">${Object.entries(MODELOS_AB[ED_TOOL]).map(([k,[t,sg]])=>`<option value="${k}" ${ED_MOD[ED_TOOL]===k?"selected":""}>${t} (${sg})</option>`).join("")}</select>`;
@@ -1586,7 +1601,7 @@ function edCtxAbrir(ev,g){const D=edDoc(),box=D.getElementById("edCtx");if(!box)
     ttl=`${tp==="tug"?"Tomada":"Luminária"} em ${a.nome}`;h=sel("circ","Circuito",opts([...irm.map(([x,j])=>[j,`C${j+1} — ${x.nome}`]),["__novo","+ Novo circuito"]],cur?cur[1]:""))+sel("q","Quadro do circuito",qOpts(cur?cur[0].q:quadroDoAmbiente(posAmbientes().find(r=>r.a.id===a.id))))+inp("nomeC","Nome do circuito (novo)",`${tp==="tug"?"TUG":"Iluminação"} ${a.nome} ${irm.length+1}`)+(tp==="tug"?inp("pot","VA por tomada",cur?cur[0].pot:200,"number"):inp("w","W por luminária",a.w,"number"));}
   else if(tp==="ch"){const ch=layoutPlanta().chains[i];if(!ch)return;ttl=`Eletroduto · ${fmt(ch.len,2)} m`;
     h=`<p style="margin:0 0 6px">${ch.circ.map(c=>{const v=ch.m.get(c);return `C${c} ${esc(S.circ[c-1]?.nome||"")}: ${v.F}F${v.N?" + N":""}${v.R.size?` + R(${[...v.R].join("")})`:""}${v.T?" + T":""}`;}).join("<br>")}</p>`+
-      `<label>Traçado<select name="acao"><option value="manter">manter</option><option value="auto" ${guiasDoTrecho(ch).length?"":"disabled"}>restaurar o automático neste trecho</option><option value="tudo" ${(S.guias||[]).length?"":"disabled"}>restaurar o automático em toda a planta</option></select></label>`;}
+      `<label>Traçado<select name="acao"><option value="manter">manter</option><option value="auto" ${tracadoEditado(ch)?"":"disabled"}>restaurar o automático neste trecho</option><option value="tudo" ${(S.guias||[]).length||Object.keys(S.vias||{}).length?"":"disabled"}>restaurar o automático em toda a planta</option></select></label>`;}
   else if(tp==="ent"){ttl="Entrada de energia";h=sel("entLado","Limite",opts([["inf","Inferior"],["sup","Superior"],["esq","Esquerdo"],["dir","Direito"]],S.forn.entLado))+inp("entPos","Posição (m)",S.forn.entPos,"number",'step="0.5"')+inp("Lent","Alimentador (m)",S.forn.Lent,"number",'step="0.5"');}
   else return;
   box.innerHTML=`<form id="edCtxF" data-tp="${tp}" data-i="${i}" data-c="${c}" data-amb="${g.dataset.amb||""}" data-k="${g.dataset.k||""}"><h4>${esc(ttl)}</h4>${h}<div class="ed-ctx-b"><button type="button" class="btn small" id="edCtxX">Fechar</button><button type="submit" class="btn small primary">Aplicar</button></div></form>`;
@@ -1610,7 +1625,7 @@ function edCtxAplicar(f){const tp=f.dataset.tp,i=+f.dataset.i,c=+f.dataset.c,v=n
     else{const ct=S.circ[+alvo];if(ct&&cs&&ct!==cs){if(fix(ct))ct.qtdAmb=+ct.qtdAmb+1;if(fix(cs))cs.qtdAmb=Math.max(0,+cs.qtdAmb-1);else{cs.qtdAmb=Math.max(0,qtdAt(cs)-1);if(fix(ct))ct.qtdAmb=qtdAt(ct)+1;else ct.qtdAmb="";}}
       if(ct)ct.q=qn;}
     if(tp==="tug"){const ct=alvo==="__novo"?S.circ[S.circ.length-1]:S.circ[+alvo];if(ct)ct.pot=num("pot")||ct.pot;}else a.w=num("w")||a.w;}
-  else if(tp==="ch"){const ch=layoutPlanta().chains[i];if(v("acao")==="auto"&&ch)tirarGuias(ch);else if(v("acao")==="tudo")S.guias=[];else{ED_UNDO.pop();edCtxFechar();return;}}
+  else if(tp==="ch"){const ch=layoutPlanta().chains[i];if(v("acao")==="auto"&&ch)restaurarTrecho(ch);else if(v("acao")==="tudo"){S.guias=[];S.vias={};}else{ED_UNDO.pop();edCtxFechar();return;}}
   else if(tp==="ent"){S.forn.entLado=v("entLado");S.forn.entPos=num("entPos");S.forn.Lent=num("Lent");}
   edCtxFechar();edFim("Alterações aplicadas.");}
 function edCtxFechar(){const b=edEl("edCtx");if(b){b.hidden=true;b.innerHTML="";}}
@@ -1621,7 +1636,7 @@ function edDown(ev){const D=ev.target.ownerDocument;if(D!==edDoc()||!ev.target.c
   if(ED_TOOL==="amb"){ev.preventDefault();ED_NOVO=edPt(ev);return;}
   if((ED_TOOL==="sel"||ED_TOOL==="dobrar")&&g0&&g0.dataset.drag==="ch"){ev.preventDefault();const ch=layoutPlanta().chains[+g0.dataset.i];if(!ch)return;const p0=edPt(ev);
     const gp=ch.t==="h"?[Math.min(Math.max(p0[0],Math.min(ch.a[0],ch.b[0])),Math.max(ch.a[0],ch.b[0])),ch.a[1]]:[ch.a[0],Math.min(Math.max(p0[1],Math.min(ch.a[1],ch.b[1])),Math.max(ch.a[1],ch.b[1]))];
-    EDT={tp:ED_TOOL==="dobrar"?"dob":"ch",ch:{t:ch.t,a:[...ch.a],b:[...ch.b]},p0,gp};return;}
+    EDT={tp:ED_TOOL==="dobrar"?"dob":"ch",ch:{t:ch.t,a:[...ch.a],b:[...ch.b],ligs:[...ch.ligs]},p0,gp};return;}
   if(ED_TOOL==="dobrar"){ev.preventDefault();edToast("Pressione sobre um eletroduto e arraste para dobrá-lo.");return;}
   if(ED_TOOL!=="sel"){ev.preventDefault();const [x,y]=edPt(ev);edFerramenta(x,y);return;}
   const g=g0&&g0.dataset.drag?g0:null;if(!g)return;ev.preventDefault();edSnap();
@@ -1656,8 +1671,8 @@ function edUp(ev){
     edSnap();const n=S.ambientes.length+1;S.ambientes.push({id:`amb-${Date.now()}`,nome:`Ambiente ${n}`,comprimento:L,largura:W,altura:3,lux:300,lm:4000,w:40,uf:0.6,mf:0.8,espTomadas:5,espLum:1.5,infl:"seco",zona:"",saidas:1,x:X1,y:Y1});
     return edFim(`Ambiente ${n} (${fmt(L,1)} × ${fmt(W,1)} m) incluído. Botão direito para nome e parâmetros.`);}
   if(EDT&&(EDT.tp==="ch"||EDT.tp==="dob")){const E_=EDT;EDT=null;const [x,y]=edPt(ev),d=Math.round((E_.ch.t==="h"?y-E_.p0[1]:x-E_.p0[0])*4)/4,pl=edEl("edPrevL");if(pl)pl.setAttribute("points","");
-    if(Math.abs(d)<0.2)return;edSnap();tirarGuias(E_.ch);const pts=edTracado(E_,d);for(let k=1;k<pts.length;k++)if(Math.abs(pts[k][0]-pts[k-1][0])+Math.abs(pts[k][1]-pts[k-1][1])>0.05)S.guias.push({a:pts[k-1],b:pts[k]});
-    return edFim(E_.tp==="dob"?"Eletroduto dobrado; as ligações continuam e as distâncias foram recalculadas.":"Eletroduto movido; as ligações continuam e as distâncias foram recalculadas.");}
+    if(Math.abs(d)<0.2)return;edSnap();const n=editarTracado(E_,d);if(!n){ED_UNDO.pop();edAtualizar(false);return edToast("Não foi possível mover este trecho.");}
+    return edFim(E_.tp==="dob"?`Eletroduto dobrado (${n} ligação(ões)); continua ligado aos mesmos pontos e as distâncias foram recalculadas.`:`Eletroduto movido (${n} ligação(ões)); continua ligado aos mesmos pontos e as distâncias foram recalculadas.`);}
   if(!EDT)return;const tp=EDT.tp,i=EDT.i;EDT=null;
   if(tp==="q"){const P=layoutPlanta(),r=P.quad[i],w_=r&&paredeMaisProxima(P,r.x,r.y);if(w_){r.q.x=Math.round(w_.x*100)/100;r.q.y=Math.round(w_.y*100)/100;}}
   if(S.par.distAuto){calc();const n=aplicarDistancias();if(n)edToast(`${n} comprimento(s) atualizado(s) pelo desenho.`);}
@@ -1923,6 +1938,7 @@ function normalizar(d){
   n.extras=Array.isArray(d.extras)?d.extras.map(x=>({g:GRUPOS[x.g]?x.g:"extra",d:String(x.d||""),un:String(x.un||"pç"),q:+x.q||0,pu:+x.pu||0})):[];
   n.orc=Object.assign(b.orc,d.orc||{});if(d.orc&&d.orc.impostos!=null&&!d.orc.trib&&+d.orc.impostos>0)n.orc.trib=null;n.orc.servicos=Array.isArray(d.orc?.servicos)?d.orc.servicos.map(s=>({cat:CAT_SERV[s.cat]?s.cat:"outro",d:String(s.d||""),h:+s.h||0,vh:+s.vh||0})):b.orc.servicos;
   n.estrutura=Object.assign(b.estrutura,d.estrutura||{});if(!NP5419[n.estrutura.np])n.estrutura.np="III";
+  n.vias=d.vias&&typeof d.vias==="object"?Object.fromEntries(Object.entries(d.vias).filter(([,v])=>Array.isArray(v)&&v.length>=2).map(([k,v])=>[k,v.map(p=>[+p[0]||0,+p[1]||0])])):{};
   n.guias=Array.isArray(d.guias)?d.guias.filter(g=>g&&Array.isArray(g.a)&&Array.isArray(g.b)).map(g=>({a:[+g.a[0]||0,+g.a[1]||0],b:[+g.b[0]||0,+g.b[1]||0]})):[];
   n.aberturas=Array.isArray(d.aberturas)?d.aberturas.map(o=>({modelo:MODELOS_AB[o.tipo==="janela"?"janela":"porta"][o.modelo]?o.modelo:(o.tipo==="janela"?"correr":"giro"),amb:String(o.amb||""),tipo:o.tipo==="janela"?"janela":"porta",parede:["inf","sup","esq","dir"].includes(o.parede)?o.parede:"inf",pos:+o.pos||0,larg:Math.max(0.3,+o.larg||0.9)})):[];
   n.ambientes=Array.isArray(d.ambientes)?d.ambientes.map((a,i)=>{const x=Object.assign({id:`amb-${i+1}`,nome:`Ambiente ${i+1}`,comprimento:0,largura:0,altura:3,lux:300,lm:4000,w:40,uf:0.6,mf:0.8,espTomadas:5,espLum:1.5,infl:"seco",zona:"",saidas:1,x:"",y:""},a,{id:String(a.id||`amb-${i+1}`)});if(!INFL[x.infl])x.infl="seco";if(!ZONAS[x.zona||""])x.zona="";return x;}):[];
@@ -2117,7 +2133,8 @@ function layoutPlanta(){
   const evitar=ambOk.flatMap(r=>r.ab.map(o=>({x:Math.min(o.A[0],o.B[0])-0.3,y:Math.min(o.A[1],o.B[1])-0.3,L:Math.abs(o.B[0]-o.A[0])+0.6,W:Math.abs(o.B[1]-o.A[1])+0.6})));
   const rota=criarRoteador(ambOk.map(r=>({x:r.x,y:r.y,L:r.L,W:r.W})),bb,evitar,S.guias||[]);
   // ---- fiação: eletrodutos no teto/parede com os condutores de cada circuito (F fase, N neutro, T terra, R retorno)
-  const lig=[],addLig=(pts,c,cond)=>lig.push({pts,c,cond});
+  const lig=[],igual=(p,q)=>Math.abs(p[0]-q[0])<0.06&&Math.abs(p[1]-q[1])<0.06;
+  const addLig=(pts,c,cond,key)=>{const v=key&&S.vias&&S.vias[key];if(v&&igual(v[0],pts[0])&&igual(v[v.length-1],pts[pts.length-1]))pts=v.map(p=>[...p]);lig.push({pts,c,cond,key});};
   // trechos entre pontos: retos, exceto perto de uma guia de traçado (aí seguem o roteador e a guia)
   const G_=S.guias||[],pertoGuia=(a,b)=>G_.some(g=>{const x1=Math.min(a[0],b[0])-1,x2=Math.max(a[0],b[0])+1,y1=Math.min(a[1],b[1])-1,y2=Math.max(a[1],b[1])+1;return Math.max(g.a[0],g.b[0])>=x1&&Math.min(g.a[0],g.b[0])<=x2&&Math.max(g.a[1],g.b[1])>=y1&&Math.min(g.a[1],g.b[1])<=y2;});
   const temGuias=G_.length>0,Lz=(a,b)=>temGuias&&pertoGuia(a,b)?rota(a,b).pts:(Math.abs(a[0]-b[0])<1e-6||Math.abs(a[1]-b[1])<1e-6?[a,b]:[a,[b[0],a[1]],b]);
@@ -2125,7 +2142,7 @@ function layoutPlanta(){
   R.out.forEach(o=>{const r=ambOk.find(z=>z.a.id===o.c.ambiente),Q=qp(o.c.q);if(!r||!Q)return;
     const Lg=LIG[o.c.lig]||LIG["F+N"],c=o.i+1,base={F:Lg.nf,N:Lg.n?1:0,T:1},q0=[Q.x,Q.y];
     if(o.c.tipo==="ilum"&&r.lum.some((_,k)=>r.lumC[k]===c)){
-      const lm=r.lum.filter((_,k)=>r.lumC[k]===c),fl=lm.reduce((b,p,k)=>dm(p,q0)<dm(lm[b],q0)?k:b,0);addLig(rota(q0,lm[fl]).pts,c,base);
+      const lm=r.lum.filter((_,k)=>r.lumC[k]===c),fl=lm.reduce((b,p,k)=>dm(p,q0)<dm(lm[b],q0)?k:b,0);addLig(rota(q0,lm[fl]).pts,c,base,`${c}:f`);
       const it=r.inters.find(z=>z.c===c)||r.inters[0],sw=it?it.p:null,let_=it?it.letra:r.letra;
       // árvore mínima entre as luminárias (Prim, distância ortogonal)
       const inT=new Set([fl]),ed=[];while(inT.size<lm.length){let bst=null;inT.forEach(i=>lm.forEach((p,j)=>{if(inT.has(j))return;const dd=dm(lm[i],p);if(!bst||dd<bst[2])bst=[i,j,dd];}));inT.add(bst[1]);ed.push([bst[0],bst[1]]);}
@@ -2133,26 +2150,27 @@ function layoutPlanta(){
       // caminho na árvore entre a luminária alimentada e a do interruptor: por ele passa a fase até o interruptor
       const adj=lm.map(()=>[]);ed.forEach(([i,j])=>{adj[i].push(j);adj[j].push(i);});const pai=lm.map(()=>-1),vis=new Set([fl]),fila=[fl];while(fila.length){const u=fila.shift();adj[u].forEach(v=>{if(!vis.has(v)){vis.add(v);pai[v]=u;fila.push(v);}});}
       const comF=new Set();for(let v=sl;v!==fl&&v>=0;v=pai[v])comF.add(v+"-"+pai[v]);
-      ed.forEach(([i,j])=>addLig(Lz(lm[i],lm[j]),c,{F:comF.has(i+"-"+j)||comF.has(j+"-"+i)?1:0,N:Lg.n?1:0,T:1,R:[let_]}));
-      if(sw)addLig(Lz(lm[sl],sw),c,{F:1,R:[let_]});
+      ed.forEach(([i,j])=>addLig(Lz(lm[i],lm[j]),c,{F:comF.has(i+"-"+j)||comF.has(j+"-"+i)?1:0,N:Lg.n?1:0,T:1,R:[let_]},`${c}:e:${i}-${j}`));
+      if(sw)addLig(Lz(lm[sl],sw),c,{F:1,R:[let_]},`${c}:s`);
     }else if(o.c.tipo==="tug"&&r.tug.some(t=>t[4]===c)){
-      const tp=r.tug.filter(t=>t[4]===c),fi=tp.reduce((b,p,k)=>dm(p,q0)<dm(tp[b],q0)?k:b,0);addLig(rota(q0,[tp[fi][0],tp[fi][1]]).pts,c,base);
+      const tp=r.tug.filter(t=>t[4]===c),fi=tp.reduce((b,p,k)=>dm(p,q0)<dm(tp[b],q0)?k:b,0);addLig(rota(q0,[tp[fi][0],tp[fi][1]]).pts,c,base,`${c}:f`);
       for(let k=0;k+1<tp.length;k++){const a=tp[k],b=tp[k+1],cruza=r.ab.some(op=>op.d[0]<b[3]&&op.d[1]>a[3]);
         // entre tomadas, embutido na parede; se houver abertura no caminho, passa pelo teto
         const pts=[];if(!cruza){for(let d=a[3];d<b[3];d+=0.25){const p=perimPt(r,d,0.15);pts.push([p[0],p[1]]);}pts.push([b[0],b[1]]);}
-        addLig(cruza||temGuias&&pertoGuia(a,b)?rota([a[0],a[1]],[b[0],b[1]]).pts:pts,c,base);}
-    }else{const f=r.fix.find(z=>z.o===o);if(f)addLig(rota(q0,f.p).pts,c,o.c.tipo==="motor"?{F:Lg.nf,N:Lg.n?1:0,T:1}:base);}});
+        addLig(cruza||temGuias&&pertoGuia(a,b)?rota([a[0],a[1]],[b[0],b[1]]).pts:pts,c,base,`${c}:t:${k}`);}
+    }else{const f=r.fix.find(z=>z.o===o);if(f)addLig(rota(q0,f.p).pts,c,o.c.tipo==="motor"?{F:Lg.nf,N:Lg.n?1:0,T:1}:base,`${c}:f`);}});
   // agregação por eletroduto: trechos de 0,25 m com a soma dos condutores de cada circuito
-  const H=0.25,K=v=>Math.round(v/H),edges=new Map();
-  lig.forEach(({pts,c,cond})=>{for(let k=1;k<pts.length;k++){const [x1,y1]=pts[k-1],[x2,y2]=pts[k];const hz=Math.abs(y1-y2)<Math.abs(x1-x2);
+  const H=0.25,K=v=>Math.round(v/H),edges=new Map(),edgeLig=new Map();
+  lig.forEach(({pts,c,cond,key})=>{for(let k=1;k<pts.length;k++){const [x1,y1]=pts[k-1],[x2,y2]=pts[k];const hz=Math.abs(y1-y2)<Math.abs(x1-x2);
       if(hz){const j=K(y1);let a=K(Math.min(x1,x2)),b=K(Math.max(x1,x2));for(let i=a;i<b;i++)put("h",i,j);}else{const i=K(x1);let a=K(Math.min(y1,y2)),b=K(Math.max(y1,y2));for(let j=a;j<b;j++)put("v",i,j);}}
-    function put(t,i,j){const key=t+","+i+","+j;let m=edges.get(key);if(!m){m=new Map();edges.set(key,m);}const v=m.get(c)||{F:0,N:0,T:0,R:new Set()};
+    function put(t,i,j){const ek=t+","+i+","+j;if(key){let L_=edgeLig.get(ek);if(!L_){L_=new Set();edgeLig.set(ek,L_);}L_.add(key);}const k2=ek;let m=edges.get(k2);if(!m){m=new Map();edges.set(k2,m);}const v=m.get(c)||{F:0,N:0,T:0,R:new Set()};
       v.F=Math.max(v.F,cond.F||0);v.N=Math.max(v.N,cond.N||0);v.T=Math.max(v.T,cond.T||0);(cond.R||[]).forEach(l=>v.R.add(l));m.set(c,v);}});
   const sig=m=>[...m.entries()].sort((a,b)=>a[0]-b[0]).map(([c,v])=>`${c}:${v.F}${v.N}${v.T}${[...v.R].join("")}`).join("|");
-  const chains=[];["h","v"].forEach(t=>{const ks=[...edges.keys()].filter(k=>k[0]===t).map(k=>{const [,i,j]=k.split(",").map(Number);return {i,j,m:edges.get(k)};});
+  const chains=[];["h","v"].forEach(t=>{const ks=[...edges.keys()].filter(k=>k[0]===t).map(k=>{const [,i,j]=k.split(",").map(Number);return {i,j,m:edges.get(k),ek:k};});
     ks.sort((a,b)=>t==="h"?(a.j-b.j||a.i-b.i):(a.i-b.i||a.j-b.j));let cur=null;
     ks.forEach(e=>{const s_=sig(e.m),pos=t==="h"?e.i:e.j,lin=t==="h"?e.j:e.i;
-      if(cur&&cur.s===s_&&cur.lin===lin&&cur.fim===pos)cur.fim=pos+1;else{if(cur)chains.push(cur);cur={t,s:s_,lin,ini:pos,fim:pos+1,m:e.m};}});if(cur)chains.push(cur);});
+      const lg=edgeLig.get(e.ek)||new Set();
+      if(cur&&cur.s===s_&&cur.lin===lin&&cur.fim===pos){cur.fim=pos+1;lg.forEach(x=>cur.ligs.add(x));}else{if(cur)chains.push(cur);cur={t,s:s_,lin,ini:pos,fim:pos+1,m:e.m,ligs:new Set(lg)};}});if(cur)chains.push(cur);});
   chains.forEach(ch=>{ch.a=ch.t==="h"?[ch.ini*H,ch.lin*H]:[ch.lin*H,ch.ini*H];ch.b=ch.t==="h"?[ch.fim*H,ch.lin*H]:[ch.lin*H,ch.fim*H];ch.len=(ch.fim-ch.ini)*H;ch.circ=[...ch.m.keys()].sort((a,b)=>a-b);
     ch.mid=[(ch.a[0]+ch.b[0])/2,(ch.a[1]+ch.b[1])/2];});
   // compatibilidade: rotas por canaleta (croqui e situação desenham os eletrodutos agregados)
