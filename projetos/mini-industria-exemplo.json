@@ -64,6 +64,7 @@
     "bobina": "220 Vca",
     "icc": 6,
     "dpsSempre": false,
+    "distAuto": true,
     "dvTerm": 4,
     "dvTotal": 5,
     "dvEnt": 1,
@@ -187,6 +188,7 @@
     {
       "amb": "secagem",
       "tipo": "porta",
+      "modelo": "enrolar",
       "parede": "inf",
       "pos": 10,
       "larg": 3
@@ -194,6 +196,7 @@
     {
       "amb": "secagem",
       "tipo": "porta",
+      "modelo": "giro",
       "parede": "sup",
       "pos": 4,
       "larg": 1.2
@@ -201,6 +204,7 @@
     {
       "amb": "secagem",
       "tipo": "janela",
+      "modelo": "basculante",
       "parede": "sup",
       "pos": 10,
       "larg": 2
@@ -208,6 +212,7 @@
     {
       "amb": "secagem",
       "tipo": "janela",
+      "modelo": "basculante",
       "parede": "sup",
       "pos": 16,
       "larg": 2
@@ -215,6 +220,7 @@
     {
       "amb": "secagem",
       "tipo": "janela",
+      "modelo": "basculante",
       "parede": "esq",
       "pos": 7,
       "larg": 2
@@ -222,6 +228,7 @@
     {
       "amb": "moagem",
       "tipo": "porta",
+      "modelo": "correr",
       "parede": "inf",
       "pos": 4,
       "larg": 2
@@ -229,13 +236,15 @@
     {
       "amb": "moagem",
       "tipo": "porta",
+      "modelo": "dupla",
       "parede": "esq",
       "pos": 1,
-      "larg": 1.2
+      "larg": 1.6
     },
     {
       "amb": "moagem",
       "tipo": "janela",
+      "modelo": "maximar",
       "parede": "dir",
       "pos": 3,
       "larg": 2
@@ -243,6 +252,7 @@
     {
       "amb": "escritorio",
       "tipo": "porta",
+      "modelo": "giro",
       "parede": "inf",
       "pos": 1,
       "larg": 0.9
@@ -250,6 +260,7 @@
     {
       "amb": "escritorio",
       "tipo": "janela",
+      "modelo": "correr",
       "parede": "sup",
       "pos": 2,
       "larg": 1.5
@@ -484,8 +495,27 @@
     },
     {
       "q": "QL-ADM",
+      "nome": "Aquecedor de ambiente do escritório",
+      "tipo": "tue",
+      "cargaTipo": "aquecedor",
+      "lig": "F+N",
+      "qtd": 1,
+      "pot": 1500,
+      "unid": "W",
+      "fp": 1,
+      "eta": 1,
+      "fu": 1,
+      "fd": 1,
+      "can": "CN-2",
+      "ld": 9,
+      "lb": 1.5,
+      "ambiente": "escritorio"
+    },
+    {
+      "q": "QL-ADM",
       "nome": "Ar-condicionado do escritório (TUE)",
       "tipo": "tue",
+      "cargaTipo": "arcond",
       "lig": "F+F",
       "qtd": 1,
       "pot": 1800,
@@ -621,5 +651,5 @@
   "chk": {},
   "exemplo": true,
   "formato": "projeto-eletrico-agro",
-  "exportadoEm": "2026-11-27T19:23:53.906Z"
+  "exportadoEm": "2026-11-27T20:06:32.634Z"
 }

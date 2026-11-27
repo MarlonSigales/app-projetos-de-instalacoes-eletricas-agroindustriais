@@ -232,6 +232,11 @@ const LIG={
   "3F":{nf:3,n:false,nc:3,vref:"ff",div:Math.sqrt(3),kdv:Math.sqrt(3),polos:3,txt:"3F"},
   "3F+N":{nf:3,n:true,nc:3,vref:"ff",div:Math.sqrt(3),kdv:Math.sqrt(3),polos:3,txt:"3F+N"}
 };
+// tipos de carga de uso específico (TUE): potência e fator de potência típicos, sigla e nome
+const CARGAS_TUE={geral:{t:"Uso específico (geral)",sg:"TUE",pot:1500,fp:0.95},aquecedor:{t:"Aquecedor / resistência",sg:"AQ",pot:2000,fp:1},chuveiro:{t:"Chuveiro elétrico",sg:"CH",pot:5500,fp:1},
+  torneira:{t:"Torneira elétrica",sg:"TE",pot:5500,fp:1},arcond:{t:"Ar-condicionado",sg:"AC",pot:1800,fp:0.85},forno:{t:"Forno / estufa",sg:"FO",pot:3000,fp:1},refrig:{t:"Refrigeração (freezer, câmara)",sg:"RF",pot:600,fp:0.8}};
+// modelos de portas e janelas: sigla usada na planta
+const MODELOS_AB={porta:{giro:["Giro","P"],correr:["De correr","PC"],dupla:["Dupla (2 folhas)","PD"],enrolar:["De enrolar / portão","PE"]},janela:{correr:["De correr","JC"],basculante:["Basculante","JB"],maximar:["Maxim-ar","JM"],fixa:["Fixa","JF"]}};
 const TIPOS={ilum:"Iluminação",tug:"Tomadas de uso geral (TUG)",tue:"Tomada/uso específico (TUE)",motor:"Motor"};
 const TIPO_CURTO={ilum:"Ilum.",tug:"TUG",tue:"TUE",motor:"Motor"};
 

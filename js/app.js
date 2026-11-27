@@ -56,10 +56,10 @@ function sample(){
   ];
   // portas e janelas: parede (inf/sup/esq/dir), posição ao longo dela a partir do canto inferior/esquerdo e largura
   s.aberturas=[
-    {amb:"secagem",tipo:"porta",parede:"inf",pos:10,larg:3},{amb:"secagem",tipo:"porta",parede:"sup",pos:4,larg:1.2},
-    {amb:"secagem",tipo:"janela",parede:"sup",pos:10,larg:2},{amb:"secagem",tipo:"janela",parede:"sup",pos:16,larg:2},{amb:"secagem",tipo:"janela",parede:"esq",pos:7,larg:2},
-    {amb:"moagem",tipo:"porta",parede:"inf",pos:4,larg:2},{amb:"moagem",tipo:"porta",parede:"esq",pos:1,larg:1.2},{amb:"moagem",tipo:"janela",parede:"dir",pos:3,larg:2},
-    {amb:"escritorio",tipo:"porta",parede:"inf",pos:1,larg:0.9},{amb:"escritorio",tipo:"janela",parede:"sup",pos:2,larg:1.5}
+    {amb:"secagem",tipo:"porta",modelo:"enrolar",parede:"inf",pos:10,larg:3},{amb:"secagem",tipo:"porta",modelo:"giro",parede:"sup",pos:4,larg:1.2},
+    {amb:"secagem",tipo:"janela",modelo:"basculante",parede:"sup",pos:10,larg:2},{amb:"secagem",tipo:"janela",modelo:"basculante",parede:"sup",pos:16,larg:2},{amb:"secagem",tipo:"janela",modelo:"basculante",parede:"esq",pos:7,larg:2},
+    {amb:"moagem",tipo:"porta",modelo:"correr",parede:"inf",pos:4,larg:2},{amb:"moagem",tipo:"porta",modelo:"dupla",parede:"esq",pos:1,larg:1.6},{amb:"moagem",tipo:"janela",modelo:"maximar",parede:"dir",pos:3,larg:2},
+    {amb:"escritorio",tipo:"porta",modelo:"giro",parede:"inf",pos:1,larg:0.9},{amb:"escritorio",tipo:"janela",modelo:"correr",parede:"sup",pos:2,larg:1.5}
   ];
   const m=(nome,cv,eta,fp,ld,lb,fd=1,fu=0.87)=>({q:"QF-PROD",nome,tipo:"motor",lig:"3F",qtd:1,pot:cv,unid:"cv",fp,eta,fs:1.25,fu,fd,can:"CN-1",ld,lb,prot:"dj",partida:"direta",fusTipo:"gG"});
   s.circ=[
@@ -75,7 +75,8 @@ function sample(){
     {q:"QF-PROD",nome:"Tomada industrial 3P+T (manutenção)",tipo:"tue",lig:"3F+N",qtd:1,pot:3000,unid:"VA",fp:0.8,eta:1,fu:1,fd:0.5,can:"CN-1, CN-2",ld:15,lb:1.5,local:"molhado",ambiente:"moagem"},
     {q:"QL-ADM",nome:"Iluminação escritório (LED)",tipo:"ilum",lig:"F+N",qtd:6,pot:36,unid:"W",fp:0.95,eta:1,fu:1,fd:1,can:"CN-2",ld:8,lb:3,ambiente:"escritorio"},
     {q:"QL-ADM",nome:"TUG escritório",tipo:"tug",lig:"F+N",qtd:6,pot:200,unid:"VA",fp:0.8,eta:1,fu:1,fd:0.7,can:"CN-2",ld:10,lb:1.5,ambiente:"escritorio"},
-    {q:"QL-ADM",nome:"Ar-condicionado do escritório (TUE)",tipo:"tue",lig:"F+F",qtd:1,pot:1800,unid:"W",fp:0.9,eta:1,fu:1,fd:1,can:"CN-2",ld:9,lb:2,ambiente:"escritorio",dr:"sim"}
+    {q:"QL-ADM",nome:"Aquecedor de ambiente do escritório",tipo:"tue",cargaTipo:"aquecedor",lig:"F+N",qtd:1,pot:1500,unid:"W",fp:1,eta:1,fu:1,fd:1,can:"CN-2",ld:9,lb:1.5,ambiente:"escritorio"},
+    {q:"QL-ADM",nome:"Ar-condicionado do escritório (TUE)",tipo:"tue",cargaTipo:"arcond",lig:"F+F",qtd:1,pot:1800,unid:"W",fp:0.9,eta:1,fu:1,fd:1,can:"CN-2",ld:9,lb:2,ambiente:"escritorio",dr:"sim"}
   ];
   s.extras=[
     {g:"cond",d:"Caixa de passagem em alumínio 200 × 200 × 100 mm com tampa",un:"pç",q:6,pu:85},
@@ -853,13 +854,14 @@ ${S.ambientes.map(ambienteSitRow).join("")||`<tr><td colspan="10" style="padding
 <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small primary" type="button" id="addAmb">+ Ambiente</button></div>
 <h3 style="margin-top:18px">Aberturas (portas e janelas)</h3>
 <p class="note">Cada abertura fica numa parede do ambiente. Posição: distância do canto até o início da abertura, medida da esquerda para a direita nas paredes inferior e superior e de baixo para cima nas paredes esquerda e direita. Eletrodutos embutidos, baixadas, tomadas e quadros não são colocados nas aberturas; os interruptores ficam ao lado da primeira porta e a sinalização de saída fica sobre as portas.</p>
-<div class="tbl ct"><table><thead><tr><th>Ambiente</th><th>Tipo</th><th>Parede</th><th>Posição (m)</th><th>Largura (m)</th><th></th></tr></thead><tbody>
+<div class="tbl ct"><table><thead><tr><th>Ambiente</th><th>Tipo</th><th>Modelo</th><th>Parede</th><th>Posição (m)</th><th>Largura (m)</th><th></th></tr></thead><tbody>
 ${S.aberturas.map((o,i)=>`<tr><td><select data-ab="${i}" data-f="amb" aria-label="Ambiente da abertura">${S.ambientes.map(a=>`<option value="${a.id}" ${a.id===o.amb?"selected":""}>${esc(a.nome)}</option>`).join("")}</select></td>
 <td><select data-ab="${i}" data-f="tipo" aria-label="Tipo"><option value="porta" ${o.tipo==="porta"?"selected":""}>Porta</option><option value="janela" ${o.tipo==="janela"?"selected":""}>Janela</option></select></td>
+<td><select data-ab="${i}" data-f="modelo" aria-label="Modelo">${Object.entries(MODELOS_AB[o.tipo]).map(([k,[t,sg]])=>`<option value="${k}" ${(o.modelo||"")===k?"selected":""}>${t} (${sg})</option>`).join("")}</select></td>
 <td><select data-ab="${i}" data-f="parede" aria-label="Parede">${[["inf","Inferior (Y mín.)"],["sup","Superior (Y máx.)"],["esq","Esquerda (X mín.)"],["dir","Direita (X máx.)"]].map(([k,t])=>`<option value="${k}" ${o.parede===k?"selected":""}>${t}</option>`).join("")}</select></td>
 <td><input type="number" class="w-s" min="0" step="0.1" data-ab="${i}" data-f="pos" value="${o.pos}" aria-label="Posição em metros"></td>
 <td><input type="number" class="w-s" min="0.3" step="0.1" data-ab="${i}" data-f="larg" value="${o.larg}" aria-label="Largura em metros"></td>
-<td><button class="btn small danger" type="button" data-delab="${i}" aria-label="Remover abertura">Remover</button></td></tr>`).join("")||`<tr><td colspan="6" style="padding:12px;color:var(--muted)">Nenhuma abertura cadastrada.</td></tr>`}
+<td><button class="btn small danger" type="button" data-delab="${i}" aria-label="Remover abertura">Remover</button></td></tr>`).join("")||`<tr><td colspan="7" style="padding:12px;color:var(--muted)">Nenhuma abertura cadastrada.</td></tr>`}
 </tbody></table></div>
 <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-addab="porta" ${S.ambientes.length?"":"disabled"}>+ Porta</button><button class="btn small" type="button" data-addab="janela" ${S.ambientes.length?"":"disabled"}>+ Janela</button><button class="btn small" type="button" id="snapQ" data-tip="Leva cada quadro para a parede mais próxima do ambiente, fora das aberturas, e grava a posição X/Y na etapa 04.">Ajustar quadros às paredes</button></div>
 <div data-live="croqui">${croquiSit()}</div>
@@ -934,7 +936,7 @@ function circRow(c,i){
   <td><select data-c="${i}" data-f="q" aria-label="Quadro">${opt(qs,c.q)}</select></td>
   <td><input class="w-l" data-c="${i}" data-f="nome" value="${esc(c.nome)}" aria-label="Descrição"></td>
   <td><select style="min-width:130px" data-c="${i}" data-f="ambiente" aria-label="Ambiente do circuito">${opt([["","Manual"],...S.ambientes.map(a=>[a.id,a.nome])],c.ambiente||"")}</select></td>
-  <td><select data-c="${i}" data-f="tipo" data-re="1" aria-label="Tipo">${opt(Object.entries(TIPOS).map(([a,b])=>[a,TIPO_CURTO[a]]),c.tipo)}</select></td>
+  <td><select data-c="${i}" data-f="tipo" data-re="1" aria-label="Tipo">${opt(Object.entries(TIPOS).map(([a,b])=>[a,TIPO_CURTO[a]]),c.tipo)}</select>${c.tipo==="tue"?`<select data-c="${i}" data-f="cargaTipo" data-re="1" aria-label="Tipo de carga" style="margin-top:3px">${opt(Object.entries(CARGAS_TUE).map(([k,v])=>[k,v.t]),c.cargaTipo||"geral")}</select>`:""}</td>
   <td><select data-c="${i}" data-f="lig" aria-label="Ligação" ${ligOK(c.lig,R.sys)?"":'style="border-color:var(--bad);color:var(--bad)"'}>${opt(Object.keys(LIG).filter(k=>ligOK(k,R.sys)||k===c.lig).map(k=>[k,`${LIG[k].txt} · ${ligOK(k,R.sys)?ligVolt(k,R.sys)+" V":"incompatível"}`]),c.lig)}</select></td>
   <td><input type="number" class="w-s" min="0" step="1" data-c="${i}" data-f="qtd" value="${R.out[i]?.c.qtd??c.qtd}" ${c.ambiente&&(c.tipo==="ilum"||c.tipo==="tug")?'readonly data-tip="Quantidade calculada pelas dimensões do ambiente (etapa 08). Para digitar, mude o ambiente para Manual."':""} aria-label="Número de cargas"></td>
   <td><input type="number" min="0" step="any" data-c="${i}" data-f="pot" value="${R.out[i]?.c.pot??c.pot}" ${c.ambiente&&c.tipo==="ilum"?'readonly data-tip="Potência por luminária definida no ambiente (etapa 08)."':""} aria-label="Potência unitária"></td>
@@ -1439,11 +1441,11 @@ function distanciasDesenho(){const P=layoutPlanta(),out={quadros:[],ent:null,cir
 function aplicarDistancias(){const d=distanciasDesenho();let n=0;
   d.quadros.forEach(({q,L})=>{if(Math.abs((+q.L||0)-L)>0.01){q.L=L;n++;}});if(d.ent!=null&&Math.abs((+S.forn.Lent||0)-d.ent)>0.01){S.forn.Lent=d.ent;n++;}
   d.circ.forEach(({o,ld,lb})=>{const c=S.circ[o.i];if(!c)return;if(Math.abs((+c.ld||0)-ld)>0.01||Math.abs((+c.lb||0)-lb)>0.01){c.ld=ld;c.lb=lb;n++;}});return n;}
-let ED_TOOL="sel",ED_UNDO=[],ED_NOVO=null,EDT=null,PIP=null,ED_FLOAT=false;
+let ED_TOOL="sel",ED_UNDO=[],ED_NOVO=null,EDT=null,PIP=null,ED_FLOAT=false,ED_MOD={porta:"giro",janela:"correr"},ED_CARGA="aquecedor";
 const edDoc=()=>PIP?PIP.document:document,edEl=id=>edDoc().getElementById(id);
 const ED_TOOLS=[["sel","Selecionar e arrastar","M5 3l13 8-6 1 4 7-2 1-4-7-5 4z"],["amb","Ambiente — arraste um retângulo","M3 5h18v14H3z"],["porta","Porta — clique perto da parede","M4 20V4h9v16M13 4c5 0 7 4 7 8"],
   ["janela","Janela — clique perto da parede","M3 9h18M3 12h18M3 15h18"],["quadro","Quadro — clique perto da parede","M5 4h14v16H5zM5 4l14 16"],["maq","Máquina (motor)","M12 3a9 9 0 1 0 .01 0zM8 16V8l4 5 4-5v8"],
-  ["tue","Ponto de uso específico","M6 18l6-12 6 12zM12 18v3"],["tug","Tomada (TUG)","M6 18l6-12 6 12z"],["lum","Luminária","M3 9h18v6H3zM12 12m-2 0a2 2 0 1 0 4 0 2 2 0 1 0-4 0"],["del","Apagar","M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"]];
+  ["tue","Carga de uso específico (aquecedor, chuveiro, ar-condicionado…)","M6 18l6-12 6 12zM12 18v3"],["tug","Tomada (TUG)","M6 18l6-12 6 12z"],["lum","Luminária","M3 9h18v6H3zM12 12m-2 0a2 2 0 1 0 4 0 2 2 0 1 0-4 0"],["del","Apagar","M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"]];
 function edSnap(){ED_UNDO.push(JSON.stringify(S));if(ED_UNDO.length>30)ED_UNDO.shift();}
 function edFim(msg){calc();if(S.par.distAuto)aplicarDistancias();persist();soft();edAtualizar(true);if(!PIP)render(true);if(msg)edToast(msg);}
 function edToast(m){if(PIP){const t=edEl("edMsg");if(t){t.textContent=m;t.style.opacity=1;clearTimeout(edToast.t);edToast.t=setTimeout(()=>t.style.opacity=0,3500);}}else toast(m);}
@@ -1456,16 +1458,16 @@ function novoQuadro(x,y,pai){let n=S.quadros.length,nm;do nm="QD-"+n++;while(S.q
 function edFerramenta(x,y){const r=ambEm(x,y),rp=r||ambPerto(x,y),t=ED_TOOL;
   if(t==="porta"||t==="janela"){if(!rp)return edToast("Desenhe um ambiente primeiro.");edSnap();
     const ds=[["inf",Math.abs(y-rp.y)],["sup",Math.abs(y-(rp.y+rp.W))],["esq",Math.abs(x-rp.x)],["dir",Math.abs(x-(rp.x+rp.L))]].sort((a,b)=>a[1]-b[1])[0][0],hz=ds==="inf"||ds==="sup",larg=t==="porta"?0.9:1.5,lim=hz?rp.L:rp.W;
-    S.aberturas.push({amb:rp.a.id,tipo:t,parede:ds,pos:Math.round(Math.max(0,Math.min(lim-larg,(hz?x-rp.x:y-rp.y)-larg/2))*10)/10,larg});return edFim(`${t==="porta"?"Porta":"Janela"} incluída em ${rp.a.nome}. Botão direito para editar.`);}
+    S.aberturas.push({amb:rp.a.id,tipo:t,modelo:ED_MOD[t],parede:ds,pos:Math.round(Math.max(0,Math.min(lim-larg,(hz?x-rp.x:y-rp.y)-larg/2))*10)/10,larg});return edFim(`${t==="porta"?"Porta":"Janela"} incluída em ${rp.a.nome}. Botão direito para editar.`);}
   if(t==="quadro"){edSnap();const nm=novoQuadro(x,y);return edFim(`${nm} incluído na parede, alimentado pelo ${S.quadros[0].nome}. Botão direito para editar.`);}
   if(!r)return edToast("Clique dentro de um ambiente.");
   const q=quadroDoAmbiente(r),sy=SISTEMAS[S.forn.sistema];
   if(t==="maq"){edSnap();const n=S.circ.filter(c=>c.tipo==="motor").length+1;let lig="3F";if(!ligOK(lig,sy))lig=["F+F","F+N"].find(l=>ligOK(l,sy))||"F+N";
     S.circ.push({q,nome:`Máquina ${n}`,tipo:"motor",lig,qtd:1,pot:1,unid:"cv",fp:0.83,eta:0.85,fs:1.25,fu:0.87,fd:1,can:"CN-1",ld:10,lb:3,prot:"dj",partida:"direta",fusTipo:"gG",ambiente:r.a.id,px:Math.round(x*4)/4,py:Math.round(y*4)/4});
     return edFim(`Máquina ${n} (1 cv, ${q}) incluída em ${r.a.nome}. Botão direito para nome, potência e partida.`);}
-  if(t==="tue"){edSnap();const n=S.circ.filter(c=>c.tipo==="tue").length+1;
-    S.circ.push({q,nome:`Uso específico ${n}`,tipo:"tue",lig:ligOK("F+N",sy)?"F+N":"F+F",qtd:1,pot:1500,unid:"W",fp:0.95,eta:1,fu:1,fd:1,can:"CN-1",ld:10,lb:1.5,ambiente:r.a.id,px:Math.round(x*4)/4,py:Math.round(y*4)/4});
-    return edFim(`Ponto de uso específico (1.500 W, ${q}) incluído em ${r.a.nome}. Botão direito para editar.`);}
+  if(t==="tue"){edSnap();const k=CARGAS_TUE[ED_CARGA]||CARGAS_TUE.geral,n=S.circ.filter(c=>c.tipo==="tue"&&(c.cargaTipo||"geral")===ED_CARGA).length+1,nome=`${k.t.split(" (")[0].split(" / ")[0]} ${n}`;
+    S.circ.push({q,nome,tipo:"tue",cargaTipo:ED_CARGA,lig:ligOK(k.pot>=4000?"F+F":"F+N",sy)?(k.pot>=4000?"F+F":"F+N"):"F+N",qtd:1,pot:k.pot,unid:"W",fp:k.fp,eta:1,fu:1,fd:1,can:"CN-1",ld:10,lb:1.5,ambiente:r.a.id,px:Math.round(x*4)/4,py:Math.round(y*4)/4});
+    return edFim(`${nome} (${fmtN(k.pot)} W, ${q}) incluído em ${r.a.nome}. Botão direito para nome e potência.`);}
   if(t==="tug"||t==="lum"){edSnap();const tp=t==="tug"?"tug":"ilum",tem=S.circ.some(c=>c.ambiente===r.a.id&&c.tipo===tp);
     if(!tem)S.circ.push(tp==="tug"?{q,nome:`TUG ${r.a.nome}`,tipo:"tug",lig:"F+N",qtd:1,pot:200,unid:"VA",fp:0.8,eta:1,fu:1,fd:0.7,can:"CN-1",ld:10,lb:1.5,ambiente:r.a.id}
       :{q,nome:`Iluminação ${r.a.nome}`,tipo:"ilum",lig:"F+N",qtd:1,pot:+r.a.w||40,unid:"W",fp:0.95,eta:1,fu:1,fd:1,can:"CN-1",ld:10,lb:0.5,ambiente:r.a.id});
@@ -1496,8 +1498,8 @@ function editorSVG(){
     r.tug.forEach(([a,b,,,c],k)=>{s+=`<circle data-pt="tug" data-amb="${r.a.id}" data-k="${k}" data-c="${c}" cx="${X(a)}" cy="${Y(b)}" r="${f*0.25}" fill="${corC(c)}" style="cursor:context-menu"><title>Tomada — circuito ${c||"—"}; botão direito para trocar de circuito</title></circle>`;});
     r.inters.forEach(it=>{s+=`<circle cx="${X(it.p[0])}" cy="${Y(it.p[1])}" r="${f*0.2}" fill="#fff" stroke="#000" stroke-width="${f/12}" pointer-events="none"/><text x="${(+X(it.p[0])+f*0.3).toFixed(3)}" y="${Y(it.p[1])}" font-size="${f*0.7}" pointer-events="none">${it.letra}</text>`;});
     r.fix.forEach(fx=>{if(fx.maq)s+=`<g data-drag="maq" data-c="${fx.o.i}" style="cursor:move"><circle cx="${X(fx.p[0])}" cy="${Y(fx.p[1])}" r="${f*0.7}" fill="#fff" stroke="#000" stroke-width="${f/8}"/><text x="${X(fx.p[0])}" y="${(+Y(fx.p[1])+f*0.3).toFixed(3)}" font-size="${f*0.8}" text-anchor="middle" pointer-events="none">M</text><text x="${X(fx.p[0]+0.9)}" y="${Y(fx.p[1])}" font-size="${f*0.7}" pointer-events="none">${esc(fx.o.c.nome.replace(/\s*\([^)]*\)/g,""))} · C${fx.o.i+1}</text><title>${esc(fx.o.c.nome)} — botão direito para editar</title></g>`;
-      else s+=`<circle data-drag="tue" data-c="${fx.o.i}" cx="${X(fx.p[0])}" cy="${Y(fx.p[1])}" r="${f*0.35}" fill="#a33" style="cursor:move"><title>${esc(fx.o.c.nome)} — arraste pelas paredes; botão direito para editar</title></circle>`;});
-    r.ab.forEach((o,j)=>{const gi=S.aberturas.indexOf(S.aberturas.filter(z=>z.amb===r.a.id)[j]);s+=`<line data-drag="ab" data-i="${gi}" x1="${X(o.A[0])}" y1="${Y(o.A[1])}" x2="${X(o.B[0])}" y2="${Y(o.B[1])}" stroke="${o.tipo==="porta"?"#c2410c":"#0369a1"}" stroke-width="${f*0.6}" style="cursor:grab"><title>${o.tipo==="porta"?"Porta":"Janela"} ${fmt(o.larg,2)} m — arraste pela parede; botão direito para editar</title></line>`;});});
+      else{const k=CARGAS_TUE[fx.o.c.cargaTipo]||CARGAS_TUE.geral;s+=`<g data-drag="tue" data-c="${fx.o.i}" style="cursor:move"><circle cx="${X(fx.p[0])}" cy="${Y(fx.p[1])}" r="${f*0.45}" fill="#a33"/><text x="${X(fx.p[0])}" y="${(+Y(fx.p[1])+f*0.22).toFixed(3)}" font-size="${f*0.5}" fill="#fff" text-anchor="middle" font-weight="bold" pointer-events="none">${k.sg}</text><text x="${(+X(fx.p[0])+f*0.6).toFixed(3)}" y="${(+Y(fx.p[1])-f*0.5).toFixed(3)}" font-size="${f*0.65}" fill="#a33" pointer-events="none">${esc(fx.o.c.nome)} · C${fx.o.i+1}</text><title>${esc(fx.o.c.nome)} (${k.t}) — arraste pelas paredes; botão direito para editar</title></g>`;}});
+    r.ab.forEach((o,j)=>{const gi=S.aberturas.indexOf(S.aberturas.filter(z=>z.amb===r.a.id)[j]);s+=`<line data-drag="ab" data-i="${gi}" x1="${X(o.A[0])}" y1="${Y(o.A[1])}" x2="${X(o.B[0])}" y2="${Y(o.B[1])}" stroke="${o.tipo==="porta"?"#c2410c":"#0369a1"}" stroke-width="${f*0.6}" style="cursor:grab"><title>${o.tipo==="porta"?"Porta":"Janela"} ${(MODELOS_AB[o.tipo][o.modelo]||["",""])[0].toLowerCase()} ${fmt(o.larg,2)} m — arraste pela parede; botão direito para editar</title></line>`;});});
   P.quad.forEach((r,i)=>{s+=`<g data-drag="q" data-i="${i}" style="cursor:move"><rect x="${(+X(r.x)-f*0.6).toFixed(3)}" y="${(+Y(r.y)-f*0.6).toFixed(3)}" width="${f*1.2}" height="${f*1.2}" fill="${r.naParede?"#b3261e":"#fff"}" stroke="#b3261e" stroke-width="${f/8}"/><text x="${(+X(r.x)+f*0.8).toFixed(3)}" y="${(+Y(r.y)-f*0.7).toFixed(3)}" font-size="${f*0.85}" fill="#b3261e" font-weight="bold" pointer-events="none">${esc(r.q.nome)}</text><title>${esc(r.q.nome)} — botão direito para editar</title></g>`;});
   if(P.ent)s+=`<polygon data-drag="ent" points="${[[0,1],[0.9,-0.6],[-0.9,-0.6]].map(([u,v])=>`${(+X(P.ent.x)+u*f).toFixed(3)},${(+Y(P.ent.y)-v*f).toFixed(3)}`).join(" ")}" fill="#e8a400" stroke="#000" stroke-width="${f/10}" style="cursor:grab"><title>Entrada de energia — arraste pelo limite; botão direito para editar</title></polygon>`;
   s+=`<rect id="edPrev" x="0" y="0" width="0" height="0" fill="#1f3b5a" fill-opacity="0.12" stroke="#1f3b5a" stroke-width="${f/6}" stroke-dasharray="${f/2} ${f/4}" pointer-events="none"/>`;
@@ -1507,11 +1509,13 @@ function editorTabela(){const d=distanciasDesenho(),r=[];
   if(d.ent!=null)r.push(["Alimentador de entrada (padrão → QGBT)",+S.forn.Lent||0,d.ent]);
   d.circ.forEach(({o,ld,lb})=>{const c=S.circ[o.i];r.push([`C${o.i+1} ${o.c.nome} — trecho horizontal`,+c.ld||0,ld],[`C${o.i+1} ${o.c.nome} — baixada`,+c.lb||0,lb]);});
   return `<div class="tbl"><table><thead><tr><th>Trecho</th><th class="num">Usado no cálculo (m)</th><th class="num">Medido no desenho (m)</th></tr></thead><tbody>${r.map(([t,a,b])=>`<tr><td>${esc(t)}</td><td class="num">${fmtN(a)}</td><td class="num" ${Math.abs(a-b)>0.01?'style="color:#b3261e;font-weight:600"':""}>${fmtN(b)}</td></tr>`).join("")}</tbody></table></div>`;}
-const ED_DICA={sel:"Arraste para mover · botão direito em qualquer elemento para editar",amb:"Pressione e arraste no espaço vazio para desenhar um ambiente",porta:"Clique perto da parede de um ambiente",janela:"Clique perto da parede de um ambiente",quadro:"Clique perto de uma parede",maq:"Clique dentro do ambiente onde a máquina fica",tue:"Clique perto da parede onde fica o ponto",tug:"Clique dentro do ambiente para acrescentar uma tomada",lum:"Clique dentro do ambiente para acrescentar uma luminária",del:"Clique no elemento a apagar"};
+const ED_DICA={sel:"Arraste para mover · botão direito em qualquer elemento para editar",amb:"Pressione e arraste no espaço vazio para desenhar um ambiente",porta:"Clique perto da parede de um ambiente",janela:"Clique perto da parede de um ambiente",quadro:"Clique perto de uma parede",maq:"Clique dentro do ambiente onde a máquina fica",tue:"Escolha o tipo de carga e clique perto da parede onde ela fica",tug:"Clique dentro do ambiente para acrescentar uma tomada",lum:"Clique dentro do ambiente para acrescentar uma luminária",del:"Clique no elemento a apagar"};
 function editorBarra(){return `${ED_TOOLS.map(([k,t,d])=>`<button type="button" class="ed-tool${ED_TOOL===k?" on":""}" data-edtool="${k}" title="${t}" aria-label="${t}" aria-pressed="${ED_TOOL===k}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="${d}"/></svg></button>`).join("")}
   <span class="ed-sep"></span><button type="button" class="ed-tool" id="edUndo" title="Desfazer" aria-label="Desfazer" ${ED_UNDO.length?"":"disabled"}><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>`;}
+function editorOpcoes(){if(ED_TOOL==="porta"||ED_TOOL==="janela")return `<select id="edMod" aria-label="Modelo">${Object.entries(MODELOS_AB[ED_TOOL]).map(([k,[t,sg]])=>`<option value="${k}" ${ED_MOD[ED_TOOL]===k?"selected":""}>${t} (${sg})</option>`).join("")}</select>`;
+  if(ED_TOOL==="tue")return `<select id="edCarga" aria-label="Tipo de carga">${Object.entries(CARGAS_TUE).map(([k,v])=>`<option value="${k}" ${ED_CARGA===k?"selected":""}>${v.t} · ${fmtN(v.pot)} W</option>`).join("")}</select>`;return "";}
 function editorPainel(){return `<div id="edPanel" class="ed-panel${ED_FLOAT?" ed-float":""}${PIP?" ed-pip":""}">
-  <div class="ed-top"><b>Editor dos desenhos</b><span class="ed-dica" id="edDica">${ED_DICA[ED_TOOL]}</span><span class="ed-acoes">
+  <div class="ed-top"><b>Editor dos desenhos</b><span class="ed-dica" id="edDica">${ED_DICA[ED_TOOL]}</span><span data-live="edopc">${editorOpcoes()}</span><span class="ed-acoes">
     <label class="ed-chk" title="Ao soltar, grava nos cálculos os comprimentos medidos no desenho"><input type="checkbox" id="edAuto" ${S.par.distAuto?"checked":""}> distâncias automáticas</label>
     <button type="button" class="btn small" id="edApl">Usar distâncias agora</button><button type="button" class="btn small" id="edSnap">Quadros nas paredes</button>
     ${PIP?`<button type="button" class="btn small" id="edPipX">Voltar para a página</button>`:`<button type="button" class="btn small" id="edPip" title="Abre o editor numa janela flutuante, fora da página (sempre visível)">Janela flutuante</button><button type="button" class="btn small" id="edFloat">${ED_FLOAT?"Recolher":"Expandir"}</button><button type="button" class="btn small" id="edFull">Tela cheia</button>`}</span></div>
@@ -1536,7 +1540,7 @@ const ED_CSS=`.ed-panel{border:1px solid var(--line,#ccc);border-radius:8px;back
 V.edit=()=>`${head(STEPS.findIndex(s=>s.k==="edit"))}
 <p class="intro">Desenhe e ajuste a planta: use a barra à esquerda (estilo Paint) para selecionar, desenhar ambientes, portas, janelas, quadros, máquinas, pontos, tomadas e luminárias, ou apagar. Arraste os elementos para movê-los e clique com o <b>botão direito</b> em qualquer um para editar as características ali mesmo — inclusive o circuito e o quadro de cada ponto, ou criar um circuito ou quadro novo. Tudo realimenta o projeto: etapas 02 e 04, cálculos, comprimentos, plantas e diagramas.</p>
 ${PIP?`<div class="block"><p class="note">O editor está aberto numa janela flutuante. <button class="btn small" type="button" id="edPipX">Trazer de volta</button></p></div>`:editorPainel()}${nav()}`;
-function edAtualizar(tudo){const D=edDoc(),set=(k,h)=>{const el=D.querySelector(`[data-live="${k}"]`);if(el)el.innerHTML=h;};set("editor",editorSVG());if(tudo){set("edtab",editorTabela());set("edbarra",editorBarra());const d=D.getElementById("edDica");if(d)d.textContent=ED_DICA[ED_TOOL];}}
+function edAtualizar(tudo){const D=edDoc(),set=(k,h)=>{const el=D.querySelector(`[data-live="${k}"]`);if(el)el.innerHTML=h;};set("editor",editorSVG());if(tudo){set("edtab",editorTabela());set("edbarra",editorBarra());set("edopc",editorOpcoes());const d=D.getElementById("edDica");if(d)d.textContent=ED_DICA[ED_TOOL];}}
 function edPt(ev){const sv=edEl("edSvg");const p=sv.createSVGPoint();p.x=ev.clientX;p.y=ev.clientY;const q=p.matrixTransform(sv.getScreenCTM().inverse());return [q.x+(+sv.dataset.x1),(+sv.dataset.y2)-q.y];}
 // ---- janela flutuante (Document Picture-in-Picture) com alternativa de painel sobreposto
 async function edAbrirPip(){if(!("documentPictureInPicture" in window)){ED_FLOAT=true;render(true);return toast("Este navegador não abre janelas flutuantes fora da página: o editor foi expandido sobre a página.");}
@@ -1551,10 +1555,10 @@ function edCtxAbrir(ev,g){const D=edDoc(),box=D.getElementById("edCtx");if(!box)
   const qOpts=(v)=>opts([...S.quadros.map(q=>[q.nome,q.nome]),["__novo","+ Novo quadro"]],v),aOpts=v=>opts(S.ambientes.map(a=>[a.id,a.nome]),v);
   const inp=(n,l,v,t="text",st="")=>`<label>${l}<input name="${n}" type="${t}" ${st} value="${esc(String(v??""))}"></label>`,sel=(n,l,o)=>`<label>${l}<select name="${n}">${o}</select></label>`;
   if(tp==="amb"||tp==="res"){const a=S.ambientes[i];ttl="Ambiente";h=inp("nome","Nome",a.nome)+inp("comprimento","Comprimento X (m)",a.comprimento,"number",'step="0.1"')+inp("largura","Largura Y (m)",a.largura,"number",'step="0.1"')+inp("altura","Altura (m)",a.altura,"number",'step="0.1"')+inp("lux","Iluminância (lx)",a.lux,"number",'step="10"')+inp("w","W por luminária",a.w,"number")+sel("infl","Influências",opts(Object.entries(INFL).map(([k,v])=>[k,v.t]),a.infl||"seco"))+sel("zona","Poeira comb.",opts(Object.keys(ZONAS).map(k=>[k,k?"Zona "+k:"Não classificada"]),a.zona||""));}
-  else if(tp==="ab"){const o=S.aberturas[i];ttl=o.tipo==="porta"?"Porta":"Janela";h=sel("tipo","Tipo",opts([["porta","Porta"],["janela","Janela"]],o.tipo))+sel("amb","Ambiente",aOpts(o.amb))+sel("parede","Parede",opts([["inf","Inferior"],["sup","Superior"],["esq","Esquerda"],["dir","Direita"]],o.parede))+inp("pos","Posição (m)",o.pos,"number",'step="0.1"')+inp("larg","Largura (m)",o.larg,"number",'step="0.1"');}
+  else if(tp==="ab"){const o=S.aberturas[i];ttl=o.tipo==="porta"?"Porta":"Janela";h=sel("tipo","Tipo",opts([["porta","Porta"],["janela","Janela"]],o.tipo))+sel("modelo","Modelo",opts([...Object.entries(MODELOS_AB.porta).map(([k,[t]])=>[k,"Porta "+t.toLowerCase()]),...Object.entries(MODELOS_AB.janela).map(([k,[t]])=>["j:"+k,"Janela "+t.toLowerCase()])],o.tipo==="janela"?"j:"+o.modelo:o.modelo))+sel("amb","Ambiente",aOpts(o.amb))+sel("parede","Parede",opts([["inf","Inferior"],["sup","Superior"],["esq","Esquerda"],["dir","Direita"]],o.parede))+inp("pos","Posição (m)",o.pos,"number",'step="0.1"')+inp("larg","Largura (m)",o.larg,"number",'step="0.1"');}
   else if(tp==="q"){const q=S.quadros[i];ttl="Quadro";h=inp("nome","Nome",q.nome)+(i?sel("pai","Alimentado por",opts(S.quadros.filter(z=>z!==q&&!cadeia(z).includes(q)).map(z=>[z.nome,z.nome]),q.pai)):"")+sel("met","Método do alimentador",opts(Object.keys(METODOS).map(m=>[m,m]),q.met))+sel("infl","Influências",opts(Object.entries(INFL).map(([k,v])=>[k,v.t]),q.infl||"seco"));}
   else if(tp==="maq"||tp==="tue"){const x=S.circ[c],sy=SISTEMAS[S.forn.sistema];ttl=`Circuito C${c+1} — ${tp==="maq"?"máquina":"uso específico"}`;
-    h=inp("nome","Nome",x.nome)+inp("pot","Potência",x.pot,"number",'step="0.1"')+sel("unid","Unidade",opts(tp==="maq"?[["cv","cv"],["kW","kW"]]:[["W","W"],["VA","VA"],["kW","kW"]],x.unid))+sel("lig","Ligação",opts(Object.keys(LIG).filter(l=>ligOK(l,sy)).map(l=>[l,LIG[l].txt]),x.lig))+sel("q","Quadro",qOpts(x.q))+sel("ambiente","Ambiente",aOpts(x.ambiente))
+    h=inp("nome","Nome da carga",x.nome)+(tp==="tue"?sel("cargaTipo","Tipo de carga",opts(Object.entries(CARGAS_TUE).map(([k,v])=>[k,v.t]),x.cargaTipo||"geral")):"")+inp("pot","Potência",x.pot,"number",'step="0.1"')+sel("unid","Unidade",opts(tp==="maq"?[["cv","cv"],["kW","kW"]]:[["W","W"],["VA","VA"],["kW","kW"]],x.unid))+sel("lig","Ligação",opts(Object.keys(LIG).filter(l=>ligOK(l,sy)).map(l=>[l,LIG[l].txt]),x.lig))+sel("q","Quadro",qOpts(x.q))+sel("ambiente","Ambiente",aOpts(x.ambiente))
       +(tp==="maq"?sel("partida","Partida",opts(Object.entries(PARTIDAS),x.partida||"direta"))+sel("prot","Proteção",opts(Object.entries(PROTS),x.prot||"dj")):"");}
   else if(tp==="tug"||tp==="lum"){const a=S.ambientes.find(z=>z.id===g.dataset.amb),tipo=tp==="tug"?"tug":"ilum",irm=S.circ.map((x,j)=>[x,j]).filter(([x])=>x.ambiente===a.id&&x.tipo===tipo),cur=irm.find(([,j])=>j+1===c);
     ttl=`${tp==="tug"?"Tomada":"Luminária"} em ${a.nome}`;h=sel("circ","Circuito",opts([...irm.map(([x,j])=>[j,`C${j+1} — ${x.nome}`]),["__novo","+ Novo circuito"]],cur?cur[1]:""))+sel("q","Quadro do circuito",qOpts(cur?cur[0].q:quadroDoAmbiente(posAmbientes().find(r=>r.a.id===a.id))))+inp("nomeC","Nome do circuito (novo)",`${tp==="tug"?"TUG":"Iluminação"} ${a.nome} ${irm.length+1}`)+(tp==="tug"?inp("pot","VA por tomada",cur?cur[0].pot:200,"number"):inp("w","W por luminária",a.w,"number"));}
@@ -1565,10 +1569,11 @@ function edCtxAbrir(ev,g){const D=edDoc(),box=D.getElementById("edCtx");if(!box)
 function edCtxAplicar(f){const tp=f.dataset.tp,i=+f.dataset.i,c=+f.dataset.c,v=n=>f.elements[n]?f.elements[n].value:undefined,num=n=>{const x=parseFloat(v(n));return isFinite(x)?x:0;};edSnap();
   const quadroDe=(val,x,y)=>val==="__novo"?novoQuadro(x,y):val;
   if(tp==="amb"||tp==="res"){const a=S.ambientes[i];a.nome=v("nome")||a.nome;a.comprimento=Math.max(0.5,num("comprimento"));a.largura=Math.max(0.5,num("largura"));a.altura=Math.max(2,num("altura"));a.lux=num("lux");a.w=num("w")||a.w;a.infl=v("infl");a.zona=v("zona");}
-  else if(tp==="ab"){const o=S.aberturas[i];o.tipo=v("tipo");o.amb=v("amb");o.parede=v("parede");o.pos=Math.max(0,num("pos"));o.larg=Math.max(0.3,num("larg"));}
+  else if(tp==="ab"){const o=S.aberturas[i];const md=v("modelo")||"";o.tipo=md.startsWith("j:")?"janela":(MODELOS_AB.porta[md]?"porta":v("tipo"));o.modelo=md.replace(/^j:/,"");if(!MODELOS_AB[o.tipo][o.modelo])o.modelo=o.tipo==="janela"?"correr":"giro";o.amb=v("amb");o.parede=v("parede");o.pos=Math.max(0,num("pos"));o.larg=Math.max(0.3,num("larg"));}
   else if(tp==="q"){const q=S.quadros[i],old=q.nome,nn=(v("nome")||old).trim();if(nn!==old&&!S.quadros.some(z=>z!==q&&z.nome===nn)){q.nome=nn;S.circ.forEach(x=>{if(x.q===old)x.q=nn;});S.quadros.forEach(x=>{if(x.pai===old)x.pai=nn;});}
     if(i&&v("pai"))q.pai=v("pai");q.met=v("met");q.infl=v("infl");}
-  else if(tp==="maq"||tp==="tue"){const x=S.circ[c],r=posAmbientes().find(z=>z.a.id===x.ambiente);x.nome=v("nome")||x.nome;x.pot=num("pot");x.unid=v("unid");x.lig=v("lig");x.ambiente=v("ambiente");x.q=quadroDe(v("q"),r?r.x+r.L/2:0,r?r.y:0);if(tp==="maq"){x.partida=v("partida");x.prot=v("prot");}}
+  else if(tp==="maq"||tp==="tue"){const x=S.circ[c],r=posAmbientes().find(z=>z.a.id===x.ambiente);x.nome=v("nome")||x.nome;x.pot=num("pot");x.unid=v("unid");x.lig=v("lig");x.ambiente=v("ambiente");x.q=quadroDe(v("q"),r?r.x+r.L/2:0,r?r.y:0);if(tp==="maq"){x.partida=v("partida");x.prot=v("prot");}
+    if(tp==="tue"&&v("cargaTipo")&&v("cargaTipo")!==(x.cargaTipo||"geral")){x.cargaTipo=v("cargaTipo");x.fp=(CARGAS_TUE[x.cargaTipo]||CARGAS_TUE.geral).fp;}}
   else if(tp==="tug"||tp==="lum"){const a=S.ambientes.find(z=>z.id===f.dataset.amb),tipo=tp==="tug"?"tug":"ilum",cs=S.circ[c-1],r=posAmbientes().find(z=>z.a.id===a.id),fix=x=>x.qtdAmb!==""&&x.qtdAmb!=null;
     const qn=quadroDe(v("q"),r?r.x+r.L/2:0,r?r.y:0),alvo=v("circ");
     const qtdAt=x=>{const o=R.out[S.circ.indexOf(x)];return o?(+o.c.qtd||0):0;};
@@ -1627,9 +1632,10 @@ function edClick(ev){const b=ev.target.closest&&ev.target.closest("button,input"
   if(id==="edFloat"){ED_FLOAT=!ED_FLOAT;render(true);return;}
   if(id==="edFull"){const p=edEl("edPanel");if(p&&p.requestFullscreen)(document.fullscreenElement?document.exitFullscreen():p.requestFullscreen());return;}
   if(id==="edCtxX"){edCtxFechar();return;}}
+function edChange(ev){const t=ev.target;if(t.id==="edMod"){ED_MOD[ED_TOOL]=t.value;}else if(t.id==="edCarga"){ED_CARGA=t.value;}}
 function edSubmit(ev){if(ev.target.id==="edCtxF"){ev.preventDefault();edCtxAplicar(ev.target);}}
 function edTecla(ev){if(ev.key==="Escape"){edCtxFechar();if(ED_FLOAT&&!PIP){ED_FLOAT=false;render(true);}}}
-function edLigar(D){D.addEventListener("pointerdown",edDown);D.addEventListener("pointermove",edMove);D.addEventListener("pointerup",edUp);D.addEventListener("contextmenu",edCtx);D.addEventListener("click",edClick);D.addEventListener("submit",edSubmit);D.addEventListener("keydown",edTecla);}
+function edLigar(D){D.addEventListener("pointerdown",edDown);D.addEventListener("pointermove",edMove);D.addEventListener("pointerup",edUp);D.addEventListener("contextmenu",edCtx);D.addEventListener("click",edClick);D.addEventListener("submit",edSubmit);D.addEventListener("change",edChange);D.addEventListener("keydown",edTecla);}
 edLigar(document);
 
 V.fim=()=>{const pd=pendencias(),ok=pd.filter(x=>x[1]).length;return `${head(STEPS.length-1)}
@@ -1722,7 +1728,7 @@ document.addEventListener("click",e=>{
     {const n=S.circ.length-1,el=document.querySelector(`[data-c="${n}"][data-f="nome"]`);if(el){el.scrollIntoView({block:"center"});el.focus();el.select();}toast(`Circuito ${n+1} adicionado no fim da tabela.`);}return;}
   if(b.id==="useEntDist"){const r=layoutPlanta().entRota;if(r){S.forn.Lent=Math.ceil(r.L);persist();render(true);toast(`Alimentador de entrada ajustado para ${fmtN(S.forn.Lent)} m.`);}return;}
   if(b.id==="addAmb"){const i=S.ambientes.length+1;S.ambientes.push({id:`amb-${Date.now()}`,nome:`Ambiente ${i}`,comprimento:6,largura:5,altura:3,lux:300,lm:4000,w:40,uf:0.6,mf:0.8,espTomadas:5,espLum:1.5,infl:"seco",zona:"",saidas:1,x:"",y:""});persist();render(true);return;}
-  if(b.dataset.addab){const a=S.ambientes[0];S.aberturas.push({amb:a.id,tipo:b.dataset.addab,parede:"inf",pos:0.5,larg:b.dataset.addab==="porta"?0.9:1.5});persist();render(true);return;}
+  if(b.dataset.addab){const a=S.ambientes[0];S.aberturas.push({amb:a.id,tipo:b.dataset.addab,modelo:b.dataset.addab==="porta"?"giro":"correr",parede:"inf",pos:0.5,larg:b.dataset.addab==="porta"?0.9:1.5});persist();render(true);return;}
   if(b.dataset.delab!=null){S.aberturas.splice(+b.dataset.delab,1);persist();render(true);return;}
   if(b.id==="snapQ"){const P_=layoutPlanta();let n=0;P_.quad.forEach(r=>{const w_=paredeMaisProxima(P_,r.x,r.y);if(w_){r.q.x=Math.round(w_.x*100)/100;r.q.y=Math.round(w_.y*100)/100;n++;}});persist();render(true);toast(`${n} quadro(s) ajustado(s) às paredes. Confira as posições.`);return;}
   if(b.dataset.delamb!=null){const a=S.ambientes.splice(+b.dataset.delamb,1)[0];S.aberturas=S.aberturas.filter(o=>o.amb!==a.id);S.circ.forEach(c=>{if(c.ambiente===a.id)c.ambiente="";});persist();render(true);return;}
@@ -1772,10 +1778,11 @@ document.addEventListener("input",e=>{
 });
 document.addEventListener("change",e=>{
   const t=e.target;
+  if(t.dataset.c!=null&&t.dataset.f==="cargaTipo"){const c=S.circ[+t.dataset.c],k=CARGAS_TUE[c.cargaTipo]||CARGAS_TUE.geral;c.fp=k.fp;if(Object.values(CARGAS_TUE).some(v=>v.pot===+c.pot))c.pot=k.pot;persist();render(true);return;}
   if(t.dataset.c!=null&&(t.dataset.re||t.dataset.f==="tipo")){const c=S.circ[+t.dataset.c];if(c.tipo==="motor"){c.unid="cv";c.eta=c.eta<1?c.eta:0.87;c.fu=0.87;c.fs=1.25;c.prot=c.prot||"dj";c.partida=c.partida||"direta";c.fusTipo=c.fusTipo||"gG";if(c.lig==="F+N"&&ligOK("3F",SISTEMAS[S.forn.sistema]))c.lig="3F";}else if(c.unid==="cv"){c.unid="W";c.eta=1;}persist();render(true);return;}
   if(t.dataset.c!=null&&["prot","partida","fusTipo","local","dr","ambiente"].includes(t.dataset.f)){render(true);return;}
   if(t.dataset.ext!=null&&t.dataset.f==="g"){S.extras[+t.dataset.ext].g=t.value;persist();render(true);return;}
-  if(t.dataset.ab!=null){if(t.tagName==="SELECT")render(true);return;}
+  if(t.dataset.ab!=null){if(t.tagName==="SELECT"){const o=S.aberturas[+t.dataset.ab];if(!MODELOS_AB[o.tipo][o.modelo])o.modelo=o.tipo==="janela"?"correr":"giro";render(true);}return;}
   if(t.dataset.bind||t.dataset.qd!=null||t.dataset.c!=null){if(t.tagName==="SELECT"||t.type==="checkbox"||t.dataset.qd!=null){render(true);}return;}
   if(t.dataset.file){addFiles(t.dataset.file,t.files);t.value="";return;}
   if(t.id==="fileOpen"){abrirJSON(t.files[0]);t.value="";}
@@ -1818,7 +1825,7 @@ function normalizar(d){
   n.extras=Array.isArray(d.extras)?d.extras.map(x=>({g:GRUPOS[x.g]?x.g:"extra",d:String(x.d||""),un:String(x.un||"pç"),q:+x.q||0,pu:+x.pu||0})):[];
   n.orc=Object.assign(b.orc,d.orc||{});if(d.orc&&d.orc.impostos!=null&&!d.orc.trib&&+d.orc.impostos>0)n.orc.trib=null;n.orc.servicos=Array.isArray(d.orc?.servicos)?d.orc.servicos.map(s=>({cat:CAT_SERV[s.cat]?s.cat:"outro",d:String(s.d||""),h:+s.h||0,vh:+s.vh||0})):b.orc.servicos;
   n.estrutura=Object.assign(b.estrutura,d.estrutura||{});if(!NP5419[n.estrutura.np])n.estrutura.np="III";
-  n.aberturas=Array.isArray(d.aberturas)?d.aberturas.map(o=>({amb:String(o.amb||""),tipo:o.tipo==="janela"?"janela":"porta",parede:["inf","sup","esq","dir"].includes(o.parede)?o.parede:"inf",pos:+o.pos||0,larg:Math.max(0.3,+o.larg||0.9)})):[];
+  n.aberturas=Array.isArray(d.aberturas)?d.aberturas.map(o=>({modelo:MODELOS_AB[o.tipo==="janela"?"janela":"porta"][o.modelo]?o.modelo:(o.tipo==="janela"?"correr":"giro"),amb:String(o.amb||""),tipo:o.tipo==="janela"?"janela":"porta",parede:["inf","sup","esq","dir"].includes(o.parede)?o.parede:"inf",pos:+o.pos||0,larg:Math.max(0.3,+o.larg||0.9)})):[];
   n.ambientes=Array.isArray(d.ambientes)?d.ambientes.map((a,i)=>{const x=Object.assign({id:`amb-${i+1}`,nome:`Ambiente ${i+1}`,comprimento:0,largura:0,altura:3,lux:300,lm:4000,w:40,uf:0.6,mf:0.8,espTomadas:5,espLum:1.5,infl:"seco",zona:"",saidas:1,x:"",y:""},a,{id:String(a.id||`amb-${i+1}`)});if(!INFL[x.infl])x.infl="seco";if(!ZONAS[x.zona||""])x.zona="";return x;}):[];
   n.revisoes=Array.isArray(d.revisoes)&&d.revisoes.length?d.revisoes.map(r=>({rev:String(r.rev??""),data:String(r.data||""),desc:String(r.desc||""),autor:String(r.autor||"")})):[{rev:"00",data:n.id.data||"",desc:"Emissão inicial",autor:n.id.rt||""}];
   n.precos=d.precos&&typeof d.precos==="object"?d.precos:{};if(!ATERR[n.forn.aterr])n.forn.aterr="TN-S";
@@ -1850,7 +1857,9 @@ function sim5444(tipo,o={}){
     case "inter":C(0,0,0.42);break;                                                              // 7.1 interruptor de uma seção
     case "tom":P([[-0.55,-0.7],[0.85,0],[-0.55,0.7]],o.alt==="alta");if(o.alt==="media")P([[-0.55,-0.7],[0.85,0],[-0.55,0]],true);
       L(-0.95,-0.85,-0.95,0.85);[-0.6,0,0.6].forEach(k=>L(-0.95,k,-1.25,k-0.3));break;        // 9.1 baixa · 9.2 meia altura · 9.3 alta (traço hachurado = parede)
-    case "motor":C(0,0,1);Tx(0,-0.36,1,"M");break;                                               // 10.2 motor
+    case "motor":C(0,0,1);Tx(0,-0.36,1,"M");break;
+    case "aquec":ret(-1.2,-0.6,1.2,0.6);PL([[-0.9,0],[-0.6,0.35],[-0.3,-0.35],[0,0.35],[0.3,-0.35],[0.6,0.35],[0.9,0]]);break;   // resistência / aquecedor
+    case "chuv":C(0,0,0.9);L(-0.5,-0.2,-0.5,-0.7);L(0,-0.2,0,-0.8);L(0.5,-0.2,0.5,-0.7);break;                              // chuveiro / torneira elétrica                                               // 10.2 motor
     case "qdp":ret(-1.3,-0.5,1.3,0.5,true);parede(-0.5);break;                                  // 6.1 quadro parcial de luz e força aparente
     case "qdg":ret(-1.3,-0.5,1.3,0.5);P([[-1.3,-0.5],[1.3,-0.5],[1.3,0.5]],true);parede(-0.5);break; // 6.3 quadro geral de luz e força aparente
     case "med":L(-1.6,0,-1.1,0);L(1.1,0,1.6,0);ret(-1.1,-0.45,1.1,0.45);Tx(0,-0.2,0.55,"MED");break; // 6.6 caixa para medidor
@@ -2086,8 +2095,11 @@ function exportarDXF(){
     if(r.tug.length)tx("TOMADAS",r.tug[0][0]+0.3,r.tug[0][1]+0.3,0.16,`${ct(r.cT)}${Math.round(r.vaTug)!==100?` ${fmt0(r.vaTug)} VA`:""}`);
     r.fix.forEach(f=>{const {o:c,p:[x,y]}=f;if(f.maq){sim("FORCA","motor",x,y,0.35);sim("FORCA","desce",x-0.4,y+0.4,0.2);}else sim("FORCA","tom",x,y,0.22,{alt:"alta",ang:[90,180,270,0][f.parede||0]});tx("FORCA",x+0.45,y-0.08,0.16,`${ct([c.i+1])} ${c.c.tipo==="motor"?`${fmtN(c.c.pot)} ${c.c.unid}`:`${fmt(c.P/1000,1)} kW`} - ${c.c.nome}`);});
     // aberturas: folha da porta e janela
-    r.ab.forEach(o=>{if(o.tipo==="porta"){ln("AMBIENTES",o.A[0],o.A[1],o.A[0]+o.nin[0]*o.larg,o.A[1]+o.nin[1]*o.larg);tx("COTAS",o.c[0]+o.nin[0]*0.3,o.c[1]+o.nin[1]*0.3,0.15,`P ${fmt(o.larg,2)}`);}
-      else{[-0.05,0.05].forEach(k=>ln("AMBIENTES",o.A[0]+o.nin[0]*k,o.A[1]+o.nin[1]*k,o.B[0]+o.nin[0]*k,o.B[1]+o.nin[1]*k));tx("COTAS",o.c[0]-o.nin[0]*0.4,o.c[1]-o.nin[1]*0.4,0.15,`J ${fmt(o.larg,2)}`);}});
+    r.ab.forEach(o=>{const sg=(MODELOS_AB[o.tipo][o.modelo]||[0,o.tipo==="porta"?"P":"J"])[1];
+      if(o.tipo==="porta"&&(o.modelo||"giro")==="giro")ln("AMBIENTES",o.A[0],o.A[1],o.A[0]+o.nin[0]*o.larg,o.A[1]+o.nin[1]*o.larg);
+      else if(o.tipo==="porta"&&o.modelo==="dupla"){ln("AMBIENTES",o.A[0],o.A[1],o.A[0]+o.nin[0]*o.larg/2,o.A[1]+o.nin[1]*o.larg/2);ln("AMBIENTES",o.B[0],o.B[1],o.B[0]+o.nin[0]*o.larg/2,o.B[1]+o.nin[1]*o.larg/2);}
+      else [-0.05,0.05].forEach(k=>ln("AMBIENTES",o.A[0]+o.nin[0]*k,o.A[1]+o.nin[1]*k,o.B[0]+o.nin[0]*k,o.B[1]+o.nin[1]*k));
+      tx("COTAS",o.c[0]+o.nin[0]*(o.tipo==="porta"?0.3:-0.4),o.c[1]+o.nin[1]*(o.tipo==="porta"?0.3:-0.4),0.15,`${sg} ${fmt(o.larg,2)}`);});
     r.emg.forEach(([x,y])=>sim("EMERGENCIA","emg",x,y,0.2));
     r.sai.forEach(([x,y])=>{rt("EMERGENCIA",x-0.5,y+0.1,1,0.35);tx("EMERGENCIA",x-0.42,y+0.18,0.2,"SAIDA");});});
   // eletrodutos agregados com os condutores de cada circuito
@@ -2407,11 +2419,17 @@ async function gerarPDF(){
     Lp.amb.forEach(r=>{const [x,y]=P(r.x,r.y);Bx(pp,x,y,r.L*sc,r.W*sc,{bc:INK,bw:1.8,fill:r.a.zona?rgb(0.99,0.95,0.88):LG});});
     // aberturas: vão na parede, folha e arco de abertura das portas; janelas com três linhas
     Lp.amb.forEach(r=>{const fill=r.a.zona?rgb(0.99,0.95,0.88):LG;r.ab.forEach(o=>{const [ax,ay]=P(...o.A),[bx,by]=P(...o.B);Ln(pp,ax,ay,bx,by,3.2,rgb(1,1,1));
-      if(o.tipo==="porta"){const R_=o.larg*sc,ex=ax+o.nin[0]*R_,ey=ay+o.nin[1]*R_;Ln(pp,ax,ay,ex,ey,0.9,INK);
-        const a0=Math.atan2(by-ay,bx-ax),a1=Math.atan2(ey-ay,ex-ax);let da=a1-a0;if(da>Math.PI)da-=2*Math.PI;if(da<-Math.PI)da+=2*Math.PI;const n=10;
-        for(let k=0;k<n;k++){const t0=a0+da*k/n,t1=a0+da*(k+1)/n;Ln(pp,ax+R_*Math.cos(t0),ay+R_*Math.sin(t0),ax+R_*Math.cos(t1),ay+R_*Math.sin(t1),0.5,MUT);}
-        TL(pp,`P ${fmt(o.larg,2)}`,(ax+bx)/2+o.nin[0]*R_*0.5+2,(ay+by)/2+o.nin[1]*R_*0.5,4.8,F,MUT);}
-      else{const off=[-o.nin[1],o.nin[0]];[-1.2,0,1.2].forEach(k=>Ln(pp,ax+o.nin[0]*k,ay+o.nin[1]*k,bx+o.nin[0]*k,by+o.nin[1]*k,0.5,INK));TL(pp,`J ${fmt(o.larg,2)}`,(ax+bx)/2-o.nin[0]*9-6,(ay+by)/2-o.nin[1]*9-2,4.8,F,MUT);}});});
+      const sg=(MODELOS_AB[o.tipo][o.modelo]||[0,o.tipo==="porta"?"P":"J"])[1],ux=(bx-ax),uy=(by-ay),nx=o.nin[0],ny=o.nin[1],arc=(cx,cy,R_,a0,da,n=10)=>{for(let k=0;k<n;k++){const t0=a0+da*k/n,t1=a0+da*(k+1)/n;Ln(pp,cx+R_*Math.cos(t0),cy+R_*Math.sin(t0),cx+R_*Math.cos(t1),cy+R_*Math.sin(t1),0.5,MUT);}};
+      const folha=(hx,hy,tx,ty,R_)=>{const ex=hx+nx*R_,ey=hy+ny*R_;Ln(pp,hx,hy,ex,ey,0.9,INK);const a0=Math.atan2(ty-hy,tx-hx),a1=Math.atan2(ey-hy,ex-hx);let da=a1-a0;if(da>Math.PI)da-=2*Math.PI;if(da<-Math.PI)da+=2*Math.PI;arc(hx,hy,R_,a0,da);};
+      if(o.tipo==="porta"&&o.modelo==="dupla"){const mx=(ax+bx)/2,my=(ay+by)/2,R2=o.larg*sc/2;folha(ax,ay,mx,my,R2);folha(bx,by,mx,my,R2);}
+      else if(o.tipo==="porta"&&o.modelo==="correr"){const d=2.2;Ln(pp,ax+nx*d,ay+ny*d,ax+ux*0.62+nx*d,ay+uy*0.62+ny*d,1.2,INK);Ln(pp,bx-nx*d,by-ny*d,bx-ux*0.62-nx*d,by-uy*0.62-ny*d,1.2,INK);
+        const mx=(ax+bx)/2+nx*7,my=(ay+by)/2+ny*7;Ln(pp,mx-ux*0.12,my-uy*0.12,mx+ux*0.12,my+uy*0.12,0.5,MUT);}
+      else if(o.tipo==="porta"&&o.modelo==="enrolar"){Ln(pp,ax+nx*3,ay+ny*3,bx+nx*3,by+ny*3,1,INK,[3,2]);Ln(pp,ax-nx*3,ay-ny*3,bx-nx*3,by-ny*3,0.5,MUT);}
+      else if(o.tipo==="porta"){folha(ax,ay,bx,by,o.larg*sc);}
+      else if(o.modelo==="correr"){const d=1.3;Ln(pp,ax+nx*d,ay+ny*d,ax+ux*0.58+nx*d,ay+uy*0.58+ny*d,0.7,INK);Ln(pp,bx-nx*d,by-ny*d,bx-ux*0.58-nx*d,by-uy*0.58-ny*d,0.7,INK);Ln(pp,ax,ay,bx,by,0.3,MUT);}
+      else if(o.modelo==="fixa"){Ln(pp,ax,ay,bx,by,0.8,INK);}
+      else{[-1.2,0,1.2].forEach(k=>Ln(pp,ax+nx*k,ay+ny*k,bx+nx*k,by+ny*k,0.5,INK));const mx=(ax+bx)/2,my=(ay+by)/2,h_=o.modelo==="maximar"?-4:4;Ln(pp,ax,ay,mx+nx*h_,my+ny*h_,0.4,MUT);Ln(pp,bx,by,mx+nx*h_,my+ny*h_,0.4,MUT);}
+      const R_=o.tipo==="porta"&&o.modelo==="giro"?o.larg*sc*0.5:8;TL(pp,`${sg} ${fmt(o.larg,2)}`,(ax+bx)/2+(o.tipo==="porta"?nx*R_:-nx*9)+2,(ay+by)/2+(o.tipo==="porta"?ny*R_:-ny*9-2),4.8,F,MUT);});});
     // eletrodutos agregados (teto/parede): fases, neutro, retorno e terra de cada circuito; com 4 ou mais circuitos, eletrocalha
     const st=s0*0.85;
     Lp.chains.forEach(ch=>{const [x1,y1]=P(...ch.a),[x2,y2]=P(...ch.b),hz=ch.t==="h",calha=ch.circ.length>=4;Ln(pp,x1,y1,x2,y2,calha?2.2:0.9,INK);});
@@ -2431,7 +2449,9 @@ async function gerarPDF(){
       [...new Set(r.tug.map(t=>t[4]))].forEach(c=>{const t=r.tug.find(z=>z[4]===c),[cx,cy]=P(t[0],t[1]);TL(pp,`${c?`-${c}-`:""}${Math.round(r.vaTug)!==100?` ${fmt0(r.vaTug)} VA`:""}`,cx+1.2*s0,cy+1.2*s0,fs,FB,RED);});
       r.fix.forEach(f=>{const {o,p:[a,b]}=f,[cx,cy]=P(a,b),pot=o.c.tipo==="motor"?`${fmtN(o.c.pot)} ${o.c.unid}`:`${fmt(o.P/1000,o.P<10000?1:0)} kW`;
         if(f.maq){SIMR(pp,"desce",cx-1.6*s0,cy+1.6*s0,s0*0.8);SIMR(pp,"motor",cx,cy,s0*1.4);TL(pp,o.c.nome.replace(/\s*\([^)]*\)/g,"").slice(0,30),cx+1.8*s0,cy+1,fs,FB,INK);TL(pp,`-${o.i+1}- ${pot}`,cx+1.8*s0,cy-fs,fs,FB,RED);}
-        else{SIMR(pp,"tom",cx,cy,s0,{alt:"alta",ang:[90,180,270,0][f.parede||0]});TL(pp,`-${o.i+1}- ${o.c.nome.replace(/\s*\([^)]*\)/g,"").slice(0,30)} ${pot}`,cx+1.4*s0,cy+1.2*s0,fs,FB,RED);}});
+        else{const k=CARGAS_TUE[o.c.cargaTipo]||CARGAS_TUE.geral,sb=o.c.cargaTipo==="aquecedor"||o.c.cargaTipo==="forno"?"aquec":o.c.cargaTipo==="chuveiro"||o.c.cargaTipo==="torneira"?"chuv":null;
+          if(sb){SIMR(pp,sb,cx,cy,s0*1.1);}else SIMR(pp,"tom",cx,cy,s0,{alt:"alta",ang:[90,180,270,0][f.parede||0]});
+          TL(pp,`-${o.i+1}- ${k.sg} · ${o.c.nome.replace(/\s*\([^)]*\)/g,"").slice(0,42)} ${pot}`,cx+1.4*s0,cy+1.2*s0,fs,FB,RED);}});
       r.emg.forEach(([a,b])=>{const [cx,cy]=P(a,b);SIMR(pp,"emg",cx,cy,s0,{},ORG);});
       r.sai.forEach(([a,b])=>{const [cx,cy]=P(a,b);Bx(pp,cx-11,cy-3.5,22,7,{fill:ACC,bc:ACC});TC(pp,"SAÍDA",cx,cy-1.7,4.5,FB,rgb(1,1,1));});});
     // alimentadores: eletroduto no teto/parede (contínuo); trechos fora da edificação, enterrados (tracejado)
@@ -2454,8 +2474,9 @@ async function gerarPDF(){
       ["5.1",()=>Ln(pp,lx,ly+3,lx+20,ly+3,0.9,INK),"Eletroduto embutido no teto ou na parede"],["5.13",()=>Ln(pp,lx,ly+3,lx+20,ly+3,2.2,INK),"Eletrocalha no teto (4 ou mais circuitos)"],
       ["5.2",()=>Ln(pp,lx,ly+3,lx+20,ly+3,0.9,INK,[4,3]),"Eletroduto enterrado (só fora da edificação)"],
       ["5.6–5.9",()=>{Ln(pp,lx,ly+3,lx+20,ly+3,0.6);SIM(pp,"cond",lx+10,ly+3,ls,{nf:1,n:true,r:1,pe:true});},"Fase, neutro, retorno e terra; -n- = circuito, letra = retorno"],
-      ["—",()=>{Ln(pp,lx,ly+3,lx+20,ly+3,3,rgb(0.8,0.8,0.8));Ln(pp,lx,ly+1,lx+20,ly+1,0.4);Ln(pp,lx,ly+3,lx+20,ly+3,0.4);Ln(pp,lx,ly+5,lx+20,ly+5,0.4);},"Janela (J) — largura em m"],
-      ["—",()=>{Ln(pp,lx,ly,lx,ly+10,0.8);for(let k=0;k<6;k++){const a=k/6*Math.PI/2,b=(k+1)/6*Math.PI/2;Ln(pp,lx+10*Math.sin(a),ly+10*Math.cos(a),lx+10*Math.sin(b),ly+10*Math.cos(b),0.5,MUT);}},"Porta (P) — largura em m e sentido de abertura"],
+      ["—",()=>SIM(pp,"aquec",lx+10,ly+3,ls*1.1),"Aquecedor / resistência / forno (AQ, FO); demais cargas: AC ar-cond., RF refrigeração"],["—",()=>SIM(pp,"chuv",lx+10,ly+3,ls*1.1),"Chuveiro (CH) / torneira elétrica (TE)"],
+      ["—",()=>{Ln(pp,lx,ly+3,lx+20,ly+3,3,rgb(0.8,0.8,0.8));Ln(pp,lx,ly+1,lx+20,ly+1,0.4);Ln(pp,lx,ly+3,lx+20,ly+3,0.4);Ln(pp,lx,ly+5,lx+20,ly+5,0.4);},"Janelas: JC de correr, JB basculante, JM maxim-ar, JF fixa — largura em m"],
+      ["—",()=>{Ln(pp,lx,ly,lx,ly+10,0.8);for(let k=0;k<6;k++){const a=k/6*Math.PI/2,b=(k+1)/6*Math.PI/2;Ln(pp,lx+10*Math.sin(a),ly+10*Math.cos(a),lx+10*Math.sin(b),ly+10*Math.cos(b),0.5,MUT);}},"Portas: P giro, PC de correr, PD dupla, PE de enrolar — largura em m"],
       ["—",()=>Ln(pp,lx,ly+3,lx+22,ly+3,0.9,GR,LIM),"Limite da área (traço-ponto-ponto)"],
       ["—",()=>Bx(pp,lx+2,ly-1,16,8,{fill:rgb(0.99,0.95,0.88),bc:INK,bw:0.6}),"Área classificada (poeira combustível)"]];
     lg.forEach(([n,fn,t])=>{fn();T(pp,n,lx+26,ly,6.2,FB,MUT);const k=TW(pp,t,lx+58,ly,w-lx-80,6.6);ly-=Math.max(13,k*8.5+5);});ly-=4;
