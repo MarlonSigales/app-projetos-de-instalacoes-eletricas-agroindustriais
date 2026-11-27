@@ -20,7 +20,7 @@ function blank(){
     v:1,
     id:{cliente:"",obra:"",atividade:"",local:"",municipio:"",uc:"",distribuidora:"",rt:"",crea:"",art:"",projetista:"",data:new Date().toISOString().slice(0,10)},
     projetos:{eletrico:true,luminotecnico:false,spda:false},
-    forn:{espComp:"",espLarg:"",sistema:"380/220",atend:"BT",classe:"rural",subclasse:"Agroindustrial",tensaoPrim:13.8,subterraneo:false,modalidade:"",iccMT:"",Lmt:30,trafo:false,trafoKVA:"",rede:"",distRede:"",Lent:15,metEnt:"D",aterr:"TN-S",aerea:true,aq:"AQ2",spda:false,rhoEletrica:"",ra:30,ul:50,obs:""},
+    forn:{espComp:"",espLarg:"",entLado:"",entPos:"",sistema:"380/220",atend:"BT",classe:"rural",subclasse:"Agroindustrial",tensaoPrim:13.8,subterraneo:false,modalidade:"",iccMT:"",Lmt:30,trafo:false,trafoKVA:"",rede:"",distRede:"",Lent:15,metEnt:"D",aterr:"TN-S",aerea:true,aq:"AQ2",spda:false,rhoEletrica:"",ra:30,ul:50,obs:""},
     par:{temp:30,tempSolo:20,rhoSolo:2.5,metDist:"B1",metBaix:"B1",agrDist:"feixe",espEnt:"nula",arrF:"trifolio",arrG:"horizontal",ipin:7,dvPartida:10,simular:true,softLim:3,invLim:1.5,bobina:"220 Vca",icc:6,dpsSempre:false,dvTerm:4,dvTotal:5,dvEnt:1,rho:0.0206,curva:"C",curvaMotor:"D",reserva:20,sobra:10,neutroRed:false,ocupCan:40,espSupCan:1.5,baixAparente:true,xCabo:0.08,rTerra:10,nEquip:6,lEquip:10,corrFP:true,fpAlvo:0.92,emerg:true,zTrafo:4.5,tipoSub:"poste"},
     quadros:[{nome:"QGBT",L:0,met:"B1",pai:"",infl:"seco",x:"",y:""}],
     ambientes:[],
@@ -47,7 +47,7 @@ function sample(){
   s.exemplo=true;
   s.id={cliente:"Agroindústria Exemplo Ltda. (dados fictícios)",obra:"Mini-indústria de beneficiamento de grãos",atividade:"Secagem, descascamento, moagem e ensacamento de grãos",local:"Estrada rural, km 8",municipio:"Pelotas/RS",uc:"0000000",distribuidora:"CEEE Equatorial",rt:"Nome do responsável técnico",crea:"RS000000",art:"",projetista:"Turma 2026.2",data:new Date().toISOString().slice(0,10)};
   s.projetos={eletrico:true,luminotecnico:true,spda:true};
-  s.forn={espComp:40,espLarg:16,sistema:"380/220",atend:"BT",classe:"rural",subclasse:"Agroindustrial",tensaoPrim:13.8,subterraneo:false,modalidade:"Convencional monômia",trafo:false,trafoKVA:"",rede:"Rede secundária trifásica 380/220 V da distribuidora",distRede:"30 m",Lent:12,metEnt:"D",aterr:"TN-S",aerea:true,aq:"AQ2",spda:true,rhoEletrica:"",ra:30,ul:50,obs:"Padrão de entrada trifásico com medição direta, conforme categoria do RIC da distribuidora."};
+  s.forn={espComp:40,espLarg:16,entLado:"dir",entPos:12,sistema:"380/220",atend:"BT",classe:"rural",subclasse:"Agroindustrial",tensaoPrim:13.8,subterraneo:false,modalidade:"Convencional monômia",trafo:false,trafoKVA:"",rede:"Rede secundária trifásica 380/220 V da distribuidora",distRede:"30 m",Lent:12,metEnt:"D",aterr:"TN-S",aerea:true,aq:"AQ2",spda:true,rhoEletrica:"",ra:30,ul:50,obs:"Padrão de entrada trifásico com medição direta, conforme categoria do RIC da distribuidora."};
   s.quadros=[{nome:"QGBT",L:0,met:"B1",pai:"",infl:"seco",x:27,y:12},{nome:"QF-PROD",L:25,met:"D",pai:"QGBT",infl:"poeira",x:22,y:6},{nome:"QL-ADM",L:18,met:"D",pai:"QGBT",infl:"seco",x:29,y:9},{nome:"QD-SECADOR",L:15,met:"B1",pai:"QF-PROD",infl:"poeiraAlta",x:4,y:2}];
   s.ambientes=[
     {id:"secagem",nome:"Galpão de secagem",comprimento:24,largura:12,altura:6,lux:200,lm:4000,w:40,uf:0.65,mf:0.8,espTomadas:5,espLum:1.5,infl:"poeiraAlta",zona:"22",saidas:2,x:0,y:0},
@@ -758,18 +758,25 @@ function croquiSit(){
   let x1=0,y1=0,x2=Math.max(eC,1),y2=Math.max(eL,1);
   P.amb.forEach(r=>{x1=Math.min(x1,r.x);y1=Math.min(y1,r.y);x2=Math.max(x2,r.x+r.L);y2=Math.max(y2,r.y+r.W);});
   P.quad.forEach(r=>{x1=Math.min(x1,r.x-0.5);y1=Math.min(y1,r.y-0.5);x2=Math.max(x2,r.x+0.5);y2=Math.max(y2,r.y+0.5);});
+  if(P.ent){x1=Math.min(x1,P.ent.x-1);y1=Math.min(y1,P.ent.y-1);x2=Math.max(x2,P.ent.x+1);y2=Math.max(y2,P.ent.y+1);}
   const m=1.5,W=x2-x1+2*m,H=y2-y1+2*m,sx=v=>v-x1+m,sy=v=>y2-v+m,fs=Math.max(0.35,Math.min(W,H)/32);
   const avisos=[];
-  if(eC&&eL)P.amb.forEach(r=>{if(r.x<-1e-6||r.y<-1e-6||r.x+r.L>eC+1e-6||r.y+r.W>eL+1e-6)avisos.push(`${esc(r.a.nome)} sai do espaço total (${fmt(eC,1)} × ${fmt(eL,1)} m)`);});
+  if(eC&&eL)P.amb.forEach(r=>{if(temXY(r.a)&&(r.x<-1e-6||r.y<-1e-6||r.x+r.L>eC+1e-6||r.y+r.W>eL+1e-6))avisos.push(`${esc(r.a.nome)} sai do espaço total (${fmt(eC,1)} × ${fmt(eL,1)} m)`);});
   for(let i=0;i<P.amb.length;i++)for(let j=i+1;j<P.amb.length;j++){const a=P.amb[i],b=P.amb[j];if(a.x<b.x+b.L-1e-6&&b.x<a.x+a.L-1e-6&&a.y<b.y+b.W-1e-6&&b.y<a.y+a.W-1e-6)avisos.push(`${esc(a.a.nome)} e ${esc(b.a.nome)} se sobrepõem`);}
   const auto=P.amb.filter(r=>!temXY(r.a)).map(r=>esc(r.a.nome));
+  if(P.esp)P.amb.filter(r=>!temXY(r.a)&&(r.x+r.L>P.esp.C+1e-6||r.y+r.W>P.esp.L+1e-6)).forEach(r=>avisos.push(`${esc(r.a.nome)} não coube no espaço livre e ficou do lado de fora: reduza as dimensões ou informe X e Y`));
+  if(S.forn.entLado&&!P.esp)avisos.push("Informe o comprimento e a largura do espaço total para posicionar a entrada de energia");
+  const eR=P.entRota,Lent=+S.forn.Lent||0,difEnt=eR&&Math.abs(eR.L-Lent)>Math.max(1,0.1*eR.L);
   const svg=`<svg viewBox="0 0 ${W.toFixed(2)} ${H.toFixed(2)}" style="width:100%;max-height:420px;background:#fff;border:1px solid var(--line,#ccc);border-radius:6px" role="img" aria-label="Croqui do espaço com os ambientes">
 ${eC&&eL?`<rect x="${sx(0)}" y="${sy(eL)}" width="${eC}" height="${eL}" fill="#f4f7f2" stroke="#2e5d34" stroke-width="${fs/6}" stroke-dasharray="${fs/2} ${fs/4}"/><text x="${sx(0)+fs/3}" y="${sy(eL)-fs/3}" font-size="${fs*0.8}" fill="#2e5d34">Espaço total ${fmt(eC,1)} × ${fmt(eL,1)} m</text>`:""}
 ${P.amb.map(r=>`<rect x="${sx(r.x)}" y="${sy(r.y+r.W)}" width="${r.L}" height="${r.W}" fill="${temXY(r.a)?"#dfe9f5":"#fff4d6"}" stroke="#1f3b5a" stroke-width="${fs/8}" ${temXY(r.a)?"":`stroke-dasharray="${fs/3} ${fs/5}"`}/><text x="${sx(r.x+r.L/2)}" y="${sy(r.y+r.W/2)}" font-size="${fs}" text-anchor="middle" fill="#1f3b5a">${esc(r.a.nome)}</text><text x="${sx(r.x+r.L/2)}" y="${sy(r.y+r.W/2)+fs*1.2}" font-size="${fs*0.75}" text-anchor="middle" fill="#555">${fmt(r.L,1)} × ${fmt(r.W,1)} m · (${fmt(r.x,1)}; ${fmt(r.y,1)})</text>`).join("")}
 ${P.quad.map(r=>`<rect x="${sx(r.x)-fs/3}" y="${sy(r.y)-fs/3}" width="${fs*2/3}" height="${fs*2/3}" fill="#b3261e"/><text x="${sx(r.x)+fs/2}" y="${sy(r.y)+fs/3}" font-size="${fs*0.75}" fill="#b3261e">${esc(r.q.nome)}</text>`).join("")}
+${eR?`<polyline points="${eR.pts.map(([a,b])=>sx(a)+","+sy(b)).join(" ")}" fill="none" stroke="#000" stroke-width="${fs/7}" stroke-dasharray="${fs/2} ${fs/4}"/><text x="${sx((eR.pts[0][0]+eR.pts[1][0])/2)+fs/3}" y="${sy((eR.pts[0][1]+eR.pts[1][1])/2)-fs/3}" font-size="${fs*0.7}">alimentador de entrada ≈ ${fmt(eR.L,1)} m</text>`:""}
+${P.ent?`<polygon points="${[[0,-1],[0.9,0.6],[-0.9,0.6]].map(([u,v])=>(sx(P.ent.x)+u*fs*0.7)+","+(sy(P.ent.y)+v*fs*0.7)).join(" ")}" fill="#e8a400" stroke="#000" stroke-width="${fs/12}"/><text x="${sx(P.ent.x)+(P.ent.nx<0?-fs:fs)}" y="${sy(P.ent.y)+(P.ent.ny>0?fs*1.4:-fs*0.9)}" font-size="${fs*0.8}" font-weight="bold" text-anchor="${P.ent.nx<0?"end":"start"}">Entrada de energia (${fmt(P.ent.x,1)}; ${fmt(P.ent.y,1)})</text>`:""}
 <circle cx="${sx(0)}" cy="${sy(0)}" r="${fs/4}" fill="#000"/><text x="${sx(0)+fs/3}" y="${sy(0)+fs}" font-size="${fs*0.7}">(0; 0)</text>
 </svg>`;
-  return `<p class="note" style="margin:10px 0 6px">Croqui (sem escala gráfica): ambientes em azul com posição informada, em amarelo tracejado com posição automática; quadros em vermelho (posição na etapa 04).</p>${svg}
+  return `<p class="note" style="margin:10px 0 6px">Croqui (sem escala gráfica): ambientes em azul com posição informada, em amarelo tracejado com posição automática (encaixados dentro do espaço total a partir da origem); quadros em vermelho (posição na etapa 04; o QGBT sem posição fica junto da entrada); entrada de energia em laranja.</p>${svg}
+${eR?`<p class="note${difEnt?" warn":""}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">Trajeto entrada → ${esc(S.quadros[0].nome)} no croqui: ≈ ${fmt(eR.L,1)} m. Comprimento do alimentador de entrada usado no cálculo (etapa 07): ${fmt(Lent,1)} m.${difEnt?`<button class="btn small" type="button" id="useEntDist">Usar ${fmt(Math.ceil(eR.L),0)} m no cálculo</button>`:""}</p>`:""}
 ${auto.length?`<p class="note">Posição automática (preencha X e Y para fixar): ${auto.join(", ")}.</p>`:""}${avisos.length?`<p class="note warn">${avisos.join(" · ")}.</p>`:""}`;}
 V.prel=()=>`${head(1)}
 <p class="intro">Informações preliminares (item A): classe do consumidor, condições de fornecimento informadas pela distribuidora, planta de situação e tipo de atendimento. Consulte o regulamento de instalações consumidoras (RIC) da distribuidora local.</p>
@@ -805,6 +812,8 @@ ${S.forn.atend==="MT"?`<div class="block"><h3>Subestação (NBR 14039)</h3><div 
 <div class="grid">
 ${fld("forn.espComp","Comprimento do espaço total — eixo X (m)",{type:"number",step:"0.5",ph:"auto",hint:"Em branco: ajustado aos ambientes."})}
 ${fld("forn.espLarg","Largura do espaço total — eixo Y (m)",{type:"number",step:"0.5",ph:"auto",hint:"Em branco: ajustado aos ambientes."})}
+${fld("forn.entLado","Entrada de energia — limite do espaço",{opts:[["","Não posicionada"],["inf","Limite inferior (Y = 0)"],["sup","Limite superior (Y = largura total)"],["esq","Limite esquerdo (X = 0)"],["dir","Limite direito (X = comprimento total)"]],hint:"Ponto onde o ramal chega ao espaço: padrão de entrada / medição."})}
+${S.forn.entLado?fld("forn.entPos",S.forn.entLado==="inf"||S.forn.entLado==="sup"?"Posição da entrada ao longo do limite — X (m)":"Posição da entrada ao longo do limite — Y (m)",{type:"number",step:"0.5",ph:"meio do limite",hint:"Distância a partir da origem, medida ao longo do limite escolhido."}):""}
 </div>
 <div class="tbl ct"><table><thead><tr>${[["Ambiente","nome"],["Comp. X (m)","comprimento"],["Larg. Y (m)","largura"],["Alt. (m)","altura"],["Influências","infl"],["X (m)","x"],["Y (m)","y"]].map(([t,k])=>thT(t,TIPS_COL.amb[k])).join("")}${thT("Área","Comprimento × largura.","r")}${thT("Circuitos","Circuitos vinculados a este ambiente na etapa 04.","r")}<th></th></tr></thead><tbody>
 ${S.ambientes.map(ambienteSitRow).join("")||`<tr><td colspan="10" style="padding:12px;color:var(--muted)">Nenhum ambiente cadastrado. Use “+ Ambiente”.</td></tr>`}
@@ -1457,6 +1466,7 @@ document.addEventListener("click",e=>{
     const sy=SISTEMAS[S.forn.sistema];if(!ligOK(base.lig,sy))base.lig=["3F","2F+N","F+F","F+N"].find(l=>ligOK(l,sy)&&(t!=="motor"||l!=="2F+N"))||"F+N";
     S.circ.push(Object.assign({q,tipo:t,eta:1,fu:1,fd:1,can:"CN-1",ld:10,lb:3},base));S.exemplo=S.exemplo&&true;persist();render(true);
     {const n=S.circ.length-1,el=document.querySelector(`[data-c="${n}"][data-f="nome"]`);if(el){el.scrollIntoView({block:"center"});el.focus();el.select();}toast(`Circuito ${n+1} adicionado no fim da tabela.`);}return;}
+  if(b.id==="useEntDist"){const r=layoutPlanta().entRota;if(r){S.forn.Lent=Math.ceil(r.L);persist();render(true);toast(`Alimentador de entrada ajustado para ${S.forn.Lent} m.`);}return;}
   if(b.id==="addAmb"){const i=S.ambientes.length+1;S.ambientes.push({id:`amb-${Date.now()}`,nome:`Ambiente ${i}`,comprimento:6,largura:5,altura:3,lux:300,lm:4000,w:40,uf:0.6,mf:0.8,espTomadas:5,espLum:1.5,infl:"seco",zona:"",saidas:1,x:"",y:""});persist();render(true);return;}
   if(b.dataset.delamb!=null){const a=S.ambientes.splice(+b.dataset.delamb,1)[0];S.circ.forEach(c=>{if(c.ambiente===a.id)c.ambiente="";});persist();render(true);return;}
   if(b.dataset.del!=null){S.circ.splice(+b.dataset.del,1);persist();render(true);return;}
@@ -1606,10 +1616,21 @@ function sim5444(tipo,o={}){
    PLANTA EM ESCALA REAL (metros) — usada no PDF e na exportação DXF
    ============================================================ */
 const temXY=o=>o&&o.x!==""&&o.x!=null&&o.y!==""&&o.y!=null&&isFinite(+o.x)&&isFinite(+o.y);
+function espacoTotal(){const C=+S.forn.espComp||0,L=+S.forn.espLarg||0;return C>0&&L>0?{C,L}:null;}
+// ponto da entrada de energia no limite do espaço total: lado (inf: Y=0, sup: Y=largura, esq: X=0, dir: X=comprimento) e posição ao longo dele
+function entradaPonto(){const e=espacoTotal(),ld=S.forn.entLado;if(!e||!ld)return null;const lim=ld==="inf"||ld==="sup"?e.C:e.L;
+  let p=S.forn.entPos===""||S.forn.entPos==null?lim/2:+S.forn.entPos||0;p=Math.min(lim,Math.max(0,p));
+  return ld==="inf"?{x:p,y:0,lado:ld,nx:0,ny:1}:ld==="sup"?{x:p,y:e.L,lado:ld,nx:0,ny:-1}:ld==="esq"?{x:0,y:p,lado:ld,nx:1,ny:0}:{x:e.C,y:p,lado:ld,nx:-1,ny:0};}
 function layoutPlanta(){
   const fixos=S.ambientes.filter(temXY);let nCmd=0,xAuto=fixos.length?Math.max(...fixos.map(a=>+a.x+(+a.comprimento||0)))+2:0;
+  const esp=espacoTotal(),ocup=fixos.map(a=>({x:+a.x,y:+a.y,L:+a.comprimento||0,W:+a.largura||0}));
+  // com espaço total: ambientes sem X/Y são encaixados dentro dele, a partir da origem (0; 0), na primeira posição livre
+  const encaixe=(L,W)=>{if(!esp||L>esp.C||W>esp.L)return null;const st=0.5,cand=[0,...ocup.map(o=>o.x+o.L)],candY=[0,...ocup.map(o=>o.y+o.W)];
+    const ys=[...new Set(candY.concat([...Array(Math.floor(esp.L/st)+1).keys()].map(k=>k*st)))].sort((a,b)=>a-b),xs=[...new Set(cand.concat([...Array(Math.floor(esp.C/st)+1).keys()].map(k=>k*st)))].sort((a,b)=>a-b);
+    for(const y of ys){if(y+W>esp.L+1e-6)break;for(const x of xs){if(x+L>esp.C+1e-6)break;if(!ocup.some(o=>x<o.x+o.L-1e-6&&o.x<x+L-1e-6&&y<o.y+o.W-1e-6&&o.y<y+W-1e-6))return [x,y];}}return null;};
+  if(esp)xAuto=Math.max(xAuto,esp.C+2);
   const amb=S.ambientes.map(a=>{const L=Math.max(0,+a.comprimento||0),W=Math.max(0,+a.largura||0);let x,y;
-    if(temXY(a)){x=+a.x;y=+a.y;}else{x=xAuto;y=0;xAuto+=L+2;}
+    if(temXY(a)){x=+a.x;y=+a.y;}else{const pe=L&&W?encaixe(L,W):null;if(pe){[x,y]=pe;ocup.push({x,y,L,W});}else{x=xAuto;y=0;xAuto+=L+2;}}
     const oc=R.out.filter(o=>o.c.ambiente===a.id),num=t=>oc.filter(o=>o.c.tipo===t);
     const grade=(n,mx=0)=>{if(!n||!L||!W)return [];const cols=Math.max(1,Math.round(Math.sqrt(n*L/W))),rows=Math.ceil(n/cols),r=[];
       for(let k=0;k<n;k++)r.push([x+L*((k%cols)+0.5)/cols,y+W*(Math.floor(k/cols)+0.5)/rows]);return r;};
@@ -1624,14 +1645,19 @@ function layoutPlanta(){
     return {a,x,y,L,W,lum:grade(nLum),tug,fix,emg,sai,cI:num("ilum").map(o=>o.i+1),cT:num("tug").map(o=>o.i+1),nLum,wLum,vaTug,
       inter:nLum&&L&&W?[x+Math.min(0.8,L/4),y+0.35]:null,letra:nLum?String.fromCharCode(97+(nCmd++%26)):""};});
   const bb={x1:0,y1:0,x2:1,y2:1};amb.forEach(r=>{bb.x1=Math.min(bb.x1,r.x);bb.y1=Math.min(bb.y1,r.y);bb.x2=Math.max(bb.x2,r.x+r.L);bb.y2=Math.max(bb.y2,r.y+r.W);});
-  let qa=0;const quad=S.quadros.map(q=>temXY(q)?{q,x:+q.x,y:+q.y}:{q,x:bb.x1+1+4*(qa++),y:bb.y1-3});
+  const ent=entradaPonto();
+  if(esp){bb.x1=Math.min(bb.x1,0);bb.y1=Math.min(bb.y1,0);bb.x2=Math.max(bb.x2,esp.C);bb.y2=Math.max(bb.y2,esp.L);}
+  let qa=0;const quad=S.quadros.map((q,j)=>temXY(q)?{q,x:+q.x,y:+q.y}:j===0&&ent?{q,x:ent.x+ent.nx*1,y:ent.y+ent.ny*1,auto:true}:{q,x:bb.x1+1+4*(qa++),y:bb.y1-3,auto:true});
   quad.forEach(r=>{bb.x1=Math.min(bb.x1,r.x-1);bb.y1=Math.min(bb.y1,r.y-1);bb.x2=Math.max(bb.x2,r.x+1);bb.y2=Math.max(bb.y2,r.y+1);});
   const qp=nome=>quad.find(r=>r.q.nome===nome);
   // rotas das canaletas: do quadro de origem até o centro de cada ambiente atendido (trajeto ortogonal)
   const rotas=Object.values(R.cans).map(g=>{const segs=[];g.circ.forEach(ci=>{const o=R.out[ci-1];if(!o)return;const q=qp(o.c.q),r=amb.find(z=>z.a.id===o.c.ambiente);if(!q)return;
       const alvo=r?[r.x+r.L/2,r.y+r.W/2]:[q.x+3,q.y+2];segs.push([[q.x,q.y],[alvo[0],q.y]],[[alvo[0],q.y],alvo]);});return {k:g.k,segs};}).filter(r=>r.segs.length);
   const alim=S.quadros.map(q=>{const pai=paiDe(q);if(!pai)return null;const a=qp(pai.nome),b=qp(q.nome);return a&&b?{de:a,para:b,q}:null;}).filter(Boolean);
-  return {amb,quad,rotas,alim,bb};
+  // entrada → QGBT em trajeto ortogonal (primeiro perpendicular ao limite, depois ao longo dele)
+  let entRota=null;if(ent&&quad[0]){const q=quad[0],m=ent.nx?[q.x,ent.y]:[ent.x,q.y];entRota={pts:[[ent.x,ent.y],m,[q.x,q.y]],L:Math.abs(q.x-ent.x)+Math.abs(q.y-ent.y)};}
+  if(ent){bb.x1=Math.min(bb.x1,ent.x-1);bb.y1=Math.min(bb.y1,ent.y-1);bb.x2=Math.max(bb.x2,ent.x+1);bb.y2=Math.max(bb.y2,ent.y+1);}
+  return {amb,quad,rotas,alim,bb,esp,ent,entRota};
 }
 function exportarDXF(){
   calc();const Lp=layoutPlanta(),o=[];const e=(...a)=>a.forEach(v=>o.push(String(v)));
@@ -1655,6 +1681,9 @@ function exportarDXF(){
   e(0,"SECTION",2,"HEADER",9,"$ACADVER",1,"AC1009",9,"$DWGCODEPAGE",3,"ANSI_1252",9,"$INSUNITS",70,6,0,"ENDSEC");
   e(0,"SECTION",2,"TABLES",0,"TABLE",2,"LAYER",70,Object.keys(CAM).length);Object.entries(CAM).forEach(([n,c])=>e(0,"LAYER",2,n,70,0,62,c,6,"CONTINUOUS"));e(0,"ENDTAB",0,"ENDSEC");
   e(0,"SECTION",2,"ENTITIES");
+  if(Lp.esp){const {C,L}=Lp.esp;tr("AMBIENTES",0,0,C,0,0.8,0.4);tr("AMBIENTES",C,0,C,L,0.8,0.4);tr("AMBIENTES",C,L,0,L,0.8,0.4);tr("AMBIENTES",0,L,0,0,0.8,0.4);tx("TEXTOS",0.3,L+0.4,0.3,`ESPACO TOTAL ${fmt(C,2)} x ${fmt(L,2)} m`);}
+  if(Lp.ent){sim("QUADROS","med",Lp.ent.x,Lp.ent.y,0.5,{ang:Lp.ent.nx?90:0});tx("TEXTOS",Lp.ent.x+0.6,Lp.ent.y+0.6,0.25,"ENTRADA DE ENERGIA / MEDICAO");
+    if(Lp.entRota){const p=Lp.entRota.pts;for(let k=1;k<p.length;k++)tr("ALIMENTADORES",p[k-1][0],p[k-1][1],p[k][0],p[k][1]);const e=R.ent;tx("TEXTOS",(p[0][0]+p[1][0])/2+0.2,(p[0][1]+p[1][1])/2+0.2,0.2,`ALIM. ENTRADA ${e&&e.s?e.txt+" mm2 - ":""}${fmt(+S.forn.Lent||0,0)} m`);}}
   Lp.amb.forEach(r=>{rt("AMBIENTES",r.x,r.y,r.L,r.W);tx("TEXTOS",r.x+0.3,r.y+r.W-0.6,0.35,r.a.nome);tx("COTAS",r.x+0.3,r.y+r.W-1.1,0.22,`${fmt(r.L,2)} x ${fmt(r.W,2)} m - H ${fmt(+r.a.altura||0,2)} m${r.a.zona?` - ZONA ${r.a.zona}`:""}`);
     r.lum.forEach(([x,y])=>{sim("ILUMINACAO","lum",x,y,0.25);if(r.letra)tx("ILUMINACAO",x+0.36,y+0.16,0.15,r.letra);});
     if(r.lum.length)tx("ILUMINACAO",r.lum[0][0]-0.32,r.lum[0][1]-0.42,0.16,`${ct(r.cI)} ${r.nLum}x${fmt0(r.wLum)}W`);
@@ -1908,10 +1937,12 @@ async function gerarPDF(){
   function simPlanta(){
     const {pp,w,h}=simPage(A3L,"Planta baixa — pontos, quadros, emergência e rotas");
     const Lp=layoutPlanta(),X0=50,Y0=130,BW=w-460,BH=h-230,bb=Lp.bb;
-    if(!Lp.amb.length){T(pp,"Cadastre ambientes e dimensões na etapa Desenhos para gerar a planta em escala.",X0+20,Y0+BH/2,10,FB,RED);carimbo(pp,w,"Planta baixa","PB-01");return;}
+    if(!Lp.amb.length){T(pp,"Cadastre os ambientes e as dimensões na etapa 02 (planta de situação) para gerar a planta em escala.",X0+20,Y0+BH/2,10,FB,RED);carimbo(pp,w,"Planta baixa","PB-01");return;}
     const sc=Math.min(BW/(bb.x2-bb.x1),BH/(bb.y2-bb.y1)),ox=X0+(BW-(bb.x2-bb.x1)*sc)/2,oy=Y0+(BH-(bb.y2-bb.y1)*sc)/2;
     const P=(x,y)=>[ox+(x-bb.x1)*sc,oy+(y-bb.y1)*sc],ORG=rgb(0.85,0.45,0.05);
     const s0=Math.max(2.4,Math.min(4.2,0.22*sc)),fs=Math.max(4.6,s0*1.35),ct=a=>a.map(n=>`-${n}-`).join(" ");
+    if(Lp.esp){const [x0,y0]=P(0,0),[x1,y1]=P(Lp.esp.C,Lp.esp.L);[[x0,y0,x1,y0],[x1,y0,x1,y1],[x1,y1,x0,y1],[x0,y1,x0,y0]].forEach(([a,b,c,d])=>Ln(pp,a,b,c,d,1,GR,[8,4]));T(pp,`Espaço total ${fmt(Lp.esp.C,1)} × ${fmt(Lp.esp.L,1)} m`,x0+3,y1+4,6.5,F,GR);}
+    if(Lp.entRota){const q=Lp.entRota.pts.map(([a,b])=>P(a,b));for(let k=1;k<q.length;k++)Ln(pp,q[k-1][0],q[k-1][1],q[k][0],q[k][1],1.2,INK,[5,3]);}
     Lp.amb.forEach(r=>{const [x,y]=P(r.x,r.y);Bx(pp,x,y,r.L*sc,r.W*sc,{bc:INK,bw:1.6,fill:r.a.zona?rgb(0.99,0.95,0.88):LG});
       T(pp,r.a.nome.slice(0,34),x+4,y+r.W*sc-11,7,FB,INK);T(pp,`${fmt(r.L,1)} × ${fmt(r.W,1)} m · H ${fmt(+r.a.altura||0,1)} m · ${(INFL[r.a.infl]||INFL.seco).ip}${r.a.zona?` · ZONA ${r.a.zona}`:""}`,x+4,y+r.W*sc-20,5.8,F,r.a.zona?RED:MUT);
       r.lum.forEach(([a,b])=>{const [cx,cy]=P(a,b);SIM(pp,"lum",cx,cy,s0);if(r.letra)T(pp,r.letra,cx+1.4*s0,cy+0.5*s0,fs);});
@@ -1929,6 +1960,7 @@ async function gerarPDF(){
     Lp.alim.forEach(({de,para,q})=>{const [x1,y1]=P(de.x,de.y),[x2,y2]=P(para.x,para.y);Ln(pp,x1,y1,x1,y2,0.9,INK,[4,3]);Ln(pp,x1,y2,x2,y2,0.9,INK,[4,3]);
       const f=(R.quadros.find(z=>z.q===q)||{}).f;if(f&&f.s){const mx=(x1+x2)/2,dn=((f.ed||{}).nome||"").match(/DN (\d+)/);SIM(pp,"cond",mx,y2,s0*1.2,{nf:f.nf,n:f.sn>0,pe:f.spe>0});T(pp,`${dn?"ø"+dn[1]+" — ":""}${f.txt} mm²`,mx-30,y2-fs-3,fs,F,INK);}});
     Lp.quad.forEach(r=>{const [x,y]=P(r.x,r.y);SIM(pp,r.q===S.quadros[0]?"qdg":"qdp",x,y,s0*1.8);const rq=R.quadros.find(z=>z.q===r.q);T(pp,`${r.q.nome}${rq?` — ${fmt(rq.inst,1)} kW`:""}`,x-2.3*s0,y+1.3*s0,6.5,FB,INK);});
+    if(Lp.ent){const [x,y]=P(Lp.ent.x,Lp.ent.y);SIM(pp,"med",x,y,s0*2.2);T(pp,`Entrada de energia / medição — alim. ${R.ent.s?R.ent.txt+" mm², ":""}${fmt(+S.forn.Lent||0,0)} m`,x+(Lp.ent.nx<0?-150:2.5*s0),y+(Lp.ent.ny<0?-2.5*s0-6:2.5*s0),6.5,FB,RED);}
     // escala gráfica
     const m=[1,2,5,10,20,50].find(v=>v*sc>=60)||50;Ln(pp,X0,Y0-30,X0+m*sc,Y0-30,2);Ln(pp,X0,Y0-34,X0,Y0-26,1);Ln(pp,X0+m*sc,Y0-34,X0+m*sc,Y0-26,1);T(pp,`0`,X0-2,Y0-44,7);T(pp,`${m} m`,X0+m*sc-8,Y0-44,7);
     // legenda
@@ -1943,7 +1975,7 @@ async function gerarPDF(){
     lg.forEach(([n,fn,t])=>{fn();T(pp,n,lx+26,ly,6.5,FB,MUT);const k=TW(pp,t,lx+58,ly,w-lx-80,7);ly-=Math.max(16,k*9+7);});ly-=4;
     T(pp,"Seção indicada quando diferente de 1,5 mm²; números entre traços = circuito.",lx,ly,6.8,FB,RED);ly-=20;
     T(pp,"Circuitos",lx,ly,10,FB);ly-=15;R.out.forEach(o=>{if(ly<150)return;T(pp,`${o.i+1} — ${o.c.nome}`.slice(0,52),lx,ly,6.8);ly-=10;});
-    T(pp,"Posições informadas nas etapas 04 e 08 (ou automáticas). Pontos distribuídos em grade: ajustar no projeto executivo. Arquivo DXF em escala na etapa 08.",50,62,8,FB,RED);
+    T(pp,"Posições informadas nas etapas 02 e 04 (ou automáticas, dentro do espaço total). Pontos distribuídos em grade: ajustar no projeto executivo. Arquivo DXF em escala na etapa 08.",50,62,8,FB,RED);
     carimbo(pp,w,"Planta baixa","PB-01",`Escala gráfica (1:${fmt0(Math.round(1000/(sc*0.3528)/50)*50)})`);
   }
   function simLuminotecnico(){

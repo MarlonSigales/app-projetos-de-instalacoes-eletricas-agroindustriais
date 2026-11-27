@@ -22,6 +22,8 @@
   "forn": {
     "espComp": 40,
     "espLarg": 16,
+    "entLado": "dir",
+    "entPos": 12,
     "sistema": "380/220",
     "atend": "BT",
     "classe": "rural",
