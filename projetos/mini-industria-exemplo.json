@@ -93,26 +93,26 @@
       "met": "B1",
       "pai": "",
       "infl": "seco",
-      "x": 27,
-      "y": 12
+      "x": 29.85,
+      "y": 11.5
     },
     {
       "nome": "QF-PROD",
       "L": 25,
-      "met": "D",
+      "met": "B1",
       "pai": "QGBT",
       "infl": "poeira",
-      "x": 22,
-      "y": 6
+      "x": 23.85,
+      "y": 6.5
     },
     {
       "nome": "QL-ADM",
       "L": 18,
-      "met": "D",
+      "met": "B1",
       "pai": "QGBT",
       "infl": "seco",
-      "x": 29,
-      "y": 9
+      "x": 29.85,
+      "y": 9.3
     },
     {
       "nome": "QD-SECADOR",
@@ -120,8 +120,8 @@
       "met": "B1",
       "pai": "QF-PROD",
       "infl": "poeiraAlta",
-      "x": 4,
-      "y": 2
+      "x": 0.15,
+      "y": 3
     }
   ],
   "ambientes": [
@@ -181,6 +181,78 @@
       "saidas": 1,
       "x": 24,
       "y": 8
+    }
+  ],
+  "aberturas": [
+    {
+      "amb": "secagem",
+      "tipo": "porta",
+      "parede": "inf",
+      "pos": 10,
+      "larg": 3
+    },
+    {
+      "amb": "secagem",
+      "tipo": "porta",
+      "parede": "sup",
+      "pos": 4,
+      "larg": 1.2
+    },
+    {
+      "amb": "secagem",
+      "tipo": "janela",
+      "parede": "sup",
+      "pos": 10,
+      "larg": 2
+    },
+    {
+      "amb": "secagem",
+      "tipo": "janela",
+      "parede": "sup",
+      "pos": 16,
+      "larg": 2
+    },
+    {
+      "amb": "secagem",
+      "tipo": "janela",
+      "parede": "esq",
+      "pos": 7,
+      "larg": 2
+    },
+    {
+      "amb": "moagem",
+      "tipo": "porta",
+      "parede": "inf",
+      "pos": 4,
+      "larg": 2
+    },
+    {
+      "amb": "moagem",
+      "tipo": "porta",
+      "parede": "esq",
+      "pos": 1,
+      "larg": 1.2
+    },
+    {
+      "amb": "moagem",
+      "tipo": "janela",
+      "parede": "dir",
+      "pos": 3,
+      "larg": 2
+    },
+    {
+      "amb": "escritorio",
+      "tipo": "porta",
+      "parede": "inf",
+      "pos": 1,
+      "larg": 0.9
+    },
+    {
+      "amb": "escritorio",
+      "tipo": "janela",
+      "parede": "sup",
+      "pos": 2,
+      "larg": 1.5
     }
   ],
   "circ": [
@@ -549,5 +621,5 @@
   "chk": {},
   "exemplo": true,
   "formato": "projeto-eletrico-agro",
-  "exportadoEm": "2026-11-27T18:42:42.525Z"
+  "exportadoEm": "2026-11-27T19:23:53.906Z"
 }

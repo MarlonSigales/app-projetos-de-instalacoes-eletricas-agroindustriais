@@ -23,7 +23,7 @@ function blank(){
     forn:{espComp:"",espLarg:"",entLado:"",entPos:"",sistema:"380/220",atend:"BT",classe:"rural",subclasse:"Agroindustrial",tensaoPrim:13.8,subterraneo:false,modalidade:"",iccMT:"",Lmt:30,trafo:false,trafoKVA:"",rede:"",distRede:"",Lent:15,metEnt:"D",aterr:"TN-S",aerea:true,aq:"AQ2",spda:false,rhoEletrica:"",ra:30,ul:50,obs:""},
     par:{temp:30,tempSolo:20,rhoSolo:2.5,metDist:"B1",metBaix:"B1",agrDist:"feixe",espEnt:"nula",arrF:"trifolio",arrG:"horizontal",ipin:7,dvPartida:10,simular:true,softLim:3,invLim:1.5,bobina:"220 Vca",icc:6,dpsSempre:false,dvTerm:4,dvTotal:5,dvEnt:1,rho:0.0206,curva:"C",curvaMotor:"D",reserva:20,sobra:10,neutroRed:false,ocupCan:40,espSupCan:1.5,baixAparente:true,xCabo:0.08,rTerra:10,nEquip:6,lEquip:10,corrFP:true,fpAlvo:0.92,emerg:true,zTrafo:4.5,tipoSub:"poste"},
     quadros:[{nome:"QGBT",L:0,met:"B1",pai:"",infl:"seco",x:"",y:""}],
-    ambientes:[],
+    ambientes:[],aberturas:[],
     circ:[],
     canaletas:{},
     anexos:Object.fromEntries(ANEXOS.map(a=>[a.k,[]])),
@@ -48,11 +48,18 @@ function sample(){
   s.id={cliente:"Agroindústria Exemplo Ltda. (dados fictícios)",obra:"Mini-indústria de beneficiamento de grãos",atividade:"Secagem, descascamento, moagem e ensacamento de grãos",local:"Estrada rural, km 8",municipio:"Pelotas/RS",uc:"0000000",distribuidora:"CEEE Equatorial",rt:"Nome do responsável técnico",crea:"RS000000",art:"",projetista:"Turma 2026.2",data:new Date().toISOString().slice(0,10)};
   s.projetos={eletrico:true,luminotecnico:true,spda:true};
   s.forn={espComp:40,espLarg:16,entLado:"dir",entPos:12,sistema:"380/220",atend:"BT",classe:"rural",subclasse:"Agroindustrial",tensaoPrim:13.8,subterraneo:false,modalidade:"Convencional monômia",trafo:false,trafoKVA:"",rede:"Rede secundária trifásica 380/220 V da distribuidora",distRede:"30 m",Lent:21,metEnt:"D",aterr:"TN-S",aerea:true,aq:"AQ2",spda:true,rhoEletrica:"",ra:30,ul:50,obs:"Padrão de entrada trifásico com medição direta, conforme categoria do RIC da distribuidora."};
-  s.quadros=[{nome:"QGBT",L:0,met:"B1",pai:"",infl:"seco",x:27,y:12},{nome:"QF-PROD",L:25,met:"D",pai:"QGBT",infl:"poeira",x:22,y:6},{nome:"QL-ADM",L:18,met:"D",pai:"QGBT",infl:"seco",x:29,y:9},{nome:"QD-SECADOR",L:15,met:"B1",pai:"QF-PROD",infl:"poeiraAlta",x:4,y:2}];
+  s.quadros=[{nome:"QGBT",L:0,met:"B1",pai:"",infl:"seco",x:29.85,y:11.5},{nome:"QF-PROD",L:25,met:"B1",pai:"QGBT",infl:"poeira",x:23.85,y:6.5},{nome:"QL-ADM",L:18,met:"B1",pai:"QGBT",infl:"seco",x:29.85,y:9.3},{nome:"QD-SECADOR",L:15,met:"B1",pai:"QF-PROD",infl:"poeiraAlta",x:0.15,y:3}];
   s.ambientes=[
     {id:"secagem",nome:"Galpão de secagem",comprimento:24,largura:12,altura:6,lux:200,lm:4000,w:40,uf:0.65,mf:0.8,espTomadas:5,espLum:1.5,infl:"poeiraAlta",zona:"22",saidas:2,x:0,y:0},
     {id:"moagem",nome:"Sala de moagem",comprimento:12,largura:8,altura:4,lux:300,lm:4000,w:40,uf:0.6,mf:0.8,espTomadas:5,espLum:1.5,infl:"poeiraAlta",zona:"22",saidas:1,x:24,y:0},
     {id:"escritorio",nome:"Escritório",comprimento:6,largura:5,altura:3,lux:500,lm:3600,w:36,uf:0.65,mf:0.8,espTomadas:5,espLum:1.5,infl:"seco",zona:"",saidas:1,x:24,y:8}
+  ];
+  // portas e janelas: parede (inf/sup/esq/dir), posição ao longo dela a partir do canto inferior/esquerdo e largura
+  s.aberturas=[
+    {amb:"secagem",tipo:"porta",parede:"inf",pos:10,larg:3},{amb:"secagem",tipo:"porta",parede:"sup",pos:4,larg:1.2},
+    {amb:"secagem",tipo:"janela",parede:"sup",pos:10,larg:2},{amb:"secagem",tipo:"janela",parede:"sup",pos:16,larg:2},{amb:"secagem",tipo:"janela",parede:"esq",pos:7,larg:2},
+    {amb:"moagem",tipo:"porta",parede:"inf",pos:4,larg:2},{amb:"moagem",tipo:"porta",parede:"esq",pos:1,larg:1.2},{amb:"moagem",tipo:"janela",parede:"dir",pos:3,larg:2},
+    {amb:"escritorio",tipo:"porta",parede:"inf",pos:1,larg:0.9},{amb:"escritorio",tipo:"janela",parede:"sup",pos:2,larg:1.5}
   ];
   const m=(nome,cv,eta,fp,ld,lb,fd=1,fu=0.87)=>({q:"QF-PROD",nome,tipo:"motor",lig:"3F",qtd:1,pot:cv,unid:"cv",fp,eta,fs:1.25,fu,fd,can:"CN-1",ld,lb,prot:"dj",partida:"direta",fusTipo:"gG"});
   s.circ=[
@@ -470,7 +477,7 @@ function mtCalc(Sdem,sys){
 function emergCalc(a){
   const L=Math.max(0,+a.comprimento||0),W=Math.max(0,+a.largura||0),h=Math.min(Math.max(+a.altura||3,2.2),3),esp=Math.min(15,4*h);
   const n=L>0&&W>0?Math.max(1,Math.ceil(L/esp)*Math.ceil(W/esp)):0;
-  return {esp,n,saidas:L>0?Math.max(1,+a.saidas||1):0};
+  const np_=(S.aberturas||[]).filter(o=>o.amb===a.id&&o.tipo==="porta").length;return {esp,n,saidas:L>0?(np_||Math.max(1,+a.saidas||1)):0,porPortas:!!np_};
 }
 
 /* ============================================================
@@ -778,10 +785,16 @@ function croquiSit(){
   const auto=P.amb.filter(r=>!temXY(r.a)).map(r=>esc(r.a.nome));
   if(P.esp)P.amb.filter(r=>!temXY(r.a)&&(r.x+r.L>P.esp.C+1e-6||r.y+r.W>P.esp.L+1e-6)).forEach(r=>avisos.push(`${esc(r.a.nome)} não coube no espaço livre e ficou do lado de fora: reduza as dimensões ou informe X e Y`));
   if(S.forn.entLado&&!P.esp)avisos.push("Informe o comprimento e a largura do espaço total para posicionar a entrada de energia");
+  P.amb.forEach(r=>r.ab.filter(o=>o.fora).forEach(o=>avisos.push(`${o.tipo==="porta"?"Porta":"Janela"} de ${esc(r.a.nome)} passa do fim da parede`)));
+  P.amb.filter(r=>r.lum.length&&!r.portas.length).forEach(r=>avisos.push(`${esc(r.a.nome)} sem porta: cadastre uma porta para posicionar o interruptor e a saída`));
+  const qFora=P.quad.filter(r=>!r.naParede).map(r=>esc(r.q.nome)),qAuto=P.quad.filter(r=>r.auto).map(r=>esc(r.q.nome));
+  if(qFora.length)avisos.push(`Quadro(s) fora da parede: ${qFora.join(", ")} — ajuste X/Y na etapa 04 ou use “Ajustar quadros às paredes”`);
+  if(P.entRota&&P.ent){const n=P.entRota.pts.filter(([a,b])=>!P.dentroDe(a,b)).length;if(n>1)avisos.push("A entrada está afastada da edificação: o trecho até a parede será enterrado. Para evitar, posicione a entrada junto a uma parede");}
   const eR=P.entRota,Lent=+S.forn.Lent||0,difEnt=eR&&Math.abs(eR.L-Lent)>Math.max(1,0.1*eR.L);
   const svg=`<svg viewBox="0 0 ${W.toFixed(2)} ${H.toFixed(2)}" style="width:100%;max-height:420px;background:#fff;border:1px solid var(--line,#ccc);border-radius:6px" role="img" aria-label="Croqui do espaço com os ambientes">
-${eC&&eL?`<rect x="${sx(0)}" y="${sy(eL)}" width="${eC}" height="${eL}" fill="#f4f7f2" stroke="#2e5d34" stroke-width="${fs/6}" stroke-dasharray="${fs/2} ${fs/4}"/><text x="${sx(0)+fs/3}" y="${sy(eL)-fs/3}" font-size="${fs*0.8}" fill="#2e5d34">Espaço total ${fmt(eC,1)} × ${fmt(eL,1)} m</text>`:""}
+${eC&&eL?`<rect x="${sx(0)}" y="${sy(eL)}" width="${eC}" height="${eL}" fill="#f4f7f2" stroke="#2e5d34" stroke-width="${fs/6}" stroke-dasharray="${fs} ${fs/4} ${fs/8} ${fs/4} ${fs/8} ${fs/4}"/><text x="${sx(0)+fs/3}" y="${sy(eL)-fs/3}" font-size="${fs*0.8}" fill="#2e5d34">Espaço total ${fmt(eC,1)} × ${fmt(eL,1)} m</text>`:""}
 ${P.amb.map(r=>`<rect x="${sx(r.x)}" y="${sy(r.y+r.W)}" width="${r.L}" height="${r.W}" fill="${temXY(r.a)?"#dfe9f5":"#fff4d6"}" stroke="#1f3b5a" stroke-width="${fs/8}" ${temXY(r.a)?"":`stroke-dasharray="${fs/3} ${fs/5}"`}/><text x="${sx(r.x+r.L/2)}" y="${sy(r.y+r.W/2)}" font-size="${fs}" text-anchor="middle" fill="#1f3b5a">${esc(r.a.nome)}</text><text x="${sx(r.x+r.L/2)}" y="${sy(r.y+r.W/2)+fs*1.2}" font-size="${fs*0.75}" text-anchor="middle" fill="#555">${fmt(r.L,1)} × ${fmt(r.W,1)} m · (${fmt(r.x,1)}; ${fmt(r.y,1)})</text>`).join("")}
+${P.amb.map(r=>r.ab.map(o=>`<line x1="${sx(o.A[0])}" y1="${sy(o.A[1])}" x2="${sx(o.B[0])}" y2="${sy(o.B[1])}" stroke="#fff" stroke-width="${fs/3}"/>${o.tipo==="porta"?`<line x1="${sx(o.A[0])}" y1="${sy(o.A[1])}" x2="${sx(o.A[0]+o.nin[0]*o.larg)}" y2="${sy(o.A[1]+o.nin[1]*o.larg)}" stroke="#1f3b5a" stroke-width="${fs/10}"/>`:`<line x1="${sx(o.A[0])}" y1="${sy(o.A[1])}" x2="${sx(o.B[0])}" y2="${sy(o.B[1])}" stroke="#1f3b5a" stroke-width="${fs/14}"/>`}`).join("")).join("")}
 ${P.alim.map(({pts})=>`<polyline points="${pts.map(([a,b])=>sx(a)+","+sy(b)).join(" ")}" fill="none" stroke="#555" stroke-width="${fs/9}" stroke-dasharray="${fs/3} ${fs/5}"/>`).join("")}
 ${P.rotas.map(r=>r.paths.map(pt=>`<polyline points="${pt.map(([a,b])=>sx(a)+","+sy(b)).join(" ")}" fill="none" stroke="#7a5c00" stroke-width="${fs/5}" stroke-opacity="0.7"/>`).join("")).join("")}
 ${P.quad.map(r=>`<rect x="${sx(r.x)-fs/3}" y="${sy(r.y)-fs/3}" width="${fs*2/3}" height="${fs*2/3}" fill="#b3261e"/><text x="${sx(r.x)+fs/2}" y="${sy(r.y)+fs/3}" font-size="${fs*0.75}" fill="#b3261e">${esc(r.q.nome)}</text>`).join("")}
@@ -791,7 +804,7 @@ ${P.ent?`<polygon points="${[[0,-1],[0.9,0.6],[-0.9,0.6]].map(([u,v])=>(sx(P.ent
 </svg>`;
   return `<p class="note" style="margin:10px 0 6px">Croqui (sem escala gráfica): ambientes em azul com posição informada, em amarelo tracejado com posição automática (encaixados dentro do espaço total a partir da origem); quadros em vermelho (posição na etapa 04; sem posição, ficam dentro dos ambientes); entrada de energia em laranja; canaletas em marrom e alimentadores tracejados, roteados por dentro dos ambientes.</p>${svg}
 ${eR?`<p class="note${difEnt?" warn":""}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">Trajeto entrada → ${esc(S.quadros[0].nome)} no croqui: ≈ ${fmt(eR.L,1)} m. Comprimento do alimentador de entrada usado no cálculo (etapa 07): ${fmt(Lent,1)} m.${difEnt?`<button class="btn small" type="button" id="useEntDist">Usar ${fmt(Math.ceil(eR.L),0)} m no cálculo</button>`:""}</p>`:""}
-${auto.length?`<p class="note">Posição automática (preencha X e Y para fixar): ${auto.join(", ")}.</p>`:""}${avisos.length?`<p class="note warn">${avisos.join(" · ")}.</p>`:""}`;}
+${auto.length?`<p class="note">Posição automática (preencha X e Y para fixar): ${auto.join(", ")}.</p>`:""}${qAuto.length?`<p class="note warn">Quadro(s) colocados automaticamente na parede: ${qAuto.join(", ")}. Confira e ajuste a posição (etapa 04 ou “Ajustar quadros às paredes”).</p>`:""}${avisos.length?`<p class="note warn">${avisos.join(" · ")}.</p>`:""}`;}
 V.prel=()=>`${head(1)}
 <p class="intro">Informações preliminares (item A): classe do consumidor, condições de fornecimento informadas pela distribuidora, planta de situação e tipo de atendimento. Consulte o regulamento de instalações consumidoras (RIC) da distribuidora local.</p>
 <div class="block" style="margin-top:0;border-top:0;padding-top:0"><h3>Classificação da unidade consumidora (REN ANEEL nº 1.000/2021)</h3>
@@ -833,6 +846,17 @@ ${S.forn.entLado?fld("forn.entPos",S.forn.entLado==="inf"||S.forn.entLado==="sup
 ${S.ambientes.map(ambienteSitRow).join("")||`<tr><td colspan="10" style="padding:12px;color:var(--muted)">Nenhum ambiente cadastrado. Use “+ Ambiente”.</td></tr>`}
 </tbody></table></div>
 <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small primary" type="button" id="addAmb">+ Ambiente</button></div>
+<h3 style="margin-top:18px">Aberturas (portas e janelas)</h3>
+<p class="note">Cada abertura fica numa parede do ambiente. Posição: distância do canto até o início da abertura, medida da esquerda para a direita nas paredes inferior e superior e de baixo para cima nas paredes esquerda e direita. Eletrodutos embutidos, baixadas, tomadas e quadros não são colocados nas aberturas; os interruptores ficam ao lado da primeira porta e a sinalização de saída fica sobre as portas.</p>
+<div class="tbl ct"><table><thead><tr><th>Ambiente</th><th>Tipo</th><th>Parede</th><th>Posição (m)</th><th>Largura (m)</th><th></th></tr></thead><tbody>
+${S.aberturas.map((o,i)=>`<tr><td><select data-ab="${i}" data-f="amb" aria-label="Ambiente da abertura">${S.ambientes.map(a=>`<option value="${a.id}" ${a.id===o.amb?"selected":""}>${esc(a.nome)}</option>`).join("")}</select></td>
+<td><select data-ab="${i}" data-f="tipo" aria-label="Tipo"><option value="porta" ${o.tipo==="porta"?"selected":""}>Porta</option><option value="janela" ${o.tipo==="janela"?"selected":""}>Janela</option></select></td>
+<td><select data-ab="${i}" data-f="parede" aria-label="Parede">${[["inf","Inferior (Y mín.)"],["sup","Superior (Y máx.)"],["esq","Esquerda (X mín.)"],["dir","Direita (X máx.)"]].map(([k,t])=>`<option value="${k}" ${o.parede===k?"selected":""}>${t}</option>`).join("")}</select></td>
+<td><input type="number" class="w-s" min="0" step="0.1" data-ab="${i}" data-f="pos" value="${o.pos}" aria-label="Posição em metros"></td>
+<td><input type="number" class="w-s" min="0.3" step="0.1" data-ab="${i}" data-f="larg" value="${o.larg}" aria-label="Largura em metros"></td>
+<td><button class="btn small danger" type="button" data-delab="${i}" aria-label="Remover abertura">Remover</button></td></tr>`).join("")||`<tr><td colspan="6" style="padding:12px;color:var(--muted)">Nenhuma abertura cadastrada.</td></tr>`}
+</tbody></table></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-addab="porta" ${S.ambientes.length?"":"disabled"}>+ Porta</button><button class="btn small" type="button" data-addab="janela" ${S.ambientes.length?"":"disabled"}>+ Janela</button><button class="btn small" type="button" id="snapQ" data-tip="Leva cada quadro para a parede mais próxima do ambiente, fora das aberturas, e grava a posição X/Y na etapa 04.">Ajustar quadros às paredes</button></div>
 <div data-live="croqui">${croquiSit()}</div>
 </div>
 <div class="block"><h3>Anexo desta etapa</h3>${attBlock("situacao")}</div>${nav()}`;
@@ -1482,7 +1506,10 @@ document.addEventListener("click",e=>{
     {const n=S.circ.length-1,el=document.querySelector(`[data-c="${n}"][data-f="nome"]`);if(el){el.scrollIntoView({block:"center"});el.focus();el.select();}toast(`Circuito ${n+1} adicionado no fim da tabela.`);}return;}
   if(b.id==="useEntDist"){const r=layoutPlanta().entRota;if(r){S.forn.Lent=Math.ceil(r.L);persist();render(true);toast(`Alimentador de entrada ajustado para ${fmtN(S.forn.Lent)} m.`);}return;}
   if(b.id==="addAmb"){const i=S.ambientes.length+1;S.ambientes.push({id:`amb-${Date.now()}`,nome:`Ambiente ${i}`,comprimento:6,largura:5,altura:3,lux:300,lm:4000,w:40,uf:0.6,mf:0.8,espTomadas:5,espLum:1.5,infl:"seco",zona:"",saidas:1,x:"",y:""});persist();render(true);return;}
-  if(b.dataset.delamb!=null){const a=S.ambientes.splice(+b.dataset.delamb,1)[0];S.circ.forEach(c=>{if(c.ambiente===a.id)c.ambiente="";});persist();render(true);return;}
+  if(b.dataset.addab){const a=S.ambientes[0];S.aberturas.push({amb:a.id,tipo:b.dataset.addab,parede:"inf",pos:0.5,larg:b.dataset.addab==="porta"?0.9:1.5});persist();render(true);return;}
+  if(b.dataset.delab!=null){S.aberturas.splice(+b.dataset.delab,1);persist();render(true);return;}
+  if(b.id==="snapQ"){const P_=layoutPlanta();let n=0;P_.quad.forEach(r=>{const w_=paredeMaisProxima(P_,r.x,r.y);if(w_){r.q.x=Math.round(w_.x*100)/100;r.q.y=Math.round(w_.y*100)/100;n++;}});persist();render(true);toast(`${n} quadro(s) ajustado(s) às paredes. Confira as posições.`);return;}
+  if(b.dataset.delamb!=null){const a=S.ambientes.splice(+b.dataset.delamb,1)[0];S.aberturas=S.aberturas.filter(o=>o.amb!==a.id);S.circ.forEach(c=>{if(c.ambiente===a.id)c.ambiente="";});persist();render(true);return;}
   if(b.dataset.del!=null){S.circ.splice(+b.dataset.del,1);persist();render(true);return;}
   if(b.id==="addQ"){let n=S.quadros.length,nm;do nm="QD-"+n++;while(S.quadros.some(q=>q.nome===nm));S.quadros.push({nome:nm,L:20,met:"B1",pai:S.quadros[0].nome,infl:"seco",x:"",y:""});persist();render(true);return;}
   if(b.dataset.delq!=null){const j=+b.dataset.delq;if(j===0)return;const q=S.quadros[j],nm=q.nome,dest=origemQ(q)||S.quadros[0].nome;
@@ -1515,6 +1542,7 @@ document.addEventListener("input",e=>{
   if(t.dataset.bind){setP(t.dataset.bind,t.type==="checkbox"?t.checked:t.value);if(t.dataset.bind==="projetos.spda"&&t.checked)S.forn.spda=true;soft();return;}
   if(t.dataset.amb!=null){const a=S.ambientes[+t.dataset.amb],f=t.dataset.f;const num=["comprimento","largura","altura","lux","lm","w","uf","mf","espTomadas","espLum","saidas"].includes(f);
     a[f]=["x","y"].includes(f)?(t.value===""?"":+t.value):num?(t.value===""?0:+t.value):t.value;soft();return;}
+  if(t.dataset.ab!=null){const o=S.aberturas[+t.dataset.ab],f=t.dataset.f;o[f]=["pos","larg"].includes(f)?(+t.value||0):t.value;soft();return;}
   if(t.dataset.rev!=null){S.revisoes[+t.dataset.rev][t.dataset.f]=t.value;renderStamp();persist();return;}
   if(t.dataset.c!=null){const c=S.circ[+t.dataset.c];const f=t.dataset.f;const num=["qtd","pot","fp","eta","fs","fu","fd","ld","lb"].includes(f);c[f]=num?(t.value===""?0:+t.value):t.value;soft();return;}
   if(t.dataset.qd!=null){const q=S.quadros[+t.dataset.qd];const f=t.dataset.f;
@@ -1531,6 +1559,7 @@ document.addEventListener("change",e=>{
   if(t.dataset.c!=null&&(t.dataset.re||t.dataset.f==="tipo")){const c=S.circ[+t.dataset.c];if(c.tipo==="motor"){c.unid="cv";c.eta=c.eta<1?c.eta:0.87;c.fu=0.87;c.fs=1.25;c.prot=c.prot||"dj";c.partida=c.partida||"direta";c.fusTipo=c.fusTipo||"gG";if(c.lig==="F+N"&&ligOK("3F",SISTEMAS[S.forn.sistema]))c.lig="3F";}else if(c.unid==="cv"){c.unid="W";c.eta=1;}persist();render(true);return;}
   if(t.dataset.c!=null&&["prot","partida","fusTipo","local","dr","ambiente"].includes(t.dataset.f)){render(true);return;}
   if(t.dataset.ext!=null&&t.dataset.f==="g"){S.extras[+t.dataset.ext].g=t.value;persist();render(true);return;}
+  if(t.dataset.ab!=null){if(t.tagName==="SELECT")render(true);return;}
   if(t.dataset.bind||t.dataset.qd!=null||t.dataset.c!=null){if(t.tagName==="SELECT"||t.type==="checkbox"||t.dataset.qd!=null){render(true);}return;}
   if(t.dataset.file){addFiles(t.dataset.file,t.files);t.value="";return;}
   if(t.id==="fileOpen"){abrirJSON(t.files[0]);t.value="";}
@@ -1573,6 +1602,7 @@ function normalizar(d){
   n.extras=Array.isArray(d.extras)?d.extras.map(x=>({g:GRUPOS[x.g]?x.g:"extra",d:String(x.d||""),un:String(x.un||"pç"),q:+x.q||0,pu:+x.pu||0})):[];
   n.orc=Object.assign(b.orc,d.orc||{});if(d.orc&&d.orc.impostos!=null&&!d.orc.trib&&+d.orc.impostos>0)n.orc.trib=null;n.orc.servicos=Array.isArray(d.orc?.servicos)?d.orc.servicos.map(s=>({cat:CAT_SERV[s.cat]?s.cat:"outro",d:String(s.d||""),h:+s.h||0,vh:+s.vh||0})):b.orc.servicos;
   n.estrutura=Object.assign(b.estrutura,d.estrutura||{});if(!NP5419[n.estrutura.np])n.estrutura.np="III";
+  n.aberturas=Array.isArray(d.aberturas)?d.aberturas.map(o=>({amb:String(o.amb||""),tipo:o.tipo==="janela"?"janela":"porta",parede:["inf","sup","esq","dir"].includes(o.parede)?o.parede:"inf",pos:+o.pos||0,larg:Math.max(0.3,+o.larg||0.9)})):[];
   n.ambientes=Array.isArray(d.ambientes)?d.ambientes.map((a,i)=>{const x=Object.assign({id:`amb-${i+1}`,nome:`Ambiente ${i+1}`,comprimento:0,largura:0,altura:3,lux:300,lm:4000,w:40,uf:0.6,mf:0.8,espTomadas:5,espLum:1.5,infl:"seco",zona:"",saidas:1,x:"",y:""},a,{id:String(a.id||`amb-${i+1}`)});if(!INFL[x.infl])x.infl="seco";if(!ZONAS[x.zona||""])x.zona="";return x;}):[];
   n.revisoes=Array.isArray(d.revisoes)&&d.revisoes.length?d.revisoes.map(r=>({rev:String(r.rev??""),data:String(r.data||""),desc:String(r.desc||""),autor:String(r.autor||"")})):[{rev:"00",data:n.id.data||"",desc:"Emissão inicial",autor:n.id.rt||""}];
   n.precos=d.precos&&typeof d.precos==="object"?d.precos:{};if(!ATERR[n.forn.aterr])n.forn.aterr="TN-S";
@@ -1611,8 +1641,8 @@ function sim5444(tipo,o={}){
     case "desce":L(-0.9,-0.9,0.9,0.9);C(-0.9,-0.9,0.22);P([[-0.6,-0.6],[-0.45,-0.15],[-0.15,-0.45]],true);break; // 5.18 eletroduto que desce
     case "sobe":L(-0.9,-0.9,0.9,0.9);C(-0.9,-0.9,0.22);P([[0.9,0.9],[0.75,0.45],[0.45,0.75]],true);break;        // 5.17 eletroduto que sobe
     case "caixa":C(0,0,0.6);Tx(0,-0.24,0.65,"P");break;                                         // 5.15 caixa de passagem no teto
-    case "cond":{const it=[...Array(o.nf||0).fill("F"),...(o.n?["N"]:[]),...(o.pe?["T"]:[])],x0=-(it.length-1)*0.25; // 5.6 fase · 5.7 neutro · 5.9 terra
-      it.forEach((k,i)=>{const x=x0+i*0.5;if(k==="T"){L(x,0,x,0.5);L(x-0.2,0.5,x+0.2,0.5);}else{L(x,-0.45,x,0.45);if(k==="N")L(x-0.3,0.45,x,0.45);}});break;}
+    case "cond":{const it=[...Array(o.nf||0).fill("F"),...(o.n?["N"]:[]),...Array(o.r||0).fill("R"),...(o.pe?["T"]:[])],x0=-(it.length-1)*0.25; // 5.6 fase · 5.7 neutro · 5.8 retorno · 5.9 terra
+      it.forEach((k,i)=>{const x=x0+i*0.5;if(k==="T"){L(x,0,x,0.5);L(x-0.2,0.5,x+0.2,0.5);}else{L(x,-0.45,x,0.45);if(k==="N")L(x-0.3,0.45,x,0.45);if(k==="R")C(x+0.13,0.45,0.13);}});break;}
     case "terraT":L(0,0,0,0.5);L(-0.3,0.5,0.3,0.5);break;                                       // 5.12 cordoalha de terra (marca)
     case "disj":C(0,0.82,0.18);C(0,-0.82,0.18);PL(arco(0,0,0.82,Math.PI/2-0.22,-Math.PI/2+0.22));break; // 7.15 disjuntor a seco
     case "fus":L(0,1,0,0.75);L(0,-0.75,0,-1);ret(-0.3,-0.75,0.3,0.75);L(0,0.75,0,-0.75);break;  // 7.9 fusível
@@ -1654,11 +1684,11 @@ function contornoEdif(){const p=posAmbientes().filter(r=>r.L>0&&r.W>0);if(!p.len
   return {x:x1,y:y1,L:x2-x1,W:y2-y1,H:Math.max(0,...p.map(r=>+r.a.altura||0))};}
 // roteador ortogonal: caminho de menor custo numa grade, com custo alto fora dos ambientes e penalidade por curva,
 // para que canaletas e eletrodutos corram por dentro das áreas (e saiam delas só quando não houver alternativa)
-function criarRoteador(rects,bb){
+function criarRoteador(rects,bb,evitar=[]){
   const span=Math.max(bb.x2-bb.x1,bb.y2-bb.y1,1),st=Math.max(0.25,Math.ceil(span/140*4)/4);
   const x0=bb.x1-2*st,y0=bb.y1-2*st,nx=Math.ceil((bb.x2-x0)/st)+3,ny=Math.ceil((bb.y2-y0)/st)+3,N=nx*ny;
-  const dentro=new Uint8Array(N);
-  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const x=x0+i*st,y=y0+j*st;if(rects.some(r=>x>=r.x-1e-6&&x<=r.x+r.L+1e-6&&y>=r.y-1e-6&&y<=r.y+r.W+1e-6))dentro[j*nx+i]=1;}
+  const dentro=new Uint8Array(N),perto=new Uint8Array(N);
+  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const x=x0+i*st,y=y0+j*st;if(rects.some(r=>x>=r.x-1e-6&&x<=r.x+r.L+1e-6&&y>=r.y-1e-6&&y<=r.y+r.W+1e-6))dentro[j*nx+i]=1;if(evitar.some(r=>x>=r.x&&x<=r.x+r.L&&y>=r.y&&y<=r.y+r.W))perto[j*nx+i]=1;}
   const no=(x,y)=>[Math.min(nx-1,Math.max(0,Math.round((x-x0)/st))),Math.min(ny-1,Math.max(0,Math.round((y-y0)/st)))];
   const cache=new Map(),DX=[1,-1,0,0],DY=[0,0,1,-1],FORA=30,CURVA=4;
   function rota(a,b){const key=a.join()+"|"+b.join();if(cache.has(key))return cache.get(key);
@@ -1671,7 +1701,7 @@ function criarRoteador(rects,bb){
     while(heap.length){const [dd,s]=pop();if(dd>dist[s])continue;const c=s>>2,d=s&3;if(c===T0){fim=s;break;}
       const ci=c%nx,cj=(c/nx)|0;
       for(let e=0;e<4;e++){const ni=ci+DX[e],nj=cj+DY[e];if(ni<0||nj<0||ni>=nx||nj>=ny)continue;const n=nj*nx+ni;
-        const w=(dentro[n]&&dentro[c]?1:FORA)+(e!==d?CURVA:0),ns=n*4+e;if(dd+w<dist[ns]){dist[ns]=dd+w;prev[ns]=s;push(dd+w,ns);}}}
+        const w=(dentro[n]&&dentro[c]?1:FORA)+(perto[n]?6:0)+(e!==d?CURVA:0),ns=n*4+e;if(dd+w<dist[ns]){dist[ns]=dd+w;prev[ns]=s;push(dd+w,ns);}}}
     let pts=[];if(fim<0)pts=[a,[b[0],a[1]],b];else{const cel=[];for(let s=fim;s>=0;s=prev[s]){cel.push(s>>2);if(prev[s]<0)break;}cel.reverse();
       pts=cel.map(c=>[x0+(c%nx)*st,y0+((c/nx)|0)*st]);
       // liga os pontos exatos de início e fim mantendo os trechos ortogonais
@@ -1687,47 +1717,114 @@ function criarRoteador(rects,bb){
 }
 // ponto do trecho mais longo de uma poligonal (para rótulos e símbolos)
 function meioPoli(pts){let best=null,bl=-1;for(let k=1;k<pts.length;k++){const l=Math.abs(pts[k][0]-pts[k-1][0])+Math.abs(pts[k][1]-pts[k-1][1]);if(l>bl){bl=l;best=[(pts[k][0]+pts[k-1][0])/2,(pts[k][1]+pts[k-1][1])/2,Math.abs(pts[k][1]-pts[k-1][1])<1e-6];}}return best||[pts[0][0],pts[0][1],true];}
+// aberturas de um ambiente posicionado: extremos A e B na parede, normal para dentro e intervalo no perímetro
+function abertDe(r){return S.aberturas.filter(o=>o.amb===r.a.id).map(o=>{const hz=o.parede==="inf"||o.parede==="sup",lim=hz?r.L:r.W;
+  const p0=Math.max(0,Math.min(lim,+o.pos||0)),p1=Math.min(lim,p0+Math.max(0.3,+o.larg||0.9));
+  const wy=o.parede==="inf"?r.y:r.y+r.W,wx=o.parede==="esq"?r.x:r.x+r.L,A=hz?[r.x+p0,wy]:[wx,r.y+p0],B=hz?[r.x+p1,wy]:[wx,r.y+p1];
+  const nin=o.parede==="inf"?[0,1]:o.parede==="sup"?[0,-1]:o.parede==="esq"?[1,0]:[-1,0];
+  // perímetro: inferior (esq→dir), direita (baixo→cima), superior (dir→esq), esquerda (cima→baixo)
+  const d=o.parede==="inf"?[p0,p1]:o.parede==="dir"?[r.L+p0,r.L+p1]:o.parede==="sup"?[r.L+r.W+(r.L-p1),r.L+r.W+(r.L-p0)]:[2*r.L+r.W+(r.W-p1),2*r.L+r.W+(r.W-p0)];
+  return {...o,A,B,hz,nin,p0,p1,lim,d,c:[(A[0]+B[0])/2,(A[1]+B[1])/2],fora:+o.pos+(+o.larg||0)>lim+1e-6};});}
+// ponto do perímetro (distância d a partir do canto inferior esquerdo, sentido anti-horário), afastado "in_" para dentro; devolve [x,y,parede]
+function perimPt(r,d,in_=0.15){const {x,y,L,W}=r,per=2*(L+W);d=((d%per)+per)%per;
+  if(d<=L)return [x+d,y+in_,0];if((d-=L)<=W)return [x+L-in_,y+d,1];if((d-=W)<=L)return [x+L-d,y+W-in_,2];d-=L;return [x+in_,y+W-d,3];}
+// trechos livres do perímetro (fora das aberturas e dos cantos, com folga)
+function perimLivre(r,ab,folga=0.3){const per=2*(r.L+r.W),cortes=[0,r.L,r.L+r.W,2*r.L+r.W].map(c=>[c-folga,c+folga]);
+  const bloq=[...cortes,[per-folga,per],...ab.map(o=>[o.d[0]-folga,o.d[1]+folga])].sort((a,b)=>a[0]-b[0]);
+  const livres=[];let c=0;bloq.forEach(([a,b])=>{if(a>c)livres.push([c,a]);c=Math.max(c,b);});if(c<per)livres.push([c,per]);return livres.filter(([a,b])=>b-a>0.05);}
+function perimDistribui(r,ab,n,in_=0.15){if(n<=0)return [];const lv=perimLivre(r,ab),tot=lv.reduce((s,[a,b])=>s+b-a,0);if(tot<=0)return [];
+  const out=[];for(let k=0;k<n;k++){let t=tot*(k+0.5)/n;for(const [a,b] of lv){if(t<=b-a){const d=a+t;out.push([...perimPt(r,d,in_),d]);break;}t-=b-a;}}return out;}
+// parede mais próxima de um ponto, fora das aberturas: posição do quadro (0,15 m para dentro) e ângulo do símbolo
+function paredeMaisProxima(P,x,y){let best=null,bd=Infinity;
+  P.amb.filter(r=>r.L>0&&r.W>0).forEach(r=>{const ab=r.ab||abertDe(r),lv=perimLivre(r,ab,0.5);
+    [[0,r.L,(t)=>[r.x+t,r.y],0],[r.L,r.W,(t)=>[r.x+r.L,r.y+t],1],[r.L+r.W,r.L,(t)=>[r.x+r.L-t,r.y+r.W],2],[2*r.L+r.W,r.W,(t)=>[r.x,r.y+r.W-t],3]].forEach(([d0,len,fp,pw])=>{
+      const p0=fp(0),p1=fp(len),ux=(p1[0]-p0[0])/len,uy=(p1[1]-p0[1])/len;let t=Math.max(0,Math.min(len,(x-p0[0])*ux+(y-p0[1])*uy)),d=d0+t;
+      if(!lv.some(([a,b])=>d>=a&&d<=b)){let bdd=Infinity,dd=d;lv.forEach(([a,b])=>{[a,b].forEach(v=>{if(Math.abs(v-d)<bdd){bdd=Math.abs(v-d);dd=v;}});});d=dd;}
+      const pt=perimPt(r,d,0.15),dist=Math.hypot(pt[0]-x,pt[1]-y);if(dist<bd){bd=dist;best={x:pt[0],y:pt[1],ang:[0,90,180,-90][pw],dist};}});});
+  return best;}
 function layoutPlanta(){
   let nCmd=0;const esp=espacoTotal();
   const amb=posAmbientes().map(({a,x,y,L,W})=>{
+    const r0={a,x,y,L,W},ab=L>0&&W>0?abertDe(r0):[],portas=ab.filter(o=>o.tipo==="porta");
     const oc=R.out.filter(o=>o.c.ambiente===a.id),num=t=>oc.filter(o=>o.c.tipo===t);
-    const grade=(n,mx=0)=>{if(!n||!L||!W)return [];const g=gradeLum(n,L,W),cols=g.cols,rows=Math.ceil(n/cols),r=[];
-      for(let k=0;k<n;k++)r.push([x+L*((k%cols)+0.5)/cols,y+W*(Math.floor(k/cols)+0.5)/rows]);return r;};
     const nLumC=Math.max(0,...num("ilum").map(o=>+o.c.qtd||0)),nLum=nLumC||calcularAmbiente(a).luminarias, // sem circuito vinculado: quantidade calculada do ambiente (grade fechada)
       nTug=Math.max(0,...num("tug").map(o=>+o.c.qtd||0));
+    const g=nLum&&L&&W?gradeLum(nLum,L,W):{cols:1,rows:1},lum=[];
+    for(let k=0;k<nLum&&L&&W;k++)lum.push([x+L*((k%g.cols)+0.5)/g.cols,y+W*(Math.floor(k/g.cols)+0.5)/Math.ceil(nLum/g.cols)]);
     const lc=num("ilum")[0],tc=num("tug")[0],wLum=lc?lc.P/Math.max(1,+lc.c.qtd||1):(+a.w||0),vaTug=tc?tc.S/Math.max(1,+tc.c.qtd||1):0;
-    const per=2*(L+W),tug=[];for(let k=0;k<nTug;k++){let d=per*(k+0.5)/nTug;const in_=0.3;
-      if(d<L)tug.push([x+d,y+in_,0]);else if((d-=L)<W)tug.push([x+L-in_,y+d,1]);else if((d-=W)<L)tug.push([x+L-d,y+W-in_,2]);else tug.push([x+in_,y+W-(d-L),3]);} // 3º elemento: parede (0 baixo, 1 direita, 2 cima, 3 esquerda)
-    const fix=[...num("tue"),...num("motor")].map((o,k,arr)=>({o,p:[x+L*(k+1)/(arr.length+1),y+W-0.8]}));
+    // tomadas (TUG) e pontos de uso específico (TUE) nas paredes, fora das aberturas e dos cantos
+    const tues=num("tue"),motores=num("motor"),nPar=nTug+tues.length,pp_=perimDistribui(r0,ab,nPar);
+    const idxTue=new Set(tues.map((_,j)=>Math.min(nPar-1,Math.round((j+0.5)*nPar/Math.max(1,tues.length)-0.5))));
+    const tug=[],fix=[];let jt=0;pp_.forEach((p,k)=>{if(idxTue.has(k)&&jt<tues.length)fix.push({o:tues[jt++],p:[p[0],p[1]],parede:p[2],d:p[3]});else tug.push([p[0],p[1],p[2],p[3]]);});
+    // máquinas (motores): no meio do ambiente, entre as linhas de luminárias; a baixada desce até elas
+    const ym=y+W*(g.rows>1?1/g.rows:0.3);motores.forEach((o,j)=>fix.push({o,p:[x+L*(j+1)/(motores.length+1),ym],maq:true}));
+    // interruptor ao lado da primeira porta (no batente), saídas sobre as portas
+    let inter=null;if(nLum&&L&&W){if(portas.length){const d=portas[0],s_=d.p0-0.25>=0.3?d.p0-0.25:d.p1+0.25,hz=d.hz;
+        inter=hz?[x+s_,d.A[1]+d.nin[1]*0.15]:[d.A[0]+d.nin[0]*0.15,y+s_];}else inter=[x+Math.min(0.8,L/4),y+0.35];}
     const e=S.par.emerg?emergCalc(a):{n:0,saidas:0,esp:1};const ce=Math.max(1,Math.ceil(L/e.esp)),re=Math.max(1,Math.ceil(W/e.esp)),emg=[];
     for(let i=0;i<ce;i++)for(let j=0;j<re;j++)if(emg.length<e.n)emg.push([x+L*(i+0.5)/ce+0.6,y+W*(j+0.5)/re+0.6]);
-    const sai=[];for(let k=0;k<e.saidas;k++)sai.push([x+L*(k+1)/(e.saidas+1),y]);
-    return {a,x,y,L,W,lum:grade(nLum),tug,fix,emg,sai,cI:num("ilum").map(o=>o.i+1),cT:num("tug").map(o=>o.i+1),nLum,wLum,vaTug,
-      inter:nLum&&L&&W?[x+Math.min(0.8,L/4),y+0.35]:null,letra:nLum?String.fromCharCode(97+(nCmd++%26)):""};});
+    const sai=portas.length?portas.map(d=>[d.c[0]+d.nin[0]*0.35,d.c[1]+d.nin[1]*0.35,d]):[...Array(e.saidas)].map((_,k)=>[x+L*(k+1)/(e.saidas+1),y]);
+    return {a,x,y,L,W,ab,portas,lum,g,tug,fix,emg,sai,cI:num("ilum").map(o=>o.i+1),cT:num("tug").map(o=>o.i+1),nLum,wLum,vaTug,inter,letra:nLum?String.fromCharCode(97+(nCmd++%26)):""};});
   const bb={x1:0,y1:0,x2:1,y2:1};amb.forEach(r=>{bb.x1=Math.min(bb.x1,r.x);bb.y1=Math.min(bb.y1,r.y);bb.x2=Math.max(bb.x2,r.x+r.L);bb.y2=Math.max(bb.y2,r.y+r.W);});
   const ent=entradaPonto();
   if(esp){bb.x1=Math.min(bb.x1,0);bb.y1=Math.min(bb.y1,0);bb.x2=Math.max(bb.x2,esp.C);bb.y2=Math.max(bb.y2,esp.L);}
-  // quadros sem posição: dentro dos ambientes (o QGBT no ponto de ambiente mais próximo da entrada; os demais no ambiente que atendem)
-  const ambOk=amb.filter(r=>r.L>0&&r.W>0),usoAmb=new Map();
-  const interno=(r,k)=>{const n=usoAmb.get(r)||0;usoAmb.set(r,n+1);return [Math.min(r.x+r.L-0.4,r.x+0.6+1.2*n),r.y+0.6];};
-  let qa=0;const quad=S.quadros.map((q,j)=>{if(temXY(q))return {q,x:+q.x,y:+q.y};
-    if(ambOk.length){if(j===0&&ent){let best=null,bd=Infinity;ambOk.forEach(r=>{const px=Math.min(r.x+r.L-0.4,Math.max(r.x+0.4,ent.x)),py=Math.min(r.y+r.W-0.4,Math.max(r.y+0.4,ent.y)),d=Math.abs(px-ent.x)+Math.abs(py-ent.y);if(d<bd){bd=d;best=[px,py];}});return {q,x:best[0],y:best[1],auto:true};}
-      const c=R.out.find(o=>o.c.q===q.nome&&o.c.ambiente),r=(c&&ambOk.find(z=>z.a.id===c.c.ambiente))||ambOk[0];const [x,y]=interno(r);return {q,x,y,auto:true};}
-    return j===0&&ent?{q,x:ent.x+ent.nx*1,y:ent.y+ent.ny*1,auto:true}:{q,x:bb.x1+1+4*(qa++),y:bb.y1-3,auto:true};});
+  const ambOk=amb.filter(r=>r.L>0&&r.W>0);
+  // quadros sem posição: na parede (o QGBT na parede mais próxima da entrada; os demais na parede do ambiente que atendem, mais próxima do quadro de origem)
+  const P0={amb:ambOk};let qa=0;const quad=[];
+  S.quadros.forEach((q,j)=>{let r;if(temXY(q)){const w_=ambOk.length?paredeMaisProxima(P0,+q.x,+q.y):null;r={q,x:+q.x,y:+q.y,ang:w_&&w_.dist<=0.4?w_.ang:0,naParede:!!(w_&&w_.dist<=0.4)};}
+    else if(ambOk.length){let ref;if(j===0)ref=ent?[ent.x,ent.y]:[ambOk[0].x,ambOk[0].y];else{const c=R.out.find(o=>o.c.q===q.nome&&o.c.ambiente),ra=(c&&ambOk.find(z=>z.a.id===c.c.ambiente))||ambOk[0],pai=quad.find(z=>z.q===paiDe(q));
+        ref=pai?[Math.min(ra.x+ra.L,Math.max(ra.x,pai.x)),Math.min(ra.y+ra.W,Math.max(ra.y,pai.y))]:[ra.x+ra.L/2,ra.y];}
+      const w_=paredeMaisProxima(P0,ref[0],ref[1]);r={q,x:w_.x,y:w_.y,ang:w_.ang,auto:true,naParede:true};}
+    else r={q,x:bb.x1+1+4*(qa++),y:bb.y1-3,ang:0,auto:true,naParede:false};quad.push(r);});
   quad.forEach(r=>{bb.x1=Math.min(bb.x1,r.x-1);bb.y1=Math.min(bb.y1,r.y-1);bb.x2=Math.max(bb.x2,r.x+1);bb.y2=Math.max(bb.y2,r.y+1);});
   const qp=nome=>quad.find(r=>r.q.nome===nome);
   if(ent){bb.x1=Math.min(bb.x1,ent.x-1);bb.y1=Math.min(bb.y1,ent.y-1);bb.x2=Math.max(bb.x2,ent.x+1);bb.y2=Math.max(bb.y2,ent.y+1);}
-  const rota=criarRoteador(ambOk.map(r=>({x:r.x,y:r.y,L:r.L,W:r.W})),bb);
-  // canaletas: do quadro de origem até o centro de cada ambiente atendido, por dentro das áreas; a baixada desce no fim
-  const rotas=Object.values(R.cans).map(g=>{const paths=[];g.circ.forEach(ci=>{const o=R.out[ci-1];if(!o)return;const q=qp(o.c.q),r=amb.find(z=>z.a.id===o.c.ambiente);if(!q)return;
-      // circuito sem ambiente: vai ao centro do ambiente onde está o quadro (ou do mais próximo dele)
-      const rz=r||ambOk.find(z=>q.x>=z.x-1e-6&&q.x<=z.x+z.L+1e-6&&q.y>=z.y-1e-6&&q.y<=z.y+z.W+1e-6)||ambOk.slice().sort((u,v)=>Math.hypot(u.x+u.L/2-q.x,u.y+u.W/2-q.y)-Math.hypot(v.x+v.L/2-q.x,v.y+v.W/2-q.y))[0];
-      if(!rz)return;const alvo=[rz.x+rz.L/2,rz.y+rz.W/2];paths.push(rota([q.x,q.y],alvo).pts);});
-    const vis=new Set();return {k:g.k,paths:paths.filter(pt=>{const k=JSON.stringify(pt);if(vis.has(k))return false;vis.add(k);return true;})};}).filter(r=>r.paths.length);
+  const evitar=ambOk.flatMap(r=>r.ab.map(o=>({x:Math.min(o.A[0],o.B[0])-0.3,y:Math.min(o.A[1],o.B[1])-0.3,L:Math.abs(o.B[0]-o.A[0])+0.6,W:Math.abs(o.B[1]-o.A[1])+0.6})));
+  const rota=criarRoteador(ambOk.map(r=>({x:r.x,y:r.y,L:r.L,W:r.W})),bb,evitar);
+  // ---- fiação: eletrodutos no teto/parede com os condutores de cada circuito (F fase, N neutro, T terra, R retorno)
+  const lig=[],addLig=(pts,c,cond)=>lig.push({pts,c,cond});
+  const Lz=(a,b)=>Math.abs(a[0]-b[0])<1e-6||Math.abs(a[1]-b[1])<1e-6?[a,b]:[a,[b[0],a[1]],b];
+  const dm=(a,b)=>Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1]);
+  R.out.forEach(o=>{const r=ambOk.find(z=>z.a.id===o.c.ambiente),Q=qp(o.c.q);if(!r||!Q)return;
+    const Lg=LIG[o.c.lig]||LIG["F+N"],c=o.i+1,base={F:Lg.nf,N:Lg.n?1:0,T:1},q0=[Q.x,Q.y];
+    if(o.c.tipo==="ilum"&&r.lum.length){
+      const lm=r.lum,fl=lm.reduce((b,p,k)=>dm(p,q0)<dm(lm[b],q0)?k:b,0);addLig(rota(q0,lm[fl]).pts,c,base);
+      if(r.cI[0]!==c)return; // demais circuitos de iluminação do ambiente: só a alimentação
+      // árvore mínima entre as luminárias (Prim, distância ortogonal)
+      const inT=new Set([fl]),ed=[];while(inT.size<lm.length){let bst=null;inT.forEach(i=>lm.forEach((p,j)=>{if(inT.has(j))return;const dd=dm(lm[i],p);if(!bst||dd<bst[2])bst=[i,j,dd];}));inT.add(bst[1]);ed.push([bst[0],bst[1]]);}
+      const sl=r.inter?lm.reduce((b,p,k)=>dm(p,r.inter)<dm(lm[b],r.inter)?k:b,0):fl;
+      // caminho na árvore entre a luminária alimentada e a do interruptor: por ele passa a fase até o interruptor
+      const adj=lm.map(()=>[]);ed.forEach(([i,j])=>{adj[i].push(j);adj[j].push(i);});const pai=lm.map(()=>-1),vis=new Set([fl]),fila=[fl];while(fila.length){const u=fila.shift();adj[u].forEach(v=>{if(!vis.has(v)){vis.add(v);pai[v]=u;fila.push(v);}});}
+      const comF=new Set();for(let v=sl;v!==fl&&v>=0;v=pai[v])comF.add(v+"-"+pai[v]);
+      ed.forEach(([i,j])=>addLig(Lz(lm[i],lm[j]),c,{F:comF.has(i+"-"+j)||comF.has(j+"-"+i)?1:0,N:Lg.n?1:0,T:1,R:[r.letra]}));
+      if(r.inter)addLig(Lz(lm[sl],r.inter),c,{F:1,R:[r.letra]});
+    }else if(o.c.tipo==="tug"&&r.tug.length){
+      const tp=r.tug,fi=tp.reduce((b,p,k)=>dm(p,q0)<dm(tp[b],q0)?k:b,0);addLig(rota(q0,[tp[fi][0],tp[fi][1]]).pts,c,base);
+      for(let k=0;k+1<tp.length;k++){const a=tp[k],b=tp[k+1],cruza=r.ab.some(op=>op.d[0]<b[3]&&op.d[1]>a[3]);
+        // entre tomadas, embutido na parede; se houver abertura no caminho, passa pelo teto
+        const pts=[];if(!cruza){for(let d=a[3];d<b[3];d+=0.25){const p=perimPt(r,d,0.15);pts.push([p[0],p[1]]);}pts.push([b[0],b[1]]);}
+        addLig(cruza?rota([a[0],a[1]],[b[0],b[1]]).pts:pts,c,base);}
+    }else{const f=r.fix.find(z=>z.o===o);if(f)addLig(rota(q0,f.p).pts,c,o.c.tipo==="motor"?{F:Lg.nf,N:Lg.n?1:0,T:1}:base);}});
+  // agregação por eletroduto: trechos de 0,25 m com a soma dos condutores de cada circuito
+  const H=0.25,K=v=>Math.round(v/H),edges=new Map();
+  lig.forEach(({pts,c,cond})=>{for(let k=1;k<pts.length;k++){const [x1,y1]=pts[k-1],[x2,y2]=pts[k];const hz=Math.abs(y1-y2)<Math.abs(x1-x2);
+      if(hz){const j=K(y1);let a=K(Math.min(x1,x2)),b=K(Math.max(x1,x2));for(let i=a;i<b;i++)put("h",i,j);}else{const i=K(x1);let a=K(Math.min(y1,y2)),b=K(Math.max(y1,y2));for(let j=a;j<b;j++)put("v",i,j);}}
+    function put(t,i,j){const key=t+","+i+","+j;let m=edges.get(key);if(!m){m=new Map();edges.set(key,m);}const v=m.get(c)||{F:0,N:0,T:0,R:new Set()};
+      v.F=Math.max(v.F,cond.F||0);v.N=Math.max(v.N,cond.N||0);v.T=Math.max(v.T,cond.T||0);(cond.R||[]).forEach(l=>v.R.add(l));m.set(c,v);}});
+  const sig=m=>[...m.entries()].sort((a,b)=>a[0]-b[0]).map(([c,v])=>`${c}:${v.F}${v.N}${v.T}${[...v.R].join("")}`).join("|");
+  const chains=[];["h","v"].forEach(t=>{const ks=[...edges.keys()].filter(k=>k[0]===t).map(k=>{const [,i,j]=k.split(",").map(Number);return {i,j,m:edges.get(k)};});
+    ks.sort((a,b)=>t==="h"?(a.j-b.j||a.i-b.i):(a.i-b.i||a.j-b.j));let cur=null;
+    ks.forEach(e=>{const s_=sig(e.m),pos=t==="h"?e.i:e.j,lin=t==="h"?e.j:e.i;
+      if(cur&&cur.s===s_&&cur.lin===lin&&cur.fim===pos)cur.fim=pos+1;else{if(cur)chains.push(cur);cur={t,s:s_,lin,ini:pos,fim:pos+1,m:e.m};}});if(cur)chains.push(cur);});
+  chains.forEach(ch=>{ch.a=ch.t==="h"?[ch.ini*H,ch.lin*H]:[ch.lin*H,ch.ini*H];ch.b=ch.t==="h"?[ch.fim*H,ch.lin*H]:[ch.lin*H,ch.fim*H];ch.len=(ch.fim-ch.ini)*H;ch.circ=[...ch.m.keys()].sort((a,b)=>a-b);
+    ch.mid=[(ch.a[0]+ch.b[0])/2,(ch.a[1]+ch.b[1])/2];});
+  // compatibilidade: rotas por canaleta (croqui e situação desenham os eletrodutos agregados)
+  const rotas=chains.length?[{k:"",paths:chains.map(ch=>[ch.a,ch.b])}]:[];
   const alim=S.quadros.map(q=>{const pai=paiDe(q);if(!pai)return null;const a=qp(pai.nome),b=qp(q.nome);return a&&b?{de:a,para:b,q,pts:rota([a.x,a.y],[b.x,b.y]).pts}:null;}).filter(Boolean);
-  // entrada → QGBT: sai do limite e segue por dentro das áreas
+  // entrada → QGBT: do limite até a edificação pelo menor trecho externo (enterrado) e depois por dentro
   const entRota=ent&&quad[0]?rota([ent.x,ent.y],[quad[0].x,quad[0].y]):null;
-  return {amb,quad,rotas,alim,bb,esp,ent,entRota,rota};
+  const dentroDe=(x,y)=>ambOk.some(r=>x>=r.x-1e-6&&x<=r.x+r.L+1e-6&&y>=r.y-1e-6&&y<=r.y+r.W+1e-6);
+  return {amb,quad,rotas,chains,lig,alim,bb,esp,ent,entRota,rota,dentroDe};
 }
 function exportarDXF(){
   calc();const Lp=layoutPlanta(),o=[];const e=(...a)=>a.forEach(v=>o.push(String(v)));
@@ -1751,7 +1848,9 @@ function exportarDXF(){
   e(0,"SECTION",2,"HEADER",9,"$ACADVER",1,"AC1009",9,"$DWGCODEPAGE",3,"ANSI_1252",9,"$INSUNITS",70,6,0,"ENDSEC");
   e(0,"SECTION",2,"TABLES",0,"TABLE",2,"LAYER",70,Object.keys(CAM).length);Object.entries(CAM).forEach(([n,c])=>e(0,"LAYER",2,n,70,0,62,c,6,"CONTINUOUS"));e(0,"ENDTAB",0,"ENDSEC");
   e(0,"SECTION",2,"ENTITIES");
-  if(Lp.esp){const {C,L}=Lp.esp;tr("AMBIENTES",0,0,C,0,0.8,0.4);tr("AMBIENTES",C,0,C,L,0.8,0.4);tr("AMBIENTES",C,L,0,L,0.8,0.4);tr("AMBIENTES",0,L,0,0,0.8,0.4);tx("TEXTOS",0.3,L+0.4,0.3,`ESPACO TOTAL ${fmt(C,2)} x ${fmt(L,2)} m`);}
+  // limite da área em traço-ponto-ponto
+  const tpp=(c,x1,y1,x2,y2)=>{const L_=Math.hypot(x2-x1,y2-y1);if(!L_)return;const ux=(x2-x1)/L_,uy=(y2-y1)/L_,pat=[[0,1],[1.25,1.3],[1.55,1.6]];for(let d=0;d<L_;d+=1.85)pat.forEach(([a,b])=>{if(d+a<L_)ln(c,x1+ux*(d+a),y1+uy*(d+a),x1+ux*Math.min(L_,d+b),y1+uy*Math.min(L_,d+b));});};
+  if(Lp.esp){const {C,L}=Lp.esp;tpp("AMBIENTES",0,0,C,0);tpp("AMBIENTES",C,0,C,L);tpp("AMBIENTES",C,L,0,L);tpp("AMBIENTES",0,L,0,0);tx("TEXTOS",0.3,L+0.4,0.3,`LIMITE DA AREA ${fmt(C,2)} x ${fmt(L,2)} m`);}
   if(Lp.ent){sim("QUADROS","med",Lp.ent.x,Lp.ent.y,0.5,{ang:Lp.ent.nx?90:0});tx("TEXTOS",Lp.ent.x+0.6,Lp.ent.y+0.6,0.25,"ENTRADA DE ENERGIA / MEDICAO");
     if(Lp.entRota){const p=Lp.entRota.pts;for(let k=1;k<p.length;k++)tr("ALIMENTADORES",p[k-1][0],p[k-1][1],p[k][0],p[k][1]);const e=R.ent;tx("TEXTOS",(p[0][0]+p[1][0])/2+0.2,(p[0][1]+p[1][1])/2+0.2,0.2,`ALIM. ENTRADA ${e&&e.s?e.txt+" mm² - ":""}${fmt(+S.forn.Lent||0,0)} m`);}}
   Lp.amb.forEach(r=>{rt("AMBIENTES",r.x,r.y,r.L,r.W);tx("TEXTOS",r.x+0.3,r.y+r.W-0.6,0.35,r.a.nome);tx("COTAS",r.x+0.3,r.y+r.W-1.1,0.22,`${fmt(r.L,2)} x ${fmt(r.W,2)} m - H ${fmt(+r.a.altura||0,2)} m${r.a.zona?` - ZONA ${r.a.zona}`:""}`);
@@ -1760,21 +1859,30 @@ function exportarDXF(){
     if(r.inter){sim("INTERRUPTORES","inter",r.inter[0],r.inter[1],0.18);tx("INTERRUPTORES",r.inter[0]+0.12,r.inter[1]+0.1,0.15,r.letra);}
     r.tug.forEach(([x,y,d])=>sim("TOMADAS","tom",x,y,0.2,{alt:"media",ang:[90,180,270,0][d||0]}));
     if(r.tug.length)tx("TOMADAS",r.tug[0][0]+0.3,r.tug[0][1]+0.3,0.16,`${ct(r.cT)}${Math.round(r.vaTug)!==100?` ${fmt0(r.vaTug)} VA`:""}`);
-    r.fix.forEach(({o:c,p:[x,y]})=>{if(c.c.tipo==="motor")sim("FORCA","motor",x,y,0.35);else sim("FORCA","tom",x,y,0.22,{alt:"alta",ang:270});tx("FORCA",x+0.45,y-0.08,0.16,`${ct([c.i+1])} ${fmt(c.P/1000,1)} kW - ${c.c.nome}`);});
+    r.fix.forEach(f=>{const {o:c,p:[x,y]}=f;if(f.maq){sim("FORCA","motor",x,y,0.35);sim("FORCA","desce",x-0.4,y+0.4,0.2);}else sim("FORCA","tom",x,y,0.22,{alt:"alta",ang:[90,180,270,0][f.parede||0]});tx("FORCA",x+0.45,y-0.08,0.16,`${ct([c.i+1])} ${c.c.tipo==="motor"?`${fmtN(c.c.pot)} ${c.c.unid}`:`${fmt(c.P/1000,1)} kW`} - ${c.c.nome}`);});
+    // aberturas: folha da porta e janela
+    r.ab.forEach(o=>{if(o.tipo==="porta"){ln("AMBIENTES",o.A[0],o.A[1],o.A[0]+o.nin[0]*o.larg,o.A[1]+o.nin[1]*o.larg);tx("COTAS",o.c[0]+o.nin[0]*0.3,o.c[1]+o.nin[1]*0.3,0.15,`P ${fmt(o.larg,2)}`);}
+      else{[-0.05,0.05].forEach(k=>ln("AMBIENTES",o.A[0]+o.nin[0]*k,o.A[1]+o.nin[1]*k,o.B[0]+o.nin[0]*k,o.B[1]+o.nin[1]*k));tx("COTAS",o.c[0]-o.nin[0]*0.4,o.c[1]-o.nin[1]*0.4,0.15,`J ${fmt(o.larg,2)}`);}});
     r.emg.forEach(([x,y])=>sim("EMERGENCIA","emg",x,y,0.2));
     r.sai.forEach(([x,y])=>{rt("EMERGENCIA",x-0.5,y+0.1,1,0.35);tx("EMERGENCIA",x-0.42,y+0.18,0.2,"SAIDA");});});
-  Lp.rotas.forEach(r=>{r.paths.forEach(pt=>{for(let k=1;k<pt.length;k++)ln("CANALETAS",pt[k-1][0],pt[k-1][1],pt[k][0],pt[k][1]);const f=pt[pt.length-1];sim("CANALETAS","desce",f[0],f[1],0.22);});const [mx,my]=meioPoli(r.paths[0]),g=R.cans[r.k];tx("CANALETAS",mx+0.2,my+0.15,0.2,`${r.k}${g?` - ${g.dim}`:""}`);});
+  // eletrodutos agregados com os condutores de cada circuito
+  Lp.chains.forEach(ch=>{ln("CANALETAS",ch.a[0],ch.a[1],ch.b[0],ch.b[1]);if(ch.len<0.75)return;const hz=ch.t==="h";
+    const g=ch.circ.map(c=>{const v=ch.m.get(c);return {c,v,n:v.F+v.N+v.T+v.R.size};}),st=0.18,wt=g.reduce((s,x)=>s+x.n*0.5*st+0.2,0);
+    if(ch.circ.length>=4||wt>ch.len*0.85){tx("CANALETAS",ch.mid[0]+(hz?-0.6:0.15),ch.mid[1]+(hz?0.15:0),0.14,`circ. ${ch.circ.join(", ")}`);return;}
+    let t=-wt/2;g.forEach(x=>{const gw=x.n*0.5*st,cx=hz?ch.mid[0]+t+gw/2:ch.mid[0],cy=hz?ch.mid[1]:ch.mid[1]+t+gw/2;sim("CANALETAS","cond",cx,cy,st,{nf:x.v.F,n:x.v.N>0,pe:x.v.T>0,r:x.v.R.size,ang:hz?0:90});
+      tx("CANALETAS",cx+(hz?-0.15:0.2),cy+(hz?0.2:0),0.12,`-${x.c}${[...x.v.R].join("")}-`);t+=gw+0.2;});});
   Lp.alim.forEach(({pts,q,de,para})=>{for(let k=1;k<pts.length;k++)tr("ALIMENTADORES",pts[k-1][0],pts[k-1][1],pts[k][0],pts[k][1]);const f=R.quadros.find(z=>z.q===q)?.f,[mx,my,hz]=meioPoli(pts);
     if(f&&f.s){sim("ALIMENTADORES","cond",mx,my,0.25,{nf:f.nf,n:f.sn>0,pe:f.spe>0,ang:hz?0:90});const dn=((f.ed||{}).nome||"").match(/DN (\d+)/);tx("ALIMENTADORES",mx-0.8,my-0.45,0.18,`${dn?"ø"+dn[1]+" - ":""}${f.txt} mm²`);}
     tx("ALIMENTADORES",para.x+0.6,para.y+0.6,0.18,`${de.q.nome} > ${q.nome}`);});
-  Lp.quad.forEach(r=>{sim("QUADROS",r.q===S.quadros[0]?"qdg":"qdp",r.x,r.y,0.35);const rq=R.quadros.find(z=>z.q===r.q);tx("QUADROS",r.x-0.45,r.y+0.3,0.25,r.q.nome);if(rq)tx("QUADROS",r.x-0.45,r.y-0.65,0.16,`${fmt(rq.inst,1)} kW`);});
+  Lp.quad.forEach(r=>{sim("QUADROS",r.q===S.quadros[0]?"qdg":"qdp",r.x,r.y,0.35,{ang:r.ang||0});const rq=R.quadros.find(z=>z.q===r.q);tx("QUADROS",r.x-0.45,r.y+0.3,0.25,r.q.nome);if(rq)tx("QUADROS",r.x-0.45,r.y-0.65,0.16,`${fmt(rq.inst,1)} kW`);});
   const bb=Lp.bb,lx=bb.x2+3;let ly=bb.y2;tx("TEXTOS",lx,ly,0.4,"LEGENDA - ABNT NBR 5444");
   [["8.4",(x,y)=>sim("ILUMINACAO","lum",x,y,0.25),"Ponto de luz no teto (LED/fluorescente): letra = comando, -n- = circuito"],["7.1",(x,y)=>sim("INTERRUPTORES","inter",x,y,0.18),"Interruptor de uma seção"],
    ["9.2",(x,y)=>sim("TOMADAS","tom",x,y,0.2,{alt:"media",ang:90}),"Tomada a meia altura (1,30 m) - potência em VA"],["9.3",(x,y)=>sim("FORCA","tom",x,y,0.2,{alt:"alta",ang:90}),"Tomada alta / ponto de força - potência em kW"],
    ["10.2",(x,y)=>sim("FORCA","motor",x,y,0.3),"Motor"],["8.15",(x,y)=>sim("EMERGENCIA","emg",x,y,0.2),"Ponto de luz de emergência com alimentação independente"],
    ["6.3",(x,y)=>sim("QUADROS","qdg",x,y,0.3),"Quadro geral de luz e força aparente"],["6.1",(x,y)=>sim("QUADROS","qdp",x,y,0.3),"Quadro parcial de luz e força aparente"],
-   ["5.13",(x,y)=>ln("CANALETAS",x-0.4,y,x+0.4,y),"Eletrocalha / leito de cabos"],["5.18",(x,y)=>sim("CANALETAS","desce",x,y,0.22),"Eletroduto que desce"],
-   ["5.2",(x,y)=>tr("ALIMENTADORES",x-0.4,y,x+0.4,y,0.2,0.12),"Eletroduto no piso / enterrado - ø em mm"],["5.6-5.9",(x,y)=>{ln("ALIMENTADORES",x-0.5,y,x+0.5,y);sim("ALIMENTADORES","cond",x,y,0.25,{nf:3,n:true,pe:true});},"Condutores fase, neutro e terra"]
+   ["5.1",(x,y)=>ln("CANALETAS",x-0.4,y,x+0.4,y),"Eletroduto embutido no teto/parede (eletrocalha com 4 ou mais circuitos)"],["5.18",(x,y)=>sim("CANALETAS","desce",x,y,0.22),"Eletroduto que desce ate a maquina"],
+   ["5.2",(x,y)=>tr("ALIMENTADORES",x-0.4,y,x+0.4,y,0.2,0.12),"Eletroduto enterrado (so fora da edificacao) - ø em mm"],["5.6-5.9",(x,y)=>{ln("ALIMENTADORES",x-0.5,y,x+0.5,y);sim("ALIMENTADORES","cond",x,y,0.25,{nf:1,n:true,r:1,pe:true});},"Fase, neutro, retorno e terra; -n- = circuito, letra = retorno"],
+   ["-",(x,y)=>tpp("AMBIENTES",x-0.5,y,x+0.5,y),"Limite da area (traco-ponto-ponto)"]
   ].forEach(([n,fn,t])=>{ly-=0.9;fn(lx+0.4,ly+0.1);tx("TEXTOS",lx+1.2,ly,0.22,`${n}  ${t}`);});
   ly-=1.4;tx("TEXTOS",lx,ly,0.3,t1252(`${S.id.obra||"Projeto"} - ${S.id.cliente||""}`));ly-=0.6;tx("TEXTOS",lx,ly,0.22,`Unidades: metros. Simbologia ABNT NBR 5444. Rev. ${(S.revisoes.at(-1)||{}).rev||"00"} - ${S.id.data||""}`);
   e(0,"ENDSEC",0,"EOF");
@@ -2016,12 +2124,13 @@ async function gerarPDF(){
       TL(pp,"REDE",p1x+(horiz?8:4),p1y+(horiz?5:6),7.5,FB,ACC);
       const Lr=Math.hypot(p2x-p1x,p2y-p1y),n=Math.max(2,Math.floor(Lr/150));for(let k=0;k<=n;k++)Ci(pp,p1x+(p2x-p1x)*k/n,p1y+(p2y-p1y)*k/n,4,{fill:rgb(1,1,1),bc:ACC,bw:1.2});}
     // terreno / espaço total
-    {const [a,b]=P(ter.x,ter.y),[c,d]=P(ter.x+ter.C,ter.y+ter.L);[[a,b,c,b],[c,b,c,d],[c,d,a,d],[a,d,a,b]].forEach(([u,v,s2,t])=>Ln(pp,u,v,s2,t,1.2,GR,[8,4]));
-      TL(pp,`Limite do terreno / espaço total — ${fmt(ter.C,1)} × ${fmt(ter.L,1)} m`,a+4,d+5,8,F,GR);}
+    {const [a,b]=P(ter.x,ter.y),[c,d]=P(ter.x+ter.C,ter.y+ter.L);[[a,b,c,b],[c,b,c,d],[c,d,a,d],[a,d,a,b]].forEach(([u,v,s2,t])=>Ln(pp,u,v,s2,t,1.1,GR,[10,2.5,1.5,2.5,1.5,2.5]));
+      TL(pp,`Limite da área — ${fmt(ter.C,1)} × ${fmt(ter.L,1)} m`,a+4,d+5,8,F,GR);}
     // edificação: ambientes da etapa 02
     Lp.amb.forEach(r=>{const [x,y]=P(r.x,r.y);Bx(pp,x,y,r.L*sc,r.W*sc,{bw:1.8,fill:LG});const fs=Math.max(5.5,Math.min(9,r.L*sc/14));
       TLC(pp,r.a.nome.slice(0,34),x+r.L*sc/2,y+r.W*sc/2+2,fs,FB);TLC(pp,`${fmt(r.L,1)} × ${fmt(r.W,1)} m`,x+r.L*sc/2,y+r.W*sc/2-fs,fs*0.8,F,MUT);});
     if(!Lp.amb.length)TL(pp,"Cadastre os ambientes na etapa 02 para desenhar a edificação.",X0+20,Y0+BH/2,10,FB,RED);
+    Lp.amb.forEach(r=>r.ab.forEach(o=>{const [ax,ay]=P(...o.A),[bx,by]=P(...o.B);Ln(pp,ax,ay,bx,by,3,rgb(1,1,1));if(o.tipo==="porta"){const R_=o.larg*sc;Ln(pp,ax,ay,ax+o.nin[0]*R_,ay+o.nin[1]*R_,0.7,INK);}else Ln(pp,ax,ay,bx,by,0.5,INK);}));
     // poste, ramal, padrão de entrada
     const [pex,pey]=P(ent.x,ent.y),[ptx,pty]=P(...poste);
     Ln(pp,ptx,pty,pex,pey,1.2,INK,[3,2]);Ci(pp,ptx,pty,6,{fill:RSOFT,bc:RED,bw:1.6});
@@ -2029,18 +2138,20 @@ async function gerarPDF(){
     SIMR(pp,"med",pex,pey,9,{ang:horiz?0:90});TL(pp,"M",pex+(ent.nx<0?6:-14)+(horiz?10:0),pey+(horiz?(ent.ny>0?-18:12):10),8,FB,suposta?RED:INK);
     // alimentador de entrada e alimentadores dos quadros
     const er=Lp.entRota||(q0?Lp.rota([ent.x,ent.y],[q0.x,q0.y]):null);
-    if(er){const q=er.pts.map(([a,b])=>P(a,b));for(let k=1;k<q.length;k++)Ln(pp,q[k-1][0],q[k-1][1],q[k][0],q[k][1],1.6);}
+    if(er){for(let k=1;k<er.pts.length;k++){const [x1,y1]=er.pts[k-1],[x2,y2]=er.pts[k],n=Math.max(1,Math.ceil((Math.abs(x2-x1)+Math.abs(y2-y1))/0.25));
+      for(let i=0;i<n;i++){const ax=x1+(x2-x1)*i/n,ay=y1+(y2-y1)*i/n,bx=x1+(x2-x1)*(i+1)/n,by=y1+(y2-y1)*(i+1)/n,fo=!Lp.dentroDe((ax+bx)/2,(ay+by)/2),[a,b]=P(ax,ay),[c,d]=P(bx,by);Ln(pp,a,b,c,d,1.6,INK,fo?[4,3]:undefined);}}}
     Lp.alim.forEach(({pts})=>{const q=pts.map(([a,b])=>P(a,b));for(let k=1;k<q.length;k++)Ln(pp,q[k-1][0],q[k-1][1],q[k][0],q[k][1],0.8,INK,[4,3]);});
     // canaletas de distribuição (as mesmas rotas da planta baixa)
     Lp.rotas.forEach(r=>r.paths.forEach(pt=>{const q=pt.map(([a,b])=>P(a,b));for(let k=1;k<q.length;k++)Ln(pp,q[k-1][0],q[k-1][1],q[k][0],q[k][1],1.4,rgb(0.35,0.35,0.35));}));
-    Lp.quad.forEach((r,k)=>{const [x,y]=P(r.x,r.y);SIMR(pp,k===0?"qdg":"qdp",x,y,8);TL(pp,r.q.nome,x+10,y+6,7.5,FB);});
+    Lp.quad.forEach((r,k)=>{const [x,y]=P(r.x,r.y);SIMR(pp,k===0?"qdg":"qdp",x,y,8,{ang:r.ang||0});TL(pp,r.q.nome,x+10,y+6,7.5,FB);});
     // legenda
     {let ly=h-210;const lx=w-360,L_=(t,c=INK,b=F)=>{ly-=TW(pp,t,lx,ly,315,7.5,b,c)*10+4;};TL(pp,"Legenda",lx,ly,10,FB);ly-=16;
       L_(`P — poste de derivação (ponto de entrega). M — padrão de entrada / medição${suposta?" (posição suposta: entrada não posicionada na etapa 02)":` no limite ${({inf:"inferior",sup:"superior",esq:"esquerdo",dir:"direito"})[ent.lado]} do terreno`}.`);
       L_(`Ramal de ligação (P → M): ${f.distRede||"distância a confirmar"}.`,RED,FB);
       L_(`REDE — rede da distribuidora: ${f.rede||"tipo a informar"}${id.distribuidora?` (${id.distribuidora})`:""}. VIA — via de acesso: ${id.local||"endereço a preencher"}.`,ACC);
       L_(`Alimentador de entrada (M → ${S.quadros[0].nome}), linha cheia: ${R.ent.s?R.ent.txt+" mm²":"—"}${R.ent.ed?", "+R.ent.ed.nome:""}, ${fmtN(f.Lent)} m, método ${f.metEnt}.`);
-      L_("Linha cinza contínua: canaletas de distribuição, do quadro até o centro do ambiente atendido, onde descem as baixadas (detalhe na planta baixa).",rgb(0.35,0.35,0.35));
+      L_("Linha cinza contínua: eletrodutos e eletrocalhas de distribuição no teto/parede (circuitos e condutores na planta baixa). Linha tracejada fora da edificação: trecho enterrado.",rgb(0.35,0.35,0.35));
+      L_("Traço-ponto-ponto: limite da área. Vãos brancos nas paredes: portas e janelas (etapa 02).",GR);
       R.quadros.filter(q=>q.pai).forEach(q=>L_(`${q.pai} → ${q.q.nome}, tracejado: ${q.f&&q.f.s?q.f.txt+" mm², ":""}${fmt(+q.q.L||0,0)} m.`,MUT));}
     // norte e escala gráfica
     const nx=w-420,ny=h-170;Ln(pp,nx,ny,nx,ny+50,1.4);pp.drawSvgPath(`M ${nx} ${-(ny+60)} L ${nx-7} ${-(ny+44)} L ${nx+7} ${-(ny+44)} Z`,{color:INK});TLC(pp,"N",nx,ny+64,10,FB);
@@ -2050,53 +2161,82 @@ async function gerarPDF(){
   }
   // ---- Planta baixa esquemática (simbologia ABNT NBR 5444)
   function simPlanta(){
-    const {pp,w,h}=simPage(A3L,"Planta baixa — pontos, quadros, emergência e rotas");
-    const Lp=layoutPlanta(),X0=50,Y0=130,BW=w-460,BH=h-230,bb=Lp.bb;
+    const {pp,w,h}=simPage(A3L,"Planta baixa — pontos, quadros, eletrodutos, emergência e saídas");
+    const Lp=layoutPlanta(),X0=50,Y0=130,BW=w-470,BH=h-230,bb=Lp.bb;
     if(!Lp.amb.length){TL(pp,"Cadastre os ambientes e as dimensões na etapa 02 (planta de situação) para gerar a planta em escala.",X0+20,Y0+BH/2,10,FB,RED);carimbo(pp,w,"Planta baixa","PB-01");return;}
     const sc=Math.min(BW/(bb.x2-bb.x1),BH/(bb.y2-bb.y1)),ox=X0+(BW-(bb.x2-bb.x1)*sc)/2,oy=Y0+(BH-(bb.y2-bb.y1)*sc)/2;
-    const P=(x,y)=>[ox+(x-bb.x1)*sc,oy+(y-bb.y1)*sc],ORG=rgb(0.85,0.45,0.05);
-    const s0=Math.max(2.4,Math.min(4.2,0.22*sc)),fs=Math.max(4.6,s0*1.35),ct=a=>a.map(n=>`-${n}-`).join(" ");
-    // reserva antes dos rótulos: coluna da legenda e todos os símbolos (luminárias, tomadas, força, emergência, saídas, quadros, entrada)
+    const P=(x,y)=>[ox+(x-bb.x1)*sc,oy+(y-bb.y1)*sc],ORG=rgb(0.85,0.45,0.05),LIM=[10,2.5,1.5,2.5,1.5,2.5];
+    const s0=Math.max(2.4,Math.min(4.2,0.22*sc)),fs=Math.max(4.6,s0*1.35);
+    // poligonal com trechos internos contínuos (teto/parede) e externos tracejados (enterrados)
+    const polyIO=(pts,lw,cor=INK)=>{for(let k=1;k<pts.length;k++){const [x1,y1]=pts[k-1],[x2,y2]=pts[k],n=Math.max(1,Math.ceil((Math.abs(x2-x1)+Math.abs(y2-y1))/0.25));
+      let i0=0,f0=!Lp.dentroDe(x1+(x2-x1)*0.5/n,y1+(y2-y1)*0.5/n);
+      for(let i=1;i<=n;i++){const fi=i<n?!Lp.dentroDe(x1+(x2-x1)*(i+0.5)/n,y1+(y2-y1)*(i+0.5)/n):!f0;if(i===n||fi!==f0){const [a,b]=P(x1+(x2-x1)*i0/n,y1+(y2-y1)*i0/n),[c,d]=P(x1+(x2-x1)*i/n,y1+(y2-y1)*i/n);Ln(pp,a,b,c,d,lw,cor,f0?[4,3]:undefined);i0=i;f0=fi;}}}};
+    // reserva antes dos rótulos: coluna da legenda e todos os símbolos
     ocAdd(X0+BW+20,0,w,h);{const box=(x,y,k=1.3)=>{const [cx,cy]=P(x,y);ocAdd(cx-k*s0,cy-k*s0,cx+k*s0,cy+k*s0);};
-      Lp.amb.forEach(r=>{r.lum.forEach(([a,b])=>box(a,b));r.tug.forEach(([a,b])=>box(a,b));r.fix.forEach(({p:[a,b]})=>box(a,b,1.6));r.emg.forEach(([a,b])=>box(a,b));if(r.inter)box(...r.inter,0.8);
-        r.sai.forEach(([a,b])=>{const [cx,cy]=P(a,b);ocAdd(cx-12,cy+1,cx+12,cy+10);});});
+      Lp.amb.forEach(r=>{r.lum.forEach(([a,b])=>box(a,b));r.tug.forEach(([a,b])=>box(a,b));r.fix.forEach(({p:[a,b]})=>box(a,b,1.8));r.emg.forEach(([a,b])=>box(a,b));if(r.inter)box(...r.inter,0.8);
+        r.sai.forEach(([a,b])=>{const [cx,cy]=P(a,b);ocAdd(cx-12,cy-4,cx+12,cy+5);});});
       Lp.quad.forEach(r=>box(r.x,r.y,2.2));if(Lp.ent)box(Lp.ent.x,Lp.ent.y,2.4);}
-    if(Lp.esp){const [x0,y0]=P(0,0),[x1,y1]=P(Lp.esp.C,Lp.esp.L);[[x0,y0,x1,y0],[x1,y0,x1,y1],[x1,y1,x0,y1],[x0,y1,x0,y0]].forEach(([a,b,c,d])=>Ln(pp,a,b,c,d,1,GR,[8,4]));TL(pp,`Espaço total ${fmt(Lp.esp.C,1)} × ${fmt(Lp.esp.L,1)} m`,x0+3,y1+4,6.5,F,GR);}
-    if(Lp.entRota){const q=Lp.entRota.pts.map(([a,b])=>P(a,b));for(let k=1;k<q.length;k++)Ln(pp,q[k-1][0],q[k-1][1],q[k][0],q[k][1],1.2,INK,[5,3]);}
-    Lp.amb.forEach(r=>{const [x,y]=P(r.x,r.y);Bx(pp,x,y,r.L*sc,r.W*sc,{bc:INK,bw:1.6,fill:r.a.zona?rgb(0.99,0.95,0.88):LG});
+    // limite da área (traço-ponto-ponto)
+    if(Lp.esp){const [x0,y0]=P(0,0),[x1,y1]=P(Lp.esp.C,Lp.esp.L);[[x0,y0,x1,y0],[x1,y0,x1,y1],[x1,y1,x0,y1],[x0,y1,x0,y0]].forEach(([a,b,c,d])=>Ln(pp,a,b,c,d,0.9,GR,LIM));TL(pp,`Limite da área — ${fmt(Lp.esp.C,1)} × ${fmt(Lp.esp.L,1)} m`,x0+3,y1+4,6.5,F,GR);}
+    // ambientes
+    Lp.amb.forEach(r=>{const [x,y]=P(r.x,r.y);Bx(pp,x,y,r.L*sc,r.W*sc,{bc:INK,bw:1.8,fill:r.a.zona?rgb(0.99,0.95,0.88):LG});});
+    // aberturas: vão na parede, folha e arco de abertura das portas; janelas com três linhas
+    Lp.amb.forEach(r=>{const fill=r.a.zona?rgb(0.99,0.95,0.88):LG;r.ab.forEach(o=>{const [ax,ay]=P(...o.A),[bx,by]=P(...o.B);Ln(pp,ax,ay,bx,by,3.2,rgb(1,1,1));
+      if(o.tipo==="porta"){const R_=o.larg*sc,ex=ax+o.nin[0]*R_,ey=ay+o.nin[1]*R_;Ln(pp,ax,ay,ex,ey,0.9,INK);
+        const a0=Math.atan2(by-ay,bx-ax),a1=Math.atan2(ey-ay,ex-ax);let da=a1-a0;if(da>Math.PI)da-=2*Math.PI;if(da<-Math.PI)da+=2*Math.PI;const n=10;
+        for(let k=0;k<n;k++){const t0=a0+da*k/n,t1=a0+da*(k+1)/n;Ln(pp,ax+R_*Math.cos(t0),ay+R_*Math.sin(t0),ax+R_*Math.cos(t1),ay+R_*Math.sin(t1),0.5,MUT);}
+        TL(pp,`P ${fmt(o.larg,2)}`,(ax+bx)/2+o.nin[0]*R_*0.5+2,(ay+by)/2+o.nin[1]*R_*0.5,4.8,F,MUT);}
+      else{const off=[-o.nin[1],o.nin[0]];[-1.2,0,1.2].forEach(k=>Ln(pp,ax+o.nin[0]*k,ay+o.nin[1]*k,bx+o.nin[0]*k,by+o.nin[1]*k,0.5,INK));TL(pp,`J ${fmt(o.larg,2)}`,(ax+bx)/2-o.nin[0]*9-6,(ay+by)/2-o.nin[1]*9-2,4.8,F,MUT);}});});
+    // eletrodutos agregados (teto/parede): fases, neutro, retorno e terra de cada circuito; com 4 ou mais circuitos, eletrocalha
+    const st=s0*0.85;
+    Lp.chains.forEach(ch=>{const [x1,y1]=P(...ch.a),[x2,y2]=P(...ch.b),hz=ch.t==="h",calha=ch.circ.length>=4;Ln(pp,x1,y1,x2,y2,calha?2.2:0.9,INK);});
+    Lp.chains.forEach(ch=>{const [x1,y1]=P(...ch.a),[x2,y2]=P(...ch.b),hz=ch.t==="h",Lpx=Math.hypot(x2-x1,y2-y1),calha=ch.circ.length>=4;
+      const grp=ch.circ.map(c=>{const v=ch.m.get(c);return {c,v,n:v.F+v.N+v.T+v.R.size};}),wTot=grp.reduce((s,g)=>s+g.n*0.5*st+st*0.9,0);
+      const [mx,my]=P(...ch.mid);
+      if(calha||wTot>Lpx*0.85){if(Lpx>=10)TL(pp,`${calha?"Eletrocalha":"Eletroduto"} · circ. ${ch.circ.join(", ")}`,hz?mx-20:mx+4,hz?my+4:my,4.8,FB,INK);return;}
+      let t=-wTot/2;grp.forEach(g=>{const gw=g.n*0.5*st,cx=hz?mx+t+gw/2:mx,cy=hz?my:my+t+gw/2;SIM(pp,"cond",cx,cy,st,{nf:g.v.F,n:g.v.N>0,pe:g.v.T>0,r:g.v.R.size,ang:hz?0:90});
+        TL(pp,`-${g.c}${[...g.v.R].join("")}-`,hz?cx-5:cx+st*0.9,hz?cy+st*0.8:cy-2,4.6,FB,RED);t+=gw+st*0.9;});});
+    // pontos de utilização
+    Lp.amb.forEach(r=>{const [x,y]=P(r.x,r.y);
       TL(pp,r.a.nome.slice(0,34),x+4,y+r.W*sc-11,7,FB,INK);TL(pp,`${fmt(r.L,1)} × ${fmt(r.W,1)} m · H ${fmt(+r.a.altura||0,1)} m · ${(INFL[r.a.infl]||INFL.seco).ip}${r.a.zona?` · ZONA ${r.a.zona}`:""}`,x+4,y+r.W*sc-20,5.8,F,r.a.zona?RED:MUT);
       r.lum.forEach(([a,b])=>{const [cx,cy]=P(a,b);SIMR(pp,"lum",cx,cy,s0);if(r.letra)TL(pp,r.letra,cx+1.4*s0,cy+0.5*s0,fs);});
-      if(r.lum.length){const [cx,cy]=P(...r.lum[0]);TL(pp,`${ct(r.cI)} ${r.nLum}×${fmt0(r.wLum)} W`,cx-1.3*s0,cy-0.6*s0-fs-0.5,fs,FB,RED);}
+      if(r.lum.length){const [cx,cy]=P(...r.lum[0]);TL(pp,`${r.cI.map(n=>`-${n}-`).join(" ")} ${r.nLum}×${fmt0(r.wLum)} W`,cx-1.3*s0,cy-0.6*s0-fs-0.5,fs,FB,RED);}
       if(r.inter){const [cx,cy]=P(...r.inter);SIMR(pp,"inter",cx,cy,s0);TL(pp,r.letra,cx+0.6*s0,cy+0.4*s0,fs);}
       r.tug.forEach(([a,b,d])=>{const [cx,cy]=P(a,b);SIMR(pp,"tom",cx,cy,s0,{alt:"media",ang:[90,180,270,0][d||0]});});
-      if(r.tug.length){const [cx,cy]=P(...r.tug[0]);TL(pp,`${ct(r.cT)}${Math.round(r.vaTug)!==100?` ${fmt0(r.vaTug)} VA`:""}`,cx+1.2*s0,cy+1.2*s0,fs,FB,RED);}
-      r.fix.forEach(({o,p:[a,b]})=>{const [cx,cy]=P(a,b);if(o.c.tipo==="motor")SIMR(pp,"motor",cx,cy,s0*1.4);else SIMR(pp,"tom",cx,cy,s0,{alt:"alta",ang:270});TL(pp,`${ct([o.i+1])} ${fmt(o.P/1000,o.P<10000?1:0)} kW`,cx+1.6*s0,cy-fs/2,fs,FB,RED);});
+      if(r.tug.length){const [cx,cy]=P(r.tug[0][0],r.tug[0][1]);TL(pp,`${r.cT.map(n=>`-${n}-`).join(" ")}${Math.round(r.vaTug)!==100?` ${fmt0(r.vaTug)} VA`:""}`,cx+1.2*s0,cy+1.2*s0,fs,FB,RED);}
+      r.fix.forEach(f=>{const {o,p:[a,b]}=f,[cx,cy]=P(a,b),pot=o.c.tipo==="motor"?`${fmtN(o.c.pot)} ${o.c.unid}`:`${fmt(o.P/1000,o.P<10000?1:0)} kW`;
+        if(f.maq){SIMR(pp,"desce",cx-1.6*s0,cy+1.6*s0,s0*0.8);SIMR(pp,"motor",cx,cy,s0*1.4);TL(pp,o.c.nome.replace(/\s*\([^)]*\)/g,"").slice(0,30),cx+1.8*s0,cy+1,fs,FB,INK);TL(pp,`-${o.i+1}- ${pot}`,cx+1.8*s0,cy-fs,fs,FB,RED);}
+        else{SIMR(pp,"tom",cx,cy,s0,{alt:"alta",ang:[90,180,270,0][f.parede||0]});TL(pp,`-${o.i+1}- ${o.c.nome.replace(/\s*\([^)]*\)/g,"").slice(0,30)} ${pot}`,cx+1.4*s0,cy+1.2*s0,fs,FB,RED);}});
       r.emg.forEach(([a,b])=>{const [cx,cy]=P(a,b);SIMR(pp,"emg",cx,cy,s0,{},ORG);});
-      r.sai.forEach(([a,b])=>{const [cx,cy]=P(a,b);Bx(pp,cx-11,cy+2,22,7,{fill:ACC,bc:ACC});TC(pp,"SAÍDA",cx,cy+3.8,4.5,FB,rgb(1,1,1));});});
-    // eletrocalhas com circuitos passantes (5.13) e baixadas em eletroduto que desce (5.18)
-    Lp.rotas.forEach(r=>{r.paths.forEach(pt=>{const q=pt.map(([a,b])=>P(a,b));for(let k=1;k<q.length;k++)Ln(pp,q[k-1][0],q[k-1][1],q[k][0],q[k][1],2.4,INK);const f=q[q.length-1];SIMR(pp,"desce",f[0],f[1],s0*0.9);});
-      const [mx,my]=meioPoli(r.paths[0]),[x1,y1]=P(mx,my),g=R.cans[r.k];TL(pp,`${r.k}${g?` — ${g.dim} · circ. ${g.circ.join(", ")}`:""}`,x1+4,y1-8,5.5,FB,INK);});
-    // alimentadores: eletroduto no piso/enterrado (5.2), diâmetro em mm e condutores (5.6, 5.7, 5.9)
-    Lp.alim.forEach(({pts,q})=>{const qq=pts.map(([a,b])=>P(a,b));for(let k=1;k<qq.length;k++)Ln(pp,qq[k-1][0],qq[k-1][1],qq[k][0],qq[k][1],0.9,INK,[4,3]);
-      const f=(R.quadros.find(z=>z.q===q)||{}).f;if(f&&f.s){const [ax,ay,hz]=meioPoli(pts),[mx,y2]=P(ax,ay),dn=((f.ed||{}).nome||"").match(/DN (\d+)/);SIMR(pp,"cond",mx,y2,s0*1.2,{nf:f.nf,n:f.sn>0,pe:f.spe>0,ang:hz?0:90});TL(pp,`${dn?"ø"+dn[1]+" — ":""}${f.txt} mm²`,mx-30,y2-fs-3,fs,F,INK);}});
-    Lp.quad.forEach(r=>{const [x,y]=P(r.x,r.y);SIMR(pp,r.q===S.quadros[0]?"qdg":"qdp",x,y,s0*1.8);const rq=R.quadros.find(z=>z.q===r.q);TL(pp,`${r.q.nome}${rq?` — ${fmt(rq.inst,1)} kW`:""}`,x-2.3*s0,y+1.3*s0,6.5,FB,INK);});
-    if(Lp.ent){const [x,y]=P(Lp.ent.x,Lp.ent.y);SIMR(pp,"med",x,y,s0*2.2);const l1="Entrada de energia / medição",l2=`alim. ${R.ent.s?R.ent.txt+" mm², ":""}${fmtN(S.forn.Lent)} m`,lw=Math.max(FB.widthOfTextAtSize(pt(l1),6.5),FB.widthOfTextAtSize(pt(l2),6.5));
-      const lx=Lp.ent.nx<0?x-lw-2.6*s0:Lp.ent.nx>0?x+2.6*s0:x-lw/2,ly=Lp.ent.ny<0?y-2.6*s0-16:Lp.ent.ny>0?y+2.6*s0+8:y+4;TL(pp,l1,lx,ly,6.5,FB,RED);TL(pp,l2,lx,ly-8,6.5,FB,RED);}
+      r.sai.forEach(([a,b])=>{const [cx,cy]=P(a,b);Bx(pp,cx-11,cy-3.5,22,7,{fill:ACC,bc:ACC});TC(pp,"SAÍDA",cx,cy-1.7,4.5,FB,rgb(1,1,1));});});
+    // alimentadores: eletroduto no teto/parede (contínuo); trechos fora da edificação, enterrados (tracejado)
+    Lp.alim.forEach(({pts,q})=>{polyIO(pts,1.2);
+      const f=(R.quadros.find(z=>z.q===q)||{}).f;if(f&&f.s){const [ax,ay,hz]=meioPoli(pts),[mx,y2]=P(ax,ay),dn=((f.ed||{}).nome||"").match(/DN (\d+)/);SIMR(pp,"cond",mx,y2,s0*1.2,{nf:f.nf,n:f.sn>0,pe:f.spe>0,ang:hz?0:90});TL(pp,`Alim. ${q.nome}: ${dn?"ø"+dn[1]+" — ":""}${f.txt} mm²`,mx-30,y2-fs-3,fs,F,INK);}});
+    Lp.quad.forEach(r=>{const [x,y]=P(r.x,r.y);SIMR(pp,r.q===S.quadros[0]?"qdg":"qdp",x,y,s0*1.8,{ang:r.ang||0});const rq=R.quadros.find(z=>z.q===r.q);TL(pp,`${r.q.nome}${rq?` — ${fmt(rq.inst,1)} kW`:""}`,x-2.3*s0,y+2.2*s0,6.5,FB,r.naParede?INK:RED);});
+    if(Lp.entRota)polyIO(Lp.entRota.pts,1.4);
+    if(Lp.ent){const [x,y]=P(Lp.ent.x,Lp.ent.y);SIMR(pp,"med",x,y,s0*2.2,{ang:Lp.ent.nx?90:0});const l1="Entrada de energia / medição",l2=`alim. ${R.ent.s?R.ent.txt+" mm², ":""}${fmtN(S.forn.Lent)} m`,lw=Math.max(FB.widthOfTextAtSize(pt(l1),6.5),FB.widthOfTextAtSize(pt(l2),6.5));
+      const lx=Lp.ent.nx<0?x-lw-2.6*s0:Lp.ent.nx>0?x+2.6*s0:x-lw/2,ly=Lp.ent.ny<0?y-2.6*s0-16:Lp.ent.ny>0?y+2.6*s0+8:y+4;TL(pp,l1,lx,ly,6.5,FB,RED);TL(pp,l2,lx,ly-8,6.5,FB,RED);
+      if(Lp.entRota&&Lp.entRota.pts.some(([a,b])=>!Lp.dentroDe(a,b)))TL(pp,"trecho externo: ramal de entrada enterrado (método D)",lx,ly-16,5.5,F,RED);}
     // escala gráfica
     const m=[1,2,5,10,20,50].find(v=>v*sc>=60)||50;Ln(pp,X0,Y0-30,X0+m*sc,Y0-30,2);Ln(pp,X0,Y0-34,X0,Y0-26,1);Ln(pp,X0+m*sc,Y0-34,X0+m*sc,Y0-26,1);TL(pp,`0`,X0-2,Y0-44,7);TL(pp,`${m} m`,X0+m*sc-8,Y0-44,7);
     // legenda
-    const lx=X0+BW+30,ls=3.6;let ly=h-110;T(pp,"Legenda — ABNT NBR 5444",lx,ly,10,FB);ly-=18;
-    const lg=[["8.4",()=>{SIM(pp,"lum",lx+10,ly+3,ls);},"Ponto de luz no teto (LED/fluorescente): letra = comando; -n- = circuito; nº × W"],["7.1",()=>SIM(pp,"inter",lx+10,ly+3,ls),"Interruptor de uma seção (letra do ponto comandado)"],
-      ["9.2",()=>SIM(pp,"tom",lx+10,ly+3,ls,{alt:"media",ang:90}),"Tomada a meia altura (1,30 m) — potência em VA, exceto 100 VA"],["9.3",()=>SIM(pp,"tom",lx+10,ly+3,ls,{alt:"alta",ang:90}),"Tomada alta (2,00 m) / ponto de força — potência em W ou kW"],
-      ["10.2",()=>SIM(pp,"motor",lx+10,ly+3,ls*1.3),"Motor — características nominais"],["8.15",()=>SIM(pp,"emg",lx+10,ly+3,ls,{},ORG),"Ponto de luz de emergência com alimentação independente (NBR 10898)"],
-      ["—",()=>Bx(pp,lx+2,ly,16,6,{fill:ACC,bc:ACC}),"Sinalização de saída (NBR 13434)"],["6.3",()=>SIM(pp,"qdg",lx+10,ly+4,ls*1.6),"Quadro geral de luz e força aparente"],["6.1",()=>SIM(pp,"qdp",lx+10,ly+4,ls*1.6),"Quadro parcial de luz e força aparente — carga em kW"],
-      ["5.13",()=>Ln(pp,lx,ly+3,lx+20,ly+3,2.4,INK),"Eletrocalha / leito de cabos com circuitos passantes"],["5.18",()=>SIM(pp,"desce",lx+10,ly+3,ls),"Eletroduto que desce (baixada)"],
-      ["5.2",()=>Ln(pp,lx,ly+3,lx+20,ly+3,0.9,INK,[4,3]),"Eletroduto embutido no piso / enterrado — ø em mm (Tab. 1)"],["5.6–5.9",()=>{Ln(pp,lx,ly+3,lx+20,ly+3,0.6);SIM(pp,"cond",lx+10,ly+3,ls,{nf:3,n:true,pe:true});},"Condutores fase, neutro e terra no eletroduto"],
+    const lx=X0+BW+30,ls=3.6;let ly=h-104;T(pp,"Legenda — ABNT NBR 5444",lx,ly,10,FB);ly-=16;
+    const lg=[["8.4",()=>{SIM(pp,"lum",lx+10,ly+3,ls);},"Ponto de luz no teto: letra = comando; -n- = circuito; nº × W"],["7.1",()=>SIM(pp,"inter",lx+10,ly+3,ls),"Interruptor de uma seção, ao lado da porta (letra do ponto comandado)"],
+      ["9.2",()=>SIM(pp,"tom",lx+10,ly+3,ls,{alt:"media",ang:90}),"Tomada a meia altura (1,30 m) — potência em VA, exceto 100 VA"],["9.3",()=>SIM(pp,"tom",lx+10,ly+3,ls,{alt:"alta",ang:90}),"Tomada alta (2,00 m) / ponto de uso específico"],
+      ["10.2",()=>SIM(pp,"motor",lx+10,ly+3,ls*1.3),"Motor / máquina — nome, circuito e potência"],["5.18",()=>SIM(pp,"desce",lx+10,ly+3,ls),"Eletroduto que desce até a máquina (baixada no meio do ambiente)"],
+      ["8.15",()=>SIM(pp,"emg",lx+10,ly+3,ls,{},ORG),"Ponto de luz de emergência (NBR 10898)"],["—",()=>Bx(pp,lx+2,ly,16,6,{fill:ACC,bc:ACC}),"Sinalização de saída sobre a porta (NBR 13434)"],
+      ["6.3",()=>SIM(pp,"qdg",lx+10,ly+4,ls*1.6),"Quadro geral de luz e força, na parede"],["6.1",()=>SIM(pp,"qdp",lx+10,ly+4,ls*1.6),"Quadro parcial de luz e força, na parede — carga em kW (em vermelho: fora da parede, ajustar)"],
+      ["5.1",()=>Ln(pp,lx,ly+3,lx+20,ly+3,0.9,INK),"Eletroduto embutido no teto ou na parede"],["5.13",()=>Ln(pp,lx,ly+3,lx+20,ly+3,2.2,INK),"Eletrocalha no teto (4 ou mais circuitos)"],
+      ["5.2",()=>Ln(pp,lx,ly+3,lx+20,ly+3,0.9,INK,[4,3]),"Eletroduto enterrado (só fora da edificação)"],
+      ["5.6–5.9",()=>{Ln(pp,lx,ly+3,lx+20,ly+3,0.6);SIM(pp,"cond",lx+10,ly+3,ls,{nf:1,n:true,r:1,pe:true});},"Fase, neutro, retorno e terra; -n- = circuito, letra = retorno"],
+      ["—",()=>{Ln(pp,lx,ly+3,lx+20,ly+3,3,rgb(0.8,0.8,0.8));Ln(pp,lx,ly+1,lx+20,ly+1,0.4);Ln(pp,lx,ly+3,lx+20,ly+3,0.4);Ln(pp,lx,ly+5,lx+20,ly+5,0.4);},"Janela (J) — largura em m"],
+      ["—",()=>{Ln(pp,lx,ly,lx,ly+10,0.8);for(let k=0;k<6;k++){const a=k/6*Math.PI/2,b=(k+1)/6*Math.PI/2;Ln(pp,lx+10*Math.sin(a),ly+10*Math.cos(a),lx+10*Math.sin(b),ly+10*Math.cos(b),0.5,MUT);}},"Porta (P) — largura em m e sentido de abertura"],
+      ["—",()=>Ln(pp,lx,ly+3,lx+22,ly+3,0.9,GR,LIM),"Limite da área (traço-ponto-ponto)"],
       ["—",()=>Bx(pp,lx+2,ly-1,16,8,{fill:rgb(0.99,0.95,0.88),bc:INK,bw:0.6}),"Área classificada (poeira combustível)"]];
-    lg.forEach(([n,fn,t])=>{fn();T(pp,n,lx+26,ly,6.5,FB,MUT);const k=TW(pp,t,lx+58,ly,w-lx-80,7);ly-=Math.max(16,k*9+7);});ly-=4;
-    T(pp,"Seção indicada quando diferente de 1,5 mm²; números entre traços = circuito.",lx,ly,6.8,FB,RED);ly-=20;
-    T(pp,"Circuitos",lx,ly,10,FB);ly-=15;R.out.forEach(o=>{if(ly<150)return;T(pp,`${o.i+1} — ${o.c.nome}`.slice(0,52),lx,ly,6.8);ly-=10;});
-    T(pp,"Posições informadas nas etapas 02 e 04 (ou automáticas, dentro do espaço total). Pontos distribuídos em grade: ajustar no projeto executivo. Arquivo DXF em escala na etapa 08.",50,62,8,FB,RED);
+    lg.forEach(([n,fn,t])=>{fn();T(pp,n,lx+26,ly,6.2,FB,MUT);const k=TW(pp,t,lx+58,ly,w-lx-80,6.6);ly-=Math.max(13,k*8.5+5);});ly-=4;
+    T(pp,"Seção indicada quando diferente de 1,5 mm².",lx,ly,6.6,FB,RED);ly-=16;
+    T(pp,"Circuitos",lx,ly,9.5,FB);ly-=13;R.out.forEach(o=>{if(ly<140)return;T(pp,`${o.i+1} — ${o.c.nome}${o.c.ambienteNome?` (${o.c.ambienteNome})`:" (sem ambiente: não desenhado)"}`.slice(0,64),lx,ly,6.4);ly-=9;});
+    T(pp,"Posições das etapas 02 e 04 (ou automáticas). Eletrodutos pelo teto/parede, por dentro da edificação; pontos distribuídos em grade: ajustar no projeto executivo. DXF em escala na etapa 08.",50,62,7.5,FB,RED);
     carimbo(pp,w,"Planta baixa","PB-01",`Escala gráfica (1:${fmt0(Math.round(1000/(sc*0.3528)/50)*50)})`);
   }
   function simLuminotecnico(){
