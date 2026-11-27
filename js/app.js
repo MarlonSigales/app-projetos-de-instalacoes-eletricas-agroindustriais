@@ -1467,7 +1467,8 @@ function guiasDoTrecho(ch){const hz=ch.t==="h",lin=hz?ch.a[1]:ch.a[0],i0=Math.mi
 function editarTracado(E_,d){const P=layoutPlanta(),{t,a,b}=E_.ch,hz=t==="h",lin=hz?a[1]:a[0],lo=Math.min(hz?a[0]:a[1],hz?b[0]:b[1]),hi=Math.max(hz?a[0]:a[1],hz?b[0]:b[1]);
   const off=p=>hz?[p[0],p[1]+d]:[p[0]+d,p[1]],co=p=>hz?p[0]:p[1],onSeg=p=>Math.abs((hz?p[1]:p[0])-lin)<0.13&&co(p)>=lo-0.13&&co(p)<=hi+0.13;
   const g=E_.gp,movel=Math.abs(co(g)-co(a))<=Math.abs(co(g)-co(b))?co(a):co(b);let n=0;S.vias=S.vias||{};
-  (E_.ch.ligs||[]).forEach(key=>{const l=P.lig.find(x=>x.key===key);if(!l)return;
+  const todas=[...P.lig,...P.alim.map(a=>({key:a.key,pts:a.pts})),...(P.entRota?[{key:"ent",pts:P.entRota.pts}]:[])];
+  (E_.ch.ligs||[]).forEach(key=>{const l=todas.find(x=>x.key===key);if(!l)return;
     const dn=[l.pts[0]];for(let k=1;k<l.pts.length;k++){const [x1,y1]=l.pts[k-1],[x2,y2]=l.pts[k],m=Math.max(1,Math.ceil((Math.abs(x2-x1)+Math.abs(y2-y1))/0.25));for(let i=1;i<=m;i++)dn.push([x1+(x2-x1)*i/m,y1+(y2-y1)*i/m]);}
     let i0=dn.findIndex(onSeg);if(i0<0)return;let i1=i0;while(i1+1<dn.length&&onSeg(dn[i1+1]))i1++;if(i1===i0)return;
     let novo;if(E_.tp==="ch")novo=[...dn.slice(0,i0+1),off(dn[i0]),off(dn[i1]),...dn.slice(i1)];
@@ -1511,6 +1512,8 @@ function edFerramenta(x,y){const r=ambEm(x,y),rp=r||ambPerto(x,y),t=ED_TOOL;
     else{const a=r.a;if(tp==="tug")a.tugExtra=(+a.tugExtra||0)+1;else a.lumExtra=(+a.lumExtra||0)+1;}
     return edFim(tem?`${tp==="tug"?"Tomada":"Luminária"} acrescentada em ${r.a.nome}. Botão direito no ponto para mudar de circuito.`:`Circuito de ${tp==="tug"?"tomadas":"iluminação"} criado para ${r.a.nome} (${q}).`);}}
 function edApagar(g){const tp=g.dataset.drag||g.dataset.pt,i=+g.dataset.i,c=+g.dataset.c;edSnap();
+  if(tp==="seg"){const k=g.dataset.key;if(S.vias&&S.vias[k]){delete S.vias[k];S.viasNovas=(S.viasNovas||[]).filter(x=>x!==k);return edFim("Traçado automático restaurado neste alimentador.");}ED_UNDO.pop();return edToast("Este alimentador já segue o traçado automático.");}
+  if(tp==="int"){const cc=S.circ[c];if(cc){delete cc.ipx;delete cc.ipy;}return edFim("Interruptor voltou para junto da porta.");}
   if(tp==="amb"||tp==="res"){const a=S.ambientes.splice(i,1)[0];S.aberturas=S.aberturas.filter(o=>o.amb!==a.id);S.circ.forEach(x=>{if(x.ambiente===a.id)x.ambiente="";});return edFim(`${a.nome} apagado (os circuitos ficaram sem ambiente). Use Desfazer para voltar.`);}
   if(tp==="ab"){S.aberturas.splice(i,1);return edFim("Abertura apagada.");}
   if(tp==="q"){if(i===0){ED_UNDO.pop();return edToast("O quadro geral não pode ser apagado.");}const q=S.quadros.splice(i,1)[0],pai=q.pai||S.quadros[0].nome;S.circ.forEach(x=>{if(x.q===q.nome)x.q=pai;});S.quadros.forEach(x=>{if(x.pai===q.nome)x.pai=pai;});return edFim(`${q.nome} apagado; circuitos e sub-quadros passaram para o ${pai}.`);}
@@ -1530,15 +1533,20 @@ function editorSVG(){
     <rect data-drag="res" data-i="${i}" x="${(+X(r.x+r.L)-f*0.5).toFixed(3)}" y="${(+Y(r.y+r.W)-f*0.5).toFixed(3)}" width="${f}" height="${f}" fill="#1f3b5a" style="cursor:nwse-resize"><title>Arraste para mudar comprimento e largura</title></rect>`;});
   (S.guias||[]).forEach(g=>{s+=ln(g.a[0],g.a[1],g.b[0],g.b[1],"#2563eb",f/5,`${f/3} ${f/4}`);});
   P.chains.forEach(ch=>{const ed_=[...ch.ligs].some(k=>S.vias&&S.vias[k]&&(S.viasNovas||[]).includes(k));s+=ln(ch.a[0],ch.a[1],ch.b[0],ch.b[1],ed_?"#2563eb":"#7a5c00",ch.circ.length>=4?f/3:ed_?f/6:f/9);});
-  P.alim.forEach(a=>{for(let k=1;k<a.pts.length;k++)s+=ln(a.pts[k-1][0],a.pts[k-1][1],a.pts[k][0],a.pts[k][1],"#333",f/7);});
+  const novo_=k=>S.vias&&S.vias[k]&&(S.viasNovas||[]).includes(k);
+  P.alim.forEach(a=>{for(let k=1;k<a.pts.length;k++)s+=ln(a.pts[k-1][0],a.pts[k-1][1],a.pts[k][0],a.pts[k][1],novo_(a.key)?"#2563eb":"#333",f/6);});
+  const segAlvo=(key,pts,nome)=>{for(let k=1;k<pts.length;k++){const [a,b]=pts[k-1],[c,d]=pts[k],hz=Math.abs(b-d)<1e-6;if(Math.abs(a-c)+Math.abs(b-d)<0.4)continue;
+    s+=`<line data-drag="seg" data-key="${key}" data-k="${k}" x1="${X(a)}" y1="${Y(b)}" x2="${X(c)}" y2="${Y(d)}" stroke="#000" stroke-opacity="0" stroke-width="${f*0.8}" style="cursor:${ED_TOOL==="dobrar"?"crosshair":hz?"ns-resize":"ew-resize"}"><title>${esc(nome)} — arraste para mover; Dobrar para criar curva; botão direito para restaurar</title></line>`;}};
+
   P.chains.forEach((ch,k)=>{if(ch.len<0.4)return;s+=`<line data-drag="ch" data-i="${k}" x1="${X(ch.a[0])}" y1="${Y(ch.a[1])}" x2="${X(ch.b[0])}" y2="${Y(ch.b[1])}" stroke="#000" stroke-opacity="0" stroke-width="${f*0.7}" style="cursor:${ED_TOOL==="dobrar"?"crosshair":ch.t==="h"?"ns-resize":"ew-resize"}"><title>Eletroduto — circuito(s) ${ch.circ.join(", ")} · ${fmt(ch.len,2)} m — arraste para mover; ferramenta Dobrar para criar curva; botão direito para restaurar</title></line>`;});
-  if(P.entRota)for(let k=1;k<P.entRota.pts.length;k++){const [a,b]=P.entRota.pts[k-1],[c,d]=P.entRota.pts[k];s+=ln(a,b,c,d,"#000",f/6,P.dentroDe((a+c)/2,(b+d)/2)?"":`${f/2} ${f/3}`);}
+  P.alim.forEach(a=>segAlvo(a.key,a.pts,`Alimentador ${paiDe(a.q)?.nome||""} → ${a.q.nome}`));if(P.entRota)segAlvo("ent",P.entRota.pts,"Alimentador de entrada");
+  if(P.entRota){for(let k=1;k<P.entRota.pts.length;k++){const [a,b]=P.entRota.pts[k-1],[c,d]=P.entRota.pts[k];s+=ln(a,b,c,d,novo_("ent")?"#2563eb":"#000",f/6,P.dentroDe((a+c)/2,(b+d)/2)?"":`${f/2} ${f/3}`);}}
   const corC=c=>`hsl(${(c*67)%360} 65% 38%)`;
   P.amb.forEach(r=>{r.lum.forEach(([a,b],k)=>{s+=`<g data-pt="lum" data-amb="${r.a.id}" data-k="${k}" data-c="${r.lumC[k]}" style="cursor:context-menu"><rect x="${(+X(a)-f*0.4).toFixed(3)}" y="${(+Y(b)-f*0.22).toFixed(3)}" width="${f*0.8}" height="${f*0.44}" fill="#fff" stroke="${corC(r.lumC[k])}" stroke-width="${f/10}"/><title>Luminária — circuito ${r.lumC[k]||"—"} (${r.lumL[k]||""}); botão direito para trocar de circuito</title></g>`;});
     r.tug.forEach(([a,b,,,c],k)=>{s+=`<circle data-pt="tug" data-amb="${r.a.id}" data-k="${k}" data-c="${c}" cx="${X(a)}" cy="${Y(b)}" r="${f*0.25}" fill="${corC(c)}" style="cursor:context-menu"><title>Tomada — circuito ${c||"—"}; botão direito para trocar de circuito</title></circle>`;});
-    r.inters.forEach(it=>{s+=`<circle cx="${X(it.p[0])}" cy="${Y(it.p[1])}" r="${f*0.2}" fill="#fff" stroke="#000" stroke-width="${f/12}" pointer-events="none"/><text x="${(+X(it.p[0])+f*0.3).toFixed(3)}" y="${Y(it.p[1])}" font-size="${f*0.7}" pointer-events="none">${it.letra}</text>`;});
-    r.fix.forEach(fx=>{if(fx.maq)s+=`<g data-drag="maq" data-c="${fx.o.i}" style="cursor:move"><circle cx="${X(fx.p[0])}" cy="${Y(fx.p[1])}" r="${f*0.7}" fill="#fff" stroke="#000" stroke-width="${f/8}"/><text x="${X(fx.p[0])}" y="${(+Y(fx.p[1])+f*0.3).toFixed(3)}" font-size="${f*0.8}" text-anchor="middle" pointer-events="none">M</text><text x="${X(fx.p[0]+0.9)}" y="${Y(fx.p[1])}" font-size="${f*0.7}" pointer-events="none">${esc(fx.o.c.nome.replace(/\s*\([^)]*\)/g,""))} · C${fx.o.i+1}</text><title>${esc(fx.o.c.nome)} — botão direito para editar</title></g>`;
-      else{const k=CARGAS_TUE[fx.o.c.cargaTipo]||CARGAS_TUE.geral;s+=`<g data-drag="tue" data-c="${fx.o.i}" style="cursor:move"><circle cx="${X(fx.p[0])}" cy="${Y(fx.p[1])}" r="${f*0.45}" fill="#a33"/><text x="${X(fx.p[0])}" y="${(+Y(fx.p[1])+f*0.22).toFixed(3)}" font-size="${f*0.5}" fill="#fff" text-anchor="middle" font-weight="bold" pointer-events="none">${k.sg}</text><text x="${(+X(fx.p[0])+f*0.6).toFixed(3)}" y="${(+Y(fx.p[1])-f*0.5).toFixed(3)}" font-size="${f*0.65}" fill="#a33" pointer-events="none">${esc(fx.o.c.nome)} · C${fx.o.i+1}</text><title>${esc(fx.o.c.nome)} (${k.t}) — arraste pelas paredes; botão direito para editar</title></g>`;}});
+    r.inters.forEach(it=>{s+=`<g ${it.c?`data-drag="int" data-c="${it.c-1}" style="cursor:move"`:""}><circle cx="${X(it.p[0])}" cy="${Y(it.p[1])}" r="${f*0.75}" fill="#000" fill-opacity="0"/><circle cx="${X(it.p[0])}" cy="${Y(it.p[1])}" r="${f*0.25}" fill="#fff" stroke="#000" stroke-width="${f/10}"/><text x="${(+X(it.p[0])+f*0.35).toFixed(3)}" y="${Y(it.p[1])}" font-size="${f*0.7}" pointer-events="none">${it.letra}</text><title>Interruptor ${it.letra} — circuito ${it.c||"—"}; arraste pelas paredes</title></g>`;});
+    r.fix.forEach(fx=>{if(fx.maq)s+=`<g data-drag="maq" data-c="${fx.o.i}" style="cursor:move"><circle cx="${X(fx.p[0])}" cy="${Y(fx.p[1])}" r="${f*1.2}" fill="#000" fill-opacity="0"/><circle cx="${X(fx.p[0])}" cy="${Y(fx.p[1])}" r="${f*0.7}" fill="#fff" stroke="#000" stroke-width="${f/8}"/><text x="${X(fx.p[0])}" y="${(+Y(fx.p[1])+f*0.3).toFixed(3)}" font-size="${f*0.8}" text-anchor="middle" pointer-events="none">M</text><text x="${X(fx.p[0]+0.9)}" y="${Y(fx.p[1])}" font-size="${f*0.7}" pointer-events="none">${esc(fx.o.c.nome.replace(/\s*\([^)]*\)/g,""))} · C${fx.o.i+1}</text><title>${esc(fx.o.c.nome)} — botão direito para editar</title></g>`;
+      else{const k=CARGAS_TUE[fx.o.c.cargaTipo]||CARGAS_TUE.geral;s+=`<g data-drag="tue" data-c="${fx.o.i}" style="cursor:move"><circle cx="${X(fx.p[0])}" cy="${Y(fx.p[1])}" r="${f*1}" fill="#000" fill-opacity="0"/><circle cx="${X(fx.p[0])}" cy="${Y(fx.p[1])}" r="${f*0.45}" fill="#a33"/><text x="${X(fx.p[0])}" y="${(+Y(fx.p[1])+f*0.22).toFixed(3)}" font-size="${f*0.5}" fill="#fff" text-anchor="middle" font-weight="bold" pointer-events="none">${k.sg}</text><text x="${(+X(fx.p[0])+f*0.6).toFixed(3)}" y="${(+Y(fx.p[1])-f*0.5).toFixed(3)}" font-size="${f*0.65}" fill="#a33" pointer-events="none">${esc(fx.o.c.nome)} · C${fx.o.i+1}</text><title>${esc(fx.o.c.nome)} (${k.t}) — arraste pelas paredes; botão direito para editar</title></g>`;}});
     r.ab.forEach((o,j)=>{const gi=S.aberturas.indexOf(S.aberturas.filter(z=>z.amb===r.a.id)[j]);s+=`<line data-drag="ab" data-i="${gi}" x1="${X(o.A[0])}" y1="${Y(o.A[1])}" x2="${X(o.B[0])}" y2="${Y(o.B[1])}" stroke="${o.tipo==="porta"?"#c2410c":"#0369a1"}" stroke-width="${f*0.6}" style="cursor:grab"><title>${o.tipo==="porta"?"Porta":"Janela"} ${(MODELOS_AB[o.tipo][o.modelo]||["",""])[0].toLowerCase()} ${fmt(o.larg,2)} m — arraste pela parede; botão direito para editar</title></line>`;});});
   P.quad.forEach((r,i)=>{s+=`<g data-drag="q" data-i="${i}" style="cursor:move"><rect x="${(+X(r.x)-f*0.6).toFixed(3)}" y="${(+Y(r.y)-f*0.6).toFixed(3)}" width="${f*1.2}" height="${f*1.2}" fill="${r.naParede?"#b3261e":"#fff"}" stroke="#b3261e" stroke-width="${f/8}"/><text x="${(+X(r.x)+f*0.8).toFixed(3)}" y="${(+Y(r.y)-f*0.7).toFixed(3)}" font-size="${f*0.85}" fill="#b3261e" font-weight="bold" pointer-events="none">${esc(r.q.nome)}</text><title>${esc(r.q.nome)} — botão direito para editar</title></g>`;});
   if(P.ent)s+=`<polygon data-drag="ent" points="${[[0,1],[0.9,-0.6],[-0.9,-0.6]].map(([u,v])=>`${(+X(P.ent.x)+u*f).toFixed(3)},${(+Y(P.ent.y)-v*f).toFixed(3)}`).join(" ")}" fill="#e8a400" stroke="#000" stroke-width="${f/10}" style="cursor:grab"><title>Entrada de energia — arraste pelo limite; botão direito para editar</title></polygon>`;
@@ -1606,12 +1614,15 @@ function edCtxAbrir(ev,g){const D=edDoc(),box=D.getElementById("edCtx");if(!box)
       +(tp==="maq"?sel("partida","Partida",opts(Object.entries(PARTIDAS),x.partida||"direta"))+sel("prot","Proteção",opts(Object.entries(PROTS),x.prot||"dj")):"");}
   else if(tp==="tug"||tp==="lum"){const a=S.ambientes.find(z=>z.id===g.dataset.amb),tipo=tp==="tug"?"tug":"ilum",irm=S.circ.map((x,j)=>[x,j]).filter(([x])=>x.ambiente===a.id&&x.tipo===tipo),cur=irm.find(([,j])=>j+1===c);
     ttl=`${tp==="tug"?"Tomada":"Luminária"} em ${a.nome}`;h=sel("circ","Circuito",opts([...irm.map(([x,j])=>[j,`C${j+1} — ${x.nome}`]),["__novo","+ Novo circuito"]],cur?cur[1]:""))+sel("q","Quadro do circuito",qOpts(cur?cur[0].q:quadroDoAmbiente(posAmbientes().find(r=>r.a.id===a.id))))+inp("nomeC","Nome do circuito (novo)",`${tp==="tug"?"TUG":"Iluminação"} ${a.nome} ${irm.length+1}`)+(tp==="tug"?inp("pot","VA por tomada",cur?cur[0].pot:200,"number"):inp("w","W por luminária",a.w,"number"));}
+  else if(tp==="seg"){const k=g.dataset.key;ttl=k==="ent"?"Alimentador de entrada":`Alimentador → ${k.replace(/^al:/,"")}`;
+    h=`<label>Traçado<select name="acao"><option value="manter">manter</option><option value="auto" ${S.vias&&S.vias[k]?"":"disabled"}>restaurar o automático</option></select></label>`;}
+  else if(tp==="int"){const c_=S.circ[c];ttl=`Interruptor — C${c+1} ${c_?.nome||""}`;h=`<label>Posição<select name="acao"><option value="manter">manter</option><option value="auto" ${c_&&c_.ipx!=null&&c_.ipx!==""?"":"disabled"}>voltar para junto da porta</option></select></label>`;}
   else if(tp==="ch"){const ch=layoutPlanta().chains[i];if(!ch)return;ttl=`Eletroduto · ${fmt(ch.len,2)} m`;
     h=`<p style="margin:0 0 6px">${ch.circ.map(c=>{const v=ch.m.get(c);return `C${c} ${esc(S.circ[c-1]?.nome||"")}: ${v.F}F${v.N?" + N":""}${v.R.size?` + R(${[...v.R].join("")})`:""}${v.T?" + T":""}`;}).join("<br>")}</p>`+
       `<label>Traçado<select name="acao"><option value="manter">manter</option><option value="auto" ${tracadoEditado(ch)?"":"disabled"}>restaurar o automático neste trecho</option><option value="tudo" ${(S.guias||[]).length||Object.keys(S.vias||{}).length?"":"disabled"}>restaurar o automático em toda a planta</option></select></label>`;}
   else if(tp==="ent"){ttl="Entrada de energia";h=sel("entLado","Limite",opts([["inf","Inferior"],["sup","Superior"],["esq","Esquerdo"],["dir","Direito"]],S.forn.entLado))+inp("entPos","Posição (m)",S.forn.entPos,"number",'step="0.5"')+inp("Lent","Alimentador (m)",S.forn.Lent,"number",'step="0.5"');}
   else return;
-  box.innerHTML=`<form id="edCtxF" data-tp="${tp}" data-i="${i}" data-c="${c}" data-amb="${g.dataset.amb||""}" data-k="${g.dataset.k||""}"><h4>${esc(ttl)}</h4>${h}<div class="ed-ctx-b"><button type="button" class="btn small" id="edCtxX">Fechar</button><button type="submit" class="btn small primary">Aplicar</button></div></form>`;
+  box.innerHTML=`<form id="edCtxF" data-tp="${tp}" data-i="${i}" data-c="${c}" data-amb="${g.dataset.amb||""}" data-k="${g.dataset.k||""}" data-key="${g.dataset.key||""}"><h4>${esc(ttl)}</h4>${h}<div class="ed-ctx-b"><button type="button" class="btn small" id="edCtxX">Fechar</button><button type="submit" class="btn small primary">Aplicar</button></div></form>`;
   box.hidden=false;const vw=(PIP||window).innerWidth,vh=(PIP||window).innerHeight;box.style.left=Math.min(ev.clientX,vw-300)+"px";box.style.top=Math.max(4,Math.min(ev.clientY,vh-box.offsetHeight-8))+"px";}
 function edCtxAplicar(f){const tp=f.dataset.tp,i=+f.dataset.i,c=+f.dataset.c,v=n=>f.elements[n]?f.elements[n].value:undefined,num=n=>{const x=parseFloat(v(n));return isFinite(x)?x:0;};edSnap();
   const quadroDe=(val,x,y)=>val==="__novo"?novoQuadro(x,y):val;
@@ -1632,6 +1643,8 @@ function edCtxAplicar(f){const tp=f.dataset.tp,i=+f.dataset.i,c=+f.dataset.c,v=n
     else{const ct=S.circ[+alvo];if(ct&&cs&&ct!==cs){if(fix(ct))ct.qtdAmb=+ct.qtdAmb+1;if(fix(cs))cs.qtdAmb=Math.max(0,+cs.qtdAmb-1);else{cs.qtdAmb=Math.max(0,qtdAt(cs)-1);if(fix(ct))ct.qtdAmb=qtdAt(ct)+1;else ct.qtdAmb="";}}
       if(ct)ct.q=qn;}
     if(tp==="tug"){const ct=alvo==="__novo"?S.circ[S.circ.length-1]:S.circ[+alvo];if(ct)ct.pot=num("pot")||ct.pot;}else a.w=num("w")||a.w;}
+  else if(tp==="seg"){const k=f.dataset.key;if(v("acao")==="auto"&&S.vias){delete S.vias[k];S.viasNovas=(S.viasNovas||[]).filter(x=>x!==k);}else{ED_UNDO.pop();edCtxFechar();return;}}
+  else if(tp==="int"){const c_=S.circ[c];if(v("acao")==="auto"&&c_){delete c_.ipx;delete c_.ipy;}else{ED_UNDO.pop();edCtxFechar();return;}}
   else if(tp==="ch"){const ch=layoutPlanta().chains[i];if(v("acao")==="auto"&&ch)restaurarTrecho(ch);else if(v("acao")==="tudo"){S.guias=[];S.vias={};S.viasNovas=[];}else{ED_UNDO.pop();edCtxFechar();return;}}
   else if(tp==="ent"){S.forn.entLado=v("entLado");S.forn.entPos=num("entPos");S.forn.Lent=num("Lent");}
   edCtxFechar();edFim("Alterações aplicadas.");}
@@ -1644,6 +1657,9 @@ function edDown(ev){const D=ev.target.ownerDocument;if(D!==edDoc()||!ev.target.c
   if((ED_TOOL==="sel"||ED_TOOL==="dobrar")&&g0&&g0.dataset.drag==="ch"){ev.preventDefault();const ch=layoutPlanta().chains[+g0.dataset.i];if(!ch)return;const p0=edPt(ev);
     const gp=ch.t==="h"?[Math.min(Math.max(p0[0],Math.min(ch.a[0],ch.b[0])),Math.max(ch.a[0],ch.b[0])),ch.a[1]]:[ch.a[0],Math.min(Math.max(p0[1],Math.min(ch.a[1],ch.b[1])),Math.max(ch.a[1],ch.b[1]))];
     EDT={tp:ED_TOOL==="dobrar"?"dob":"ch",ch:{t:ch.t,a:[...ch.a],b:[...ch.b],ligs:[...ch.ligs]},p0,gp};return;}
+  if((ED_TOOL==="sel"||ED_TOOL==="dobrar")&&g0&&g0.dataset.drag==="seg"){ev.preventDefault();const P_=layoutPlanta(),key=g0.dataset.key,k=+g0.dataset.k,pts=key==="ent"?P_.entRota?.pts:(P_.alim.find(a=>a.key===key)||{}).pts;if(!pts||!pts[k])return;
+    const a=pts[k-1],b=pts[k],t=Math.abs(a[1]-b[1])<1e-6?"h":"v",p0=edPt(ev),gp=t==="h"?[Math.min(Math.max(p0[0],Math.min(a[0],b[0])),Math.max(a[0],b[0])),a[1]]:[a[0],Math.min(Math.max(p0[1],Math.min(a[1],b[1])),Math.max(a[1],b[1]))];
+    EDT={tp:ED_TOOL==="dobrar"?"dob":"ch",ch:{t,a:[...a],b:[...b],ligs:[key]},p0,gp};return;}
   if(ED_TOOL==="dobrar"){ev.preventDefault();edToast("Pressione sobre um eletroduto e arraste para dobrá-lo.");return;}
   if(ED_TOOL!=="sel"){ev.preventDefault();const [x,y]=edPt(ev);edFerramenta(x,y);return;}
   const g=g0&&g0.dataset.drag?g0:null;if(!g)return;ev.preventDefault();edSnap();
@@ -1652,7 +1668,8 @@ function edDown(ev){const D=ev.target.ownerDocument;if(D!==edDoc()||!ev.target.c
     const den=(x,y)=>x>=r.x-0.3&&x<=r.x+r.L+0.3&&y>=r.y-0.3&&y<=r.y+r.W+0.3;
     EDT.qs=P.quad.filter(z=>den(z.x,z.y)).map(z=>({q:z.q,x:z.x,y:z.y}));EDT.ms=r.fix.filter(z=>z.maq||z.o.c.px!=null&&z.o.c.px!=="").map(z=>({c:S.circ[z.o.i],x:z.p[0],y:z.p[1]}));}
   if(tp==="q"){const r=P.quad[i];EDT.o={x:r.x,y:r.y};}
-  if(tp==="maq"||tp==="tue"){const f=P.amb.flatMap(r=>r.fix).find(z=>z.o.i===EDT.c);EDT.o={x:f.p[0],y:f.p[1]};}}
+  if(tp==="maq"||tp==="tue"){const f=P.amb.flatMap(r=>r.fix).find(z=>z.o.i===EDT.c);EDT.o={x:f.p[0],y:f.p[1]};}
+  if(tp==="int"){const it=P.amb.flatMap(r=>r.inters).find(z=>z.c===EDT.c+1);EDT.o={x:it.p[0],y:it.p[1]};}}
 function edMove(ev){if(ev.target.ownerDocument!==edDoc()&&!EDT&&!ED_NOVO)return;
   if(ED_NOVO&&edEl("edSvg")){const [x,y]=edPt(ev),pr=edEl("edPrev"),sv=edEl("edSvg"),x1=+sv.dataset.x1,y2=+sv.dataset.y2;
     pr.setAttribute("x",Math.min(x,ED_NOVO[0])-x1);pr.setAttribute("y",y2-Math.max(y,ED_NOVO[1]));pr.setAttribute("width",Math.abs(x-ED_NOVO[0]));pr.setAttribute("height",Math.abs(y-ED_NOVO[1]));return;}
@@ -1663,6 +1680,7 @@ function edMove(ev){if(ev.target.ownerDocument!==edDoc()&&!EDT&&!ED_NOVO)return;
     (EDT.qs||[]).forEach(z=>{z.q.x=Math.round((z.x+ddx)*100)/100;z.q.y=Math.round((z.y+ddy)*100)/100;});(EDT.ms||[]).forEach(z=>{if(z.c){z.c.px=z.x+ddx;z.c.py=z.y+ddy;}});}
   else if(EDT.tp==="res"){const a=S.ambientes[EDT.i];a.comprimento=Math.max(1,sn(EDT.o.L+dx));a.largura=Math.max(1,sn(EDT.o.W+dy));}
   else if(EDT.tp==="q"){const q=S.quadros[EDT.i];q.x=Math.round((EDT.o.x+dx)*4)/4;q.y=Math.round((EDT.o.y+dy)*4)/4;}
+  else if(EDT.tp==="int"){const c=S.circ[EDT.c];c.ipx=Math.round((EDT.o.x+dx)*4)/4;c.ipy=Math.round((EDT.o.y+dy)*4)/4;}
   else if(EDT.tp==="maq"||EDT.tp==="tue"){const c=S.circ[EDT.c];c.px=Math.round((EDT.o.x+dx)*4)/4;c.py=Math.round((EDT.o.y+dy)*4)/4;}
   else if(EDT.tp==="ab"){const o=S.aberturas[EDT.i],r=posAmbientes().find(z=>z.a.id===o.amb);if(r){const hz=o.parede==="inf"||o.parede==="sup",lim=hz?r.L:r.W;o.pos=Math.round(Math.min(Math.max(0,lim-o.larg),Math.max(0,(hz?x-r.x:y-r.y)-o.larg/2))*10)/10;}}
   else if(EDT.tp==="ent"){const e=espacoTotal();if(e){const d=[["inf",Math.abs(y)],["sup",Math.abs(y-e.L)],["esq",Math.abs(x)],["dir",Math.abs(x-e.C)]].sort((a,b)=>a[1]-b[1])[0][0];S.forn.entLado=d;S.forn.entPos=Math.round(Math.min(d==="inf"||d==="sup"?e.C:e.L,Math.max(0,d==="inf"||d==="sup"?x:y))*2)/2;}}
@@ -2119,6 +2137,7 @@ function layoutPlanta(){
     const cIl=[...new Set(lumC)].filter(Boolean),inters=[];
     (cIl.length?cIl:(nLum?[0]:[])).forEach((c,j)=>{let p;if(portas.length){const d=portas[0],antes=d.p0-0.25-0.2*j>=0.3,s_=antes?d.p0-0.25-0.2*j:d.p1+0.25+0.2*j;
         p=d.hz?[x+s_,d.A[1]+d.nin[1]*0.15]:[d.A[0]+d.nin[0]*0.15,y+s_];}else p=[x+Math.min(0.8,L/4)+0.25*j,y+0.35];inters.push({c,p,letra:String.fromCharCode(97+((nCmd+j)%26))});});
+    inters.forEach(it=>{const cc=it.c?S.circ[it.c-1]:null;if(!cc||cc.ipx===""||cc.ipx==null||cc.ipy===""||cc.ipy==null)return;const w_=paredeMaisProxima({amb:[{a,x,y,L,W,ab}]},+cc.ipx,+cc.ipy);if(w_)it.p=[w_.x,w_.y];});
     const inter=inters[0]?inters[0].p:null;
     const e=S.par.emerg?emergCalc(a):{n:0,saidas:0,esp:1};const ce=Math.max(1,Math.ceil(L/e.esp)),re=Math.max(1,Math.ceil(W/e.esp)),emg=[];
     for(let i=0;i<ce;i++)for(let j=0;j<re;j++)if(emg.length<e.n)emg.push([x+L*(i+0.5)/ce+0.6,y+W*(j+0.5)/re+0.6]);
@@ -2184,9 +2203,11 @@ function layoutPlanta(){
     ch.mid=[(ch.a[0]+ch.b[0])/2,(ch.a[1]+ch.b[1])/2];});
   // compatibilidade: rotas por canaleta (croqui e situação desenham os eletrodutos agregados)
   const rotas=chains.length?[{k:"",paths:chains.map(ch=>[ch.a,ch.b])}]:[];
-  const alim=S.quadros.map(q=>{const pai=paiDe(q);if(!pai)return null;const a=qp(pai.nome),b=qp(q.nome);return a&&b?{de:a,para:b,q,pts:rota([a.x,a.y],[b.x,b.y]).pts}:null;}).filter(Boolean);
+  const viaOu=(key,pts)=>{const v=S.vias&&S.vias[key];return v&&igual(v[0],pts[0])&&igual(v[v.length-1],pts[pts.length-1])?v.map(p=>[...p]):pts;};
+  const alim=S.quadros.map(q=>{const pai=paiDe(q);if(!pai)return null;const a=qp(pai.nome),b=qp(q.nome);const key=`al:${q.nome}`;return a&&b?{de:a,para:b,q,key,pts:viaOu(key,rota([a.x,a.y],[b.x,b.y]).pts)}:null;}).filter(Boolean);
   // entrada → QGBT: do limite até a edificação pelo menor trecho externo (enterrado) e depois por dentro
-  const entRota=ent&&quad[0]?rota([ent.x,ent.y],[quad[0].x,quad[0].y]):null;
+  let entRota=ent&&quad[0]?rota([ent.x,ent.y],[quad[0].x,quad[0].y]):null;
+  if(entRota){const pts=viaOu("ent",entRota.pts);let L=0;for(let k=1;k<pts.length;k++)L+=Math.abs(pts[k][0]-pts[k-1][0])+Math.abs(pts[k][1]-pts[k-1][1]);entRota={pts,L,key:"ent"};}
   const dentroDe=(x,y)=>ambOk.some(r=>x>=r.x-1e-6&&x<=r.x+r.L+1e-6&&y>=r.y-1e-6&&y<=r.y+r.W+1e-6);
   return {amb,quad,rotas,chains,lig,alim,bb,esp,ent,entRota,rota,dentroDe};
 }
