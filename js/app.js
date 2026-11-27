@@ -125,10 +125,9 @@ function nivelQ(q){return cadeia(q).length-1;}
 function origemQ(q){const p=paiDe(q);return p?p.nome:"";}
 function distQGBT(q){return cadeia(q).reduce((a,x)=>a+(x===S.quadros[0]?0:Math.max(0,+x.L||0)),0);} // soma dos trechos até o QGBT
 function quadrosEmArvore(){const out=[];const vis=new Set();const rec=(q)=>{if(vis.has(q))return;vis.add(q);out.push(q);S.quadros.filter(x=>x!==q&&paiDe(x)===q).forEach(rec);};rec(S.quadros[0]);S.quadros.forEach(q=>{if(!vis.has(q))out.push(q);});return out;}
-// grade fechada de luminárias: colunas = √(N·C/L) arredondado (o mais próximo primeiro; depois para baixo ou para cima)
-// e linhas = N/colunas inteiro; se nenhuma opção fechar, soma uma luminária e recalcula
-function gradeLum(n,L,W){for(let N=Math.max(1,n);;N++){const r=Math.sqrt(N*L/W);
-  for(const c of [...new Set([Math.round(r),Math.floor(r),Math.ceil(r)])].filter(c=>c>=1))if(N%c===0)return {n:N,cols:c,rows:N/c};}}
+// grade fechada de luminárias: colunas = ⌈√(N·C/L)⌉ (sempre para cima, nunca subdimensiona) e linhas = N/colunas;
+// se as linhas não derem inteiras, soma uma luminária e recalcula (colunas limitadas a N)
+function gradeLum(n,L,W){for(let N=Math.max(1,n);;N++){const c=Math.min(N,Math.max(1,Math.ceil(Math.sqrt(N*L/W)-1e-9)));if(N%c===0)return {n:N,cols:c,rows:N/c};}}
 function calcularAmbiente(a){
   const L=Math.max(0,+a.comprimento||0),W=Math.max(0,+a.largura||0),H=Math.max(0,+a.altura||0);
   const area=L*W,perimetro=2*(L+W),hm=Math.max(0.5,H-0.8);
@@ -779,12 +778,14 @@ function croquiSit(){
   const svg=`<svg viewBox="0 0 ${W.toFixed(2)} ${H.toFixed(2)}" style="width:100%;max-height:420px;background:#fff;border:1px solid var(--line,#ccc);border-radius:6px" role="img" aria-label="Croqui do espaço com os ambientes">
 ${eC&&eL?`<rect x="${sx(0)}" y="${sy(eL)}" width="${eC}" height="${eL}" fill="#f4f7f2" stroke="#2e5d34" stroke-width="${fs/6}" stroke-dasharray="${fs/2} ${fs/4}"/><text x="${sx(0)+fs/3}" y="${sy(eL)-fs/3}" font-size="${fs*0.8}" fill="#2e5d34">Espaço total ${fmt(eC,1)} × ${fmt(eL,1)} m</text>`:""}
 ${P.amb.map(r=>`<rect x="${sx(r.x)}" y="${sy(r.y+r.W)}" width="${r.L}" height="${r.W}" fill="${temXY(r.a)?"#dfe9f5":"#fff4d6"}" stroke="#1f3b5a" stroke-width="${fs/8}" ${temXY(r.a)?"":`stroke-dasharray="${fs/3} ${fs/5}"`}/><text x="${sx(r.x+r.L/2)}" y="${sy(r.y+r.W/2)}" font-size="${fs}" text-anchor="middle" fill="#1f3b5a">${esc(r.a.nome)}</text><text x="${sx(r.x+r.L/2)}" y="${sy(r.y+r.W/2)+fs*1.2}" font-size="${fs*0.75}" text-anchor="middle" fill="#555">${fmt(r.L,1)} × ${fmt(r.W,1)} m · (${fmt(r.x,1)}; ${fmt(r.y,1)})</text>`).join("")}
+${P.alim.map(({pts})=>`<polyline points="${pts.map(([a,b])=>sx(a)+","+sy(b)).join(" ")}" fill="none" stroke="#555" stroke-width="${fs/9}" stroke-dasharray="${fs/3} ${fs/5}"/>`).join("")}
+${P.rotas.map(r=>r.paths.map(pt=>`<polyline points="${pt.map(([a,b])=>sx(a)+","+sy(b)).join(" ")}" fill="none" stroke="#7a5c00" stroke-width="${fs/5}" stroke-opacity="0.7"/>`).join("")).join("")}
 ${P.quad.map(r=>`<rect x="${sx(r.x)-fs/3}" y="${sy(r.y)-fs/3}" width="${fs*2/3}" height="${fs*2/3}" fill="#b3261e"/><text x="${sx(r.x)+fs/2}" y="${sy(r.y)+fs/3}" font-size="${fs*0.75}" fill="#b3261e">${esc(r.q.nome)}</text>`).join("")}
 ${eR?`<polyline points="${eR.pts.map(([a,b])=>sx(a)+","+sy(b)).join(" ")}" fill="none" stroke="#000" stroke-width="${fs/7}" stroke-dasharray="${fs/2} ${fs/4}"/><text x="${sx((eR.pts[0][0]+eR.pts[1][0])/2)+fs/3}" y="${sy((eR.pts[0][1]+eR.pts[1][1])/2)-fs/3}" font-size="${fs*0.7}">alimentador de entrada ≈ ${fmt(eR.L,1)} m</text>`:""}
 ${P.ent?`<polygon points="${[[0,-1],[0.9,0.6],[-0.9,0.6]].map(([u,v])=>(sx(P.ent.x)+u*fs*0.7)+","+(sy(P.ent.y)+v*fs*0.7)).join(" ")}" fill="#e8a400" stroke="#000" stroke-width="${fs/12}"/><text x="${sx(P.ent.x)+(P.ent.nx<0?-fs:fs)}" y="${sy(P.ent.y)+(P.ent.ny>0?fs*1.4:-fs*0.9)}" font-size="${fs*0.8}" font-weight="bold" text-anchor="${P.ent.nx<0?"end":"start"}">Entrada de energia (${fmt(P.ent.x,1)}; ${fmt(P.ent.y,1)})</text>`:""}
 <circle cx="${sx(0)}" cy="${sy(0)}" r="${fs/4}" fill="#000"/><text x="${sx(0)+fs/3}" y="${sy(0)+fs}" font-size="${fs*0.7}">(0; 0)</text>
 </svg>`;
-  return `<p class="note" style="margin:10px 0 6px">Croqui (sem escala gráfica): ambientes em azul com posição informada, em amarelo tracejado com posição automática (encaixados dentro do espaço total a partir da origem); quadros em vermelho (posição na etapa 04; o QGBT sem posição fica junto da entrada); entrada de energia em laranja.</p>${svg}
+  return `<p class="note" style="margin:10px 0 6px">Croqui (sem escala gráfica): ambientes em azul com posição informada, em amarelo tracejado com posição automática (encaixados dentro do espaço total a partir da origem); quadros em vermelho (posição na etapa 04; sem posição, ficam dentro dos ambientes); entrada de energia em laranja; canaletas em marrom e alimentadores tracejados, roteados por dentro dos ambientes.</p>${svg}
 ${eR?`<p class="note${difEnt?" warn":""}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">Trajeto entrada → ${esc(S.quadros[0].nome)} no croqui: ≈ ${fmt(eR.L,1)} m. Comprimento do alimentador de entrada usado no cálculo (etapa 07): ${fmt(Lent,1)} m.${difEnt?`<button class="btn small" type="button" id="useEntDist">Usar ${fmt(Math.ceil(eR.L),0)} m no cálculo</button>`:""}</p>`:""}
 ${auto.length?`<p class="note">Posição automática (preencha X e Y para fixar): ${auto.join(", ")}.</p>`:""}${avisos.length?`<p class="note warn">${avisos.join(" · ")}.</p>`:""}`;}
 V.prel=()=>`${head(1)}
@@ -1045,7 +1046,7 @@ V.des=()=>`${head(7)}
 <p class="intro">Desenhos das plantas (item D), quadros e diagramas (item F) e detalhes construtivos (item G). Anexe as pranchas produzidas em CAD. Elas entram no PDF final na ordem da documentação do projeto.</p>
 <div class="block" style="margin-top:0;border-top:0;padding-top:0"><h3>Ambientes e dimensões</h3>
 <p class="note">Nome, dimensões e posição dos ambientes são cadastrados na etapa 02 (planta de situação) <button class="btn small" type="button" data-step="1">Ir para a etapa 02</button>; aqui ficam os parâmetros de iluminação, tomadas, influências e emergência. Tomadas TUG: contagem geométrica por perímetro e espaçamento adotado, no mínimo uma por ambiente (9.5.2.2.1). Iluminação: método dos lúmens, N = E × A / (φ × FU × FM), e espaçamento máximo S/Hm; a altura define Hm = altura − 0,8 m. Iluminâncias de referência: NBR ISO/CIE 8995-1 (ex.: depósitos 100–200 lx, processamento industrial 300 lx, escritórios 500 lx). Vincule os circuitos de iluminação e TUG a um ambiente na etapa 04 para usar estas quantidades.</p>
-<div class="tbl ct"><table><thead><tr>${[["Ambiente","nome"],["Comp. (m)","comprimento"],["Larg. (m)","largura"],["Alt. (m)","altura"],["Lux","lux"],["lm/luminária","lm"],["W/luminária","w"],["FU","uf"],["FM","mf"],["Esp. TUG (m)","espTomadas"],["S/Hm máx.","espLum"],["Influências","infl"],["Poeira comb.","zona"],["Saídas","saidas"],["X (m)","x"],["Y (m)","y"]].map(([t,k])=>thT(t,TIPS_COL.amb[k])).join("")}${thT("Área","Comprimento × largura.","r")}${thT("K","Índice do recinto K = A / (Hm × (C + L)). Use-o para ler o FU na tabela da luminária.","r")}${thT("TUG","Número de tomadas de uso geral calculado.","r")}${thT("Luminárias","Maior valor entre o método dos lúmens e o espaçamento máximo, arredondado para cima até fechar a grade: colunas = arred(√(N × C / L)) e linhas = N / colunas inteiro. Mostra a grade (colunas × linhas) e quantas luminárias foram acrescentadas (+n).","r")}${thT("Em obtida","Iluminância média mantida com o número de luminárias adotado. Deve ser ≥ ao valor exigido.","r")}${thT("Emerg.","Luminárias de emergência (NBR 10898): espaçamento ≤ 4 × altura de instalação, máx. 15 m.","r")}<th></th></tr></thead><tbody>
+<div class="tbl ct"><table><thead><tr>${[["Ambiente","nome"],["Comp. (m)","comprimento"],["Larg. (m)","largura"],["Alt. (m)","altura"],["Lux","lux"],["lm/luminária","lm"],["W/luminária","w"],["FU","uf"],["FM","mf"],["Esp. TUG (m)","espTomadas"],["S/Hm máx.","espLum"],["Influências","infl"],["Poeira comb.","zona"],["Saídas","saidas"],["X (m)","x"],["Y (m)","y"]].map(([t,k])=>thT(t,TIPS_COL.amb[k])).join("")}${thT("Área","Comprimento × largura.","r")}${thT("K","Índice do recinto K = A / (Hm × (C + L)). Use-o para ler o FU na tabela da luminária.","r")}${thT("TUG","Número de tomadas de uso geral calculado.","r")}${thT("Luminárias","Maior valor entre o método dos lúmens e o espaçamento máximo, arredondado para cima até fechar a grade: colunas = ⌈√(N × C / L)⌉ (sempre para cima) e linhas = N / colunas inteiro. Mostra a grade (colunas × linhas) e quantas luminárias foram acrescentadas (+n).","r")}${thT("Em obtida","Iluminância média mantida com o número de luminárias adotado. Deve ser ≥ ao valor exigido.","r")}${thT("Emerg.","Luminárias de emergência (NBR 10898): espaçamento ≤ 4 × altura de instalação, máx. 15 m.","r")}<th></th></tr></thead><tbody>
 ${S.ambientes.map(ambienteRow).join("")||`<tr><td colspan="23" style="padding:12px;color:var(--muted)">Nenhum ambiente cadastrado.</td></tr>`}
 </tbody></table></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" id="addAmb">+ Ambiente</button><button class="btn small primary" type="button" id="btnDxf" data-tip="Gera a planta baixa em escala real (metros) com ambientes, luminárias, tomadas, emergência, quadros e rotas das canaletas, em camadas, para abrir no AutoCAD, LibreCAD ou DraftSight.">Exportar planta (DXF)</button></div>
 <p class="note">Posição X/Y: canto inferior esquerdo de cada ambiente (e posição de cada quadro, etapa 04), em metros. Em branco, os ambientes são enfileirados automaticamente. A mesma posição é usada na planta do PDF e na exportação DXF.</p>
@@ -1647,14 +1648,50 @@ function posAmbientes(){
 function contornoEdif(){const p=posAmbientes().filter(r=>r.L>0&&r.W>0);if(!p.length)return null;
   const x1=Math.min(...p.map(r=>r.x)),y1=Math.min(...p.map(r=>r.y)),x2=Math.max(...p.map(r=>r.x+r.L)),y2=Math.max(...p.map(r=>r.y+r.W));
   return {x:x1,y:y1,L:x2-x1,W:y2-y1,H:Math.max(0,...p.map(r=>+r.a.altura||0))};}
+// roteador ortogonal: caminho de menor custo numa grade, com custo alto fora dos ambientes e penalidade por curva,
+// para que canaletas e eletrodutos corram por dentro das áreas (e saiam delas só quando não houver alternativa)
+function criarRoteador(rects,bb){
+  const span=Math.max(bb.x2-bb.x1,bb.y2-bb.y1,1),st=Math.max(0.25,Math.ceil(span/140*4)/4);
+  const x0=bb.x1-2*st,y0=bb.y1-2*st,nx=Math.ceil((bb.x2-x0)/st)+3,ny=Math.ceil((bb.y2-y0)/st)+3,N=nx*ny;
+  const dentro=new Uint8Array(N);
+  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const x=x0+i*st,y=y0+j*st;if(rects.some(r=>x>=r.x-1e-6&&x<=r.x+r.L+1e-6&&y>=r.y-1e-6&&y<=r.y+r.W+1e-6))dentro[j*nx+i]=1;}
+  const no=(x,y)=>[Math.min(nx-1,Math.max(0,Math.round((x-x0)/st))),Math.min(ny-1,Math.max(0,Math.round((y-y0)/st)))];
+  const cache=new Map(),DX=[1,-1,0,0],DY=[0,0,1,-1],FORA=30,CURVA=4;
+  function rota(a,b){const key=a.join()+"|"+b.join();if(cache.has(key))return cache.get(key);
+    const [si,sj]=no(...a),[ti,tj]=no(...b),S0=sj*nx+si,T0=tj*nx+ti;
+    const dist=new Float64Array(N*4).fill(Infinity),prev=new Int32Array(N*4).fill(-1),heap=[];
+    const push=(d,s)=>{heap.push([d,s]);let k=heap.length-1;while(k>0){const p=(k-1)>>1;if(heap[p][0]<=heap[k][0])break;[heap[p],heap[k]]=[heap[k],heap[p]];k=p;}};
+    const pop=()=>{const t=heap[0],l=heap.pop();if(heap.length){heap[0]=l;let k=0;for(;;){const a2=2*k+1,b2=a2+1;let m=k;if(a2<heap.length&&heap[a2][0]<heap[m][0])m=a2;if(b2<heap.length&&heap[b2][0]<heap[m][0])m=b2;if(m===k)break;[heap[m],heap[k]]=[heap[k],heap[m]];k=m;}}return t;};
+    for(let d=0;d<4;d++){dist[S0*4+d]=0;push(0,S0*4+d);}
+    let fim=-1;
+    while(heap.length){const [dd,s]=pop();if(dd>dist[s])continue;const c=s>>2,d=s&3;if(c===T0){fim=s;break;}
+      const ci=c%nx,cj=(c/nx)|0;
+      for(let e=0;e<4;e++){const ni=ci+DX[e],nj=cj+DY[e];if(ni<0||nj<0||ni>=nx||nj>=ny)continue;const n=nj*nx+ni;
+        const w=(dentro[n]&&dentro[c]?1:FORA)+(e!==d?CURVA:0),ns=n*4+e;if(dd+w<dist[ns]){dist[ns]=dd+w;prev[ns]=s;push(dd+w,ns);}}}
+    let pts=[];if(fim<0)pts=[a,[b[0],a[1]],b];else{const cel=[];for(let s=fim;s>=0;s=prev[s]){cel.push(s>>2);if(prev[s]<0)break;}cel.reverse();
+      pts=cel.map(c=>[x0+(c%nx)*st,y0+((c/nx)|0)*st]);
+      // liga os pontos exatos de início e fim mantendo os trechos ortogonais
+      const p0=pts[0],pn=pts[pts.length-1];
+      if(Math.abs(a[0]-p0[0])>1e-6&&Math.abs(a[1]-p0[1])>1e-6)pts.unshift([p0[0],a[1]]);pts.unshift(a);
+      if(Math.abs(b[0]-pn[0])>1e-6&&Math.abs(b[1]-pn[1])>1e-6)pts.push([pn[0],b[1]]);pts.push(b);}
+    // remove pontos repetidos e colineares
+    const q=[];pts.forEach(p=>{if(q.length&&Math.abs(q[q.length-1][0]-p[0])<1e-6&&Math.abs(q[q.length-1][1]-p[1])<1e-6)return;q.push(p);});
+    for(let k=q.length-2;k>0;k--){const [A,B,C]=[q[k-1],q[k],q[k+1]];if((Math.abs(A[0]-B[0])<1e-6&&Math.abs(B[0]-C[0])<1e-6)||(Math.abs(A[1]-B[1])<1e-6&&Math.abs(B[1]-C[1])<1e-6))q.splice(k,1);}
+    let L=0;for(let k=1;k<q.length;k++)L+=Math.abs(q[k][0]-q[k-1][0])+Math.abs(q[k][1]-q[k-1][1]);
+    const r={pts:q,L};cache.set(key,r);return r;}
+  return rota;
+}
+// ponto do trecho mais longo de uma poligonal (para rótulos e símbolos)
+function meioPoli(pts){let best=null,bl=-1;for(let k=1;k<pts.length;k++){const l=Math.abs(pts[k][0]-pts[k-1][0])+Math.abs(pts[k][1]-pts[k-1][1]);if(l>bl){bl=l;best=[(pts[k][0]+pts[k-1][0])/2,(pts[k][1]+pts[k-1][1])/2,Math.abs(pts[k][1]-pts[k-1][1])<1e-6];}}return best||[pts[0][0],pts[0][1],true];}
 function layoutPlanta(){
   let nCmd=0;const esp=espacoTotal();
   const amb=posAmbientes().map(({a,x,y,L,W})=>{
     const oc=R.out.filter(o=>o.c.ambiente===a.id),num=t=>oc.filter(o=>o.c.tipo===t);
     const grade=(n,mx=0)=>{if(!n||!L||!W)return [];const g=gradeLum(n,L,W),cols=g.cols,rows=Math.ceil(n/cols),r=[];
       for(let k=0;k<n;k++)r.push([x+L*((k%cols)+0.5)/cols,y+W*(Math.floor(k/cols)+0.5)/rows]);return r;};
-    const nLum=Math.max(0,...num("ilum").map(o=>+o.c.qtd||0)),nTug=Math.max(0,...num("tug").map(o=>+o.c.qtd||0));
-    const lc=num("ilum")[0],tc=num("tug")[0],wLum=lc?lc.P/Math.max(1,+lc.c.qtd||1):0,vaTug=tc?tc.S/Math.max(1,+tc.c.qtd||1):0;
+    const nLumC=Math.max(0,...num("ilum").map(o=>+o.c.qtd||0)),nLum=nLumC||calcularAmbiente(a).luminarias, // sem circuito vinculado: quantidade calculada do ambiente (grade fechada)
+      nTug=Math.max(0,...num("tug").map(o=>+o.c.qtd||0));
+    const lc=num("ilum")[0],tc=num("tug")[0],wLum=lc?lc.P/Math.max(1,+lc.c.qtd||1):(+a.w||0),vaTug=tc?tc.S/Math.max(1,+tc.c.qtd||1):0;
     const per=2*(L+W),tug=[];for(let k=0;k<nTug;k++){let d=per*(k+0.5)/nTug;const in_=0.3;
       if(d<L)tug.push([x+d,y+in_,0]);else if((d-=L)<W)tug.push([x+L-in_,y+d,1]);else if((d-=W)<L)tug.push([x+L-d,y+W-in_,2]);else tug.push([x+in_,y+W-(d-L),3]);} // 3º elemento: parede (0 baixo, 1 direita, 2 cima, 3 esquerda)
     const fix=[...num("tue"),...num("motor")].map((o,k,arr)=>({o,p:[x+L*(k+1)/(arr.length+1),y+W-0.8]}));
@@ -1666,17 +1703,24 @@ function layoutPlanta(){
   const bb={x1:0,y1:0,x2:1,y2:1};amb.forEach(r=>{bb.x1=Math.min(bb.x1,r.x);bb.y1=Math.min(bb.y1,r.y);bb.x2=Math.max(bb.x2,r.x+r.L);bb.y2=Math.max(bb.y2,r.y+r.W);});
   const ent=entradaPonto();
   if(esp){bb.x1=Math.min(bb.x1,0);bb.y1=Math.min(bb.y1,0);bb.x2=Math.max(bb.x2,esp.C);bb.y2=Math.max(bb.y2,esp.L);}
-  let qa=0;const quad=S.quadros.map((q,j)=>temXY(q)?{q,x:+q.x,y:+q.y}:j===0&&ent?{q,x:ent.x+ent.nx*1,y:ent.y+ent.ny*1,auto:true}:{q,x:bb.x1+1+4*(qa++),y:bb.y1-3,auto:true});
+  // quadros sem posição: dentro dos ambientes (o QGBT no ponto de ambiente mais próximo da entrada; os demais no ambiente que atendem)
+  const ambOk=amb.filter(r=>r.L>0&&r.W>0),usoAmb=new Map();
+  const interno=(r,k)=>{const n=usoAmb.get(r)||0;usoAmb.set(r,n+1);return [Math.min(r.x+r.L-0.4,r.x+0.6+1.2*n),r.y+0.6];};
+  let qa=0;const quad=S.quadros.map((q,j)=>{if(temXY(q))return {q,x:+q.x,y:+q.y};
+    if(ambOk.length){if(j===0&&ent){let best=null,bd=Infinity;ambOk.forEach(r=>{const px=Math.min(r.x+r.L-0.4,Math.max(r.x+0.4,ent.x)),py=Math.min(r.y+r.W-0.4,Math.max(r.y+0.4,ent.y)),d=Math.abs(px-ent.x)+Math.abs(py-ent.y);if(d<bd){bd=d;best=[px,py];}});return {q,x:best[0],y:best[1],auto:true};}
+      const c=R.out.find(o=>o.c.q===q.nome&&o.c.ambiente),r=(c&&ambOk.find(z=>z.a.id===c.c.ambiente))||ambOk[0];const [x,y]=interno(r);return {q,x,y,auto:true};}
+    return j===0&&ent?{q,x:ent.x+ent.nx*1,y:ent.y+ent.ny*1,auto:true}:{q,x:bb.x1+1+4*(qa++),y:bb.y1-3,auto:true};});
   quad.forEach(r=>{bb.x1=Math.min(bb.x1,r.x-1);bb.y1=Math.min(bb.y1,r.y-1);bb.x2=Math.max(bb.x2,r.x+1);bb.y2=Math.max(bb.y2,r.y+1);});
   const qp=nome=>quad.find(r=>r.q.nome===nome);
-  // rotas das canaletas: do quadro de origem até o centro de cada ambiente atendido (trajeto ortogonal)
-  const rotas=Object.values(R.cans).map(g=>{const segs=[];g.circ.forEach(ci=>{const o=R.out[ci-1];if(!o)return;const q=qp(o.c.q),r=amb.find(z=>z.a.id===o.c.ambiente);if(!q)return;
-      const alvo=r?[r.x+r.L/2,r.y+r.W/2]:[q.x+3,q.y+2];segs.push([[q.x,q.y],[alvo[0],q.y]],[[alvo[0],q.y],alvo]);});return {k:g.k,segs};}).filter(r=>r.segs.length);
-  const alim=S.quadros.map(q=>{const pai=paiDe(q);if(!pai)return null;const a=qp(pai.nome),b=qp(q.nome);return a&&b?{de:a,para:b,q}:null;}).filter(Boolean);
-  // entrada → QGBT em trajeto ortogonal (primeiro perpendicular ao limite, depois ao longo dele)
-  let entRota=null;if(ent&&quad[0]){const q=quad[0],m=ent.nx?[q.x,ent.y]:[ent.x,q.y];entRota={pts:[[ent.x,ent.y],m,[q.x,q.y]],L:Math.abs(q.x-ent.x)+Math.abs(q.y-ent.y)};}
   if(ent){bb.x1=Math.min(bb.x1,ent.x-1);bb.y1=Math.min(bb.y1,ent.y-1);bb.x2=Math.max(bb.x2,ent.x+1);bb.y2=Math.max(bb.y2,ent.y+1);}
-  return {amb,quad,rotas,alim,bb,esp,ent,entRota};
+  const rota=criarRoteador(ambOk.map(r=>({x:r.x,y:r.y,L:r.L,W:r.W})),bb);
+  // canaletas: do quadro de origem até o centro de cada ambiente atendido, por dentro das áreas; a baixada desce no fim
+  const rotas=Object.values(R.cans).map(g=>{const paths=[];g.circ.forEach(ci=>{const o=R.out[ci-1];if(!o)return;const q=qp(o.c.q),r=amb.find(z=>z.a.id===o.c.ambiente);if(!q)return;
+      const alvo=r?[r.x+r.L/2,r.y+r.W/2]:[q.x+3,q.y+2];paths.push(rota([q.x,q.y],alvo).pts);});return {k:g.k,paths};}).filter(r=>r.paths.length);
+  const alim=S.quadros.map(q=>{const pai=paiDe(q);if(!pai)return null;const a=qp(pai.nome),b=qp(q.nome);return a&&b?{de:a,para:b,q,pts:rota([a.x,a.y],[b.x,b.y]).pts}:null;}).filter(Boolean);
+  // entrada → QGBT: sai do limite e segue por dentro das áreas
+  const entRota=ent&&quad[0]?rota([ent.x,ent.y],[quad[0].x,quad[0].y]):null;
+  return {amb,quad,rotas,alim,bb,esp,ent,entRota,rota};
 }
 function exportarDXF(){
   calc();const Lp=layoutPlanta(),o=[];const e=(...a)=>a.forEach(v=>o.push(String(v)));
@@ -1712,9 +1756,9 @@ function exportarDXF(){
     r.fix.forEach(({o:c,p:[x,y]})=>{if(c.c.tipo==="motor")sim("FORCA","motor",x,y,0.35);else sim("FORCA","tom",x,y,0.22,{alt:"alta",ang:270});tx("FORCA",x+0.45,y-0.08,0.16,`${ct([c.i+1])} ${fmt(c.P/1000,1)} kW - ${c.c.nome}`);});
     r.emg.forEach(([x,y])=>sim("EMERGENCIA","emg",x,y,0.2));
     r.sai.forEach(([x,y])=>{rt("EMERGENCIA",x-0.5,y+0.1,1,0.35);tx("EMERGENCIA",x-0.42,y+0.18,0.2,"SAIDA");});});
-  Lp.rotas.forEach(r=>{r.segs.forEach(([a,b],k)=>{ln("CANALETAS",a[0],a[1],b[0],b[1]);if(k%2)sim("CANALETAS","desce",b[0],b[1],0.22);});const [a,b]=r.segs[0],g=R.cans[r.k];tx("CANALETAS",Math.min(a[0],b[0])+0.2,a[1]+0.15,0.2,`${r.k}${g?` - ${g.dim}`:""}`);});
-  Lp.alim.forEach(({de,para,q})=>{tr("ALIMENTADORES",de.x,de.y,de.x,para.y);tr("ALIMENTADORES",de.x,para.y,para.x,para.y);const f=R.quadros.find(z=>z.q===q)?.f,mx=(de.x+para.x)/2;
-    if(f&&f.s){sim("ALIMENTADORES","cond",mx,para.y,0.25,{nf:f.nf,n:f.sn>0,pe:f.spe>0});const dn=((f.ed||{}).nome||"").match(/DN (\d+)/);tx("ALIMENTADORES",mx-0.8,para.y-0.45,0.18,`${dn?"ø"+dn[1]+" - ":""}${f.txt} mm2`);}
+  Lp.rotas.forEach(r=>{r.paths.forEach(pt=>{for(let k=1;k<pt.length;k++)ln("CANALETAS",pt[k-1][0],pt[k-1][1],pt[k][0],pt[k][1]);const f=pt[pt.length-1];sim("CANALETAS","desce",f[0],f[1],0.22);});const [mx,my]=meioPoli(r.paths[0]),g=R.cans[r.k];tx("CANALETAS",mx+0.2,my+0.15,0.2,`${r.k}${g?` - ${g.dim}`:""}`);});
+  Lp.alim.forEach(({pts,q,de,para})=>{for(let k=1;k<pts.length;k++)tr("ALIMENTADORES",pts[k-1][0],pts[k-1][1],pts[k][0],pts[k][1]);const f=R.quadros.find(z=>z.q===q)?.f,[mx,my,hz]=meioPoli(pts);
+    if(f&&f.s){sim("ALIMENTADORES","cond",mx,my,0.25,{nf:f.nf,n:f.sn>0,pe:f.spe>0,ang:hz?0:90});const dn=((f.ed||{}).nome||"").match(/DN (\d+)/);tx("ALIMENTADORES",mx-0.8,my-0.45,0.18,`${dn?"ø"+dn[1]+" - ":""}${f.txt} mm²`);}
     tx("ALIMENTADORES",para.x+0.6,para.y+0.6,0.18,`${de.q.nome} > ${q.nome}`);});
   Lp.quad.forEach(r=>{sim("QUADROS",r.q===S.quadros[0]?"qdg":"qdp",r.x,r.y,0.35);const rq=R.quadros.find(z=>z.q===r.q);tx("QUADROS",r.x-0.45,r.y+0.3,0.25,r.q.nome);if(rq)tx("QUADROS",r.x-0.45,r.y-0.65,0.16,`${fmt(rq.inst,1)} kW`);});
   const bb=Lp.bb,lx=bb.x2+3;let ly=bb.y2;tx("TEXTOS",lx,ly,0.4,"LEGENDA - ABNT NBR 5444");
@@ -1965,9 +2009,11 @@ async function gerarPDF(){
     T(pp,"P",ptx+8,pty+4,8,FB,RED);
     SIM(pp,"med",pex,pey,9,{ang:horiz?0:90});T(pp,"M",pex+(ent.nx<0?6:-14)+(horiz?10:0),pey+(horiz?(ent.ny>0?-18:12):10),8,FB,suposta?RED:INK);
     // alimentador de entrada e alimentadores dos quadros
-    const er=Lp.entRota||(q0?{pts:[[ent.x,ent.y],ent.nx?[q0.x,ent.y]:[ent.x,q0.y],[q0.x,q0.y]]}:null);
+    const er=Lp.entRota||(q0?Lp.rota([ent.x,ent.y],[q0.x,q0.y]):null);
     if(er){const q=er.pts.map(([a,b])=>P(a,b));for(let k=1;k<q.length;k++)Ln(pp,q[k-1][0],q[k-1][1],q[k][0],q[k][1],1.6);}
-    Lp.alim.forEach(({de,para})=>{const [a,b]=P(de.x,de.y),[c,d]=P(para.x,para.y);Ln(pp,a,b,a,d,0.8,INK,[4,3]);Ln(pp,a,d,c,d,0.8,INK,[4,3]);});
+    Lp.alim.forEach(({pts})=>{const q=pts.map(([a,b])=>P(a,b));for(let k=1;k<q.length;k++)Ln(pp,q[k-1][0],q[k-1][1],q[k][0],q[k][1],0.8,INK,[4,3]);});
+    // canaletas de distribuição (as mesmas rotas da planta baixa)
+    Lp.rotas.forEach(r=>r.paths.forEach(pt=>{const q=pt.map(([a,b])=>P(a,b));for(let k=1;k<q.length;k++)Ln(pp,q[k-1][0],q[k-1][1],q[k][0],q[k][1],1.4,rgb(0.35,0.35,0.35));}));
     Lp.quad.forEach((r,k)=>{const [x,y]=P(r.x,r.y);SIM(pp,k===0?"qdg":"qdp",x,y,8);T(pp,r.q.nome,x+10,y+6,7.5,FB);});
     // legenda
     {let ly=h-210;const lx=w-360,L_=(t,c=INK,b=F)=>{ly-=TW(pp,t,lx,ly,315,7.5,b,c)*10+4;};T(pp,"Legenda",lx,ly,10,FB);ly-=16;
@@ -2003,11 +2049,11 @@ async function gerarPDF(){
       r.emg.forEach(([a,b])=>{const [cx,cy]=P(a,b);SIM(pp,"emg",cx,cy,s0,{},ORG);});
       r.sai.forEach(([a,b])=>{const [cx,cy]=P(a,b);Bx(pp,cx-11,cy+2,22,7,{fill:ACC,bc:ACC});TC(pp,"SAÍDA",cx,cy+3.8,4.5,FB,rgb(1,1,1));});});
     // eletrocalhas com circuitos passantes (5.13) e baixadas em eletroduto que desce (5.18)
-    Lp.rotas.forEach(r=>{r.segs.forEach(([a,b],k)=>{const [x1,y1]=P(...a),[x2,y2]=P(...b);Ln(pp,x1,y1,x2,y2,2.4,INK);if(k%2)SIM(pp,"desce",x2,y2,s0*0.9);});
-      const [a,b]=r.segs[0],[x1,y1]=P(...a),[x2]=P(...b),g=R.cans[r.k];T(pp,`${r.k}${g?` — ${g.dim} · circ. ${g.circ.join(", ")}`:""}`,Math.min(x1,x2)+4,y1-8,5.5,FB,INK);});
+    Lp.rotas.forEach(r=>{r.paths.forEach(pt=>{const q=pt.map(([a,b])=>P(a,b));for(let k=1;k<q.length;k++)Ln(pp,q[k-1][0],q[k-1][1],q[k][0],q[k][1],2.4,INK);const f=q[q.length-1];SIM(pp,"desce",f[0],f[1],s0*0.9);});
+      const [mx,my]=meioPoli(r.paths[0]),[x1,y1]=P(mx,my),g=R.cans[r.k];T(pp,`${r.k}${g?` — ${g.dim} · circ. ${g.circ.join(", ")}`:""}`,x1+4,y1-8,5.5,FB,INK);});
     // alimentadores: eletroduto no piso/enterrado (5.2), diâmetro em mm e condutores (5.6, 5.7, 5.9)
-    Lp.alim.forEach(({de,para,q})=>{const [x1,y1]=P(de.x,de.y),[x2,y2]=P(para.x,para.y);Ln(pp,x1,y1,x1,y2,0.9,INK,[4,3]);Ln(pp,x1,y2,x2,y2,0.9,INK,[4,3]);
-      const f=(R.quadros.find(z=>z.q===q)||{}).f;if(f&&f.s){const mx=(x1+x2)/2,dn=((f.ed||{}).nome||"").match(/DN (\d+)/);SIM(pp,"cond",mx,y2,s0*1.2,{nf:f.nf,n:f.sn>0,pe:f.spe>0});T(pp,`${dn?"ø"+dn[1]+" — ":""}${f.txt} mm²`,mx-30,y2-fs-3,fs,F,INK);}});
+    Lp.alim.forEach(({pts,q})=>{const qq=pts.map(([a,b])=>P(a,b));for(let k=1;k<qq.length;k++)Ln(pp,qq[k-1][0],qq[k-1][1],qq[k][0],qq[k][1],0.9,INK,[4,3]);
+      const f=(R.quadros.find(z=>z.q===q)||{}).f;if(f&&f.s){const [ax,ay,hz]=meioPoli(pts),[mx,y2]=P(ax,ay),dn=((f.ed||{}).nome||"").match(/DN (\d+)/);SIM(pp,"cond",mx,y2,s0*1.2,{nf:f.nf,n:f.sn>0,pe:f.spe>0,ang:hz?0:90});T(pp,`${dn?"ø"+dn[1]+" — ":""}${f.txt} mm²`,mx-30,y2-fs-3,fs,F,INK);}});
     Lp.quad.forEach(r=>{const [x,y]=P(r.x,r.y);SIM(pp,r.q===S.quadros[0]?"qdg":"qdp",x,y,s0*1.8);const rq=R.quadros.find(z=>z.q===r.q);T(pp,`${r.q.nome}${rq?` — ${fmt(rq.inst,1)} kW`:""}`,x-2.3*s0,y+1.3*s0,6.5,FB,INK);});
     if(Lp.ent){const [x,y]=P(Lp.ent.x,Lp.ent.y);SIM(pp,"med",x,y,s0*2.2);T(pp,`Entrada de energia / medição — alim. ${R.ent.s?R.ent.txt+" mm², ":""}${fmt(+S.forn.Lent||0,0)} m`,x+(Lp.ent.nx<0?-150:2.5*s0),y+(Lp.ent.ny<0?-2.5*s0-6:2.5*s0),6.5,FB,RED);}
     // escala gráfica
